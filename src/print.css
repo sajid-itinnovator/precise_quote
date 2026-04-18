@@ -1,0 +1,19 @@
+
+/* ── Print styles: hide app shell, show only quotation ─────── */
+@media print {
+  body > #root { display: none !important; }
+
+  #vistara-print-root {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    background: #fff;
+    z-index: 99999;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .no-print { display: none !important; }
+
+  @page { size: A4; margin: 8mm; }
+}
