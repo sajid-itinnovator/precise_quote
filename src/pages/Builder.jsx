@@ -6,10 +6,49 @@ import QuotationPreview from '../components/QuotationPreview';
 
 const GST_RATE = 0.18;
 
+const ROOM_PRESET_ITEMS = {
+  'ENTRANCE': [
+    'Safety Door With CNC Jali Europa Lock', 'Shoe Rack With Seating', 'Entrance Panelling', 'Foyer Unit', 'Entrance Wall Designing'
+  ],
+  'LIVING ROOM': [
+    'TV Unit', 'Designer Sofa', 'Sofa Back Wall Design', 'Centre Table', 'A/c Pelmet', 'Bar Counter', 'Mandir Unit', 'Partition Work', 'Curtains Full Height', 'Other Wall Design'
+  ],
+  'LIVING BALCONY': [
+    'Living Balcony PVC Ceiling', 'Living Balcony Pipe Cover', 'Living Balcony Sitout', 'Living Balcony Vertical Garden', 'Invisible Grill', 'French Door', 'Extra Storage', 'Ceiling Cloth Handing Road'
+  ],
+  'DINING AREA': [
+    'Dining Table Marble Top', 'Foldable Dining Table', 'Dining Back Wall Design', 'Crockery Unit', 'Mandir Unit', 'Partition Work', 'PVC Ceiling'
+  ],
+  'KITCHEN': [
+    'Modular Kitchen With Tandem Box', 'Loft Unit', 'Crockery Unit With Profile Light', 'Pantry Unit With Automatic Feting', 'Pantry Unit With manual Feting', 'Tall Unit', 'Foldable Table', 'Wicker Basket', 'Breakfast Counter', 'Partition Work', 'Dry Balcony PCV Ceiling', 'Dry Balcony Storage', 'Dry Balcony Window', 'Chimney'
+  ],
+  'BATHROOM': [
+    'Bathroom PVC Ceiling', 'Bathroom Vanity + Mirror', 'Bathroom Basin Storage', 'Bathroom Glass Partition'
+  ],
+  'MASTER BEDROOM': [
+    'Bed With Hydraulic Storage With Bed Back Cushion', 'Bed Side Table', 'Bed Side Table + Dressing Unit', 'Bed Back Wall Design', 'Wardrobe', 'Loft Unit', 'Dressing Unit With Mirror', 'Work Station', 'Work Station Over Head Storage', 'Work Station Over Head Shelf', 'Window Sitout', 'A/C Pelmet', 'Curtains Full Height'
+  ],
+  'KIDS BEDROOM': [
+    'Bed With Hydraulic Storage With Bed Back Cushion', 'Bunk Bed', 'Murphy Bed', 'Bed Side Table', 'Bed Side Table + Dressing Unit', 'Bed Back Wall Design', 'Wardrobe', 'Loft Unit', 'Dressing Unit With Mirror', 'Study Table', 'Study Table Over Head Storage', 'Study Table Over Head Shelf', 'Window Sitout', 'A/C Pelmet', 'Curtains Full Height'
+  ],
+  'PARENT BEDROOM': [
+    'Bed With Hydraulic Storage With Bed Back Cushion', 'Bunk Bed', 'Murphy Bed', 'Bed Side Table', 'Bed Side Table + Dressing Unit', 'Bed Back Wall Design', 'Wardrobe', 'Loft Unit', 'Dressing Unit With Mirror', 'Study Table', 'Study Table Over Head Storage', 'Study Table Over Head Shelf', 'Window Sitout', 'A/C Pelmet', 'Curtains Full Height'
+  ],
+  'CIVIL': [
+    'Wall Demolish', 'Kitchen Counter Demolish', 'Kitchen Counter Top Change', 'Kitchen Counter Top extend', 'Tile Change'
+  ],
+  'OTHER WORK': [
+    'False Ceiling Work', 'Electrical Work', 'Painting Work'
+  ]
+};
+
 const PRESET_ROOMS = [
-  'ENTRANCE', 'LIVING ROOM', 'DINING AREA', 'KITCHEN',
-  'MASTER BEDROOM', 'KIDS BEDROOM', 'STUDY ROOM', 'BATHROOM', 'OTHER WORK'
+  'ENTRANCE', 'LIVING ROOM', 'LIVING BALCONY', 'DINING AREA', 'KITCHEN',
+  'BATHROOM', 'MASTER BEDROOM', 'KIDS BEDROOM', 'PARENT BEDROOM', 'CIVIL', 'OTHER WORK'
 ];
+
+const ALL_PRESET_ITEMS = Array.from(new Set(Object.values(ROOM_PRESET_ITEMS).flat()));
+
 
 // ─── Parse "L X W" string → { l, w } or null ─────────────────────────────
 function parseLW(sizeStr) {
@@ -19,7 +58,7 @@ function parseLW(sizeStr) {
 }
 
 // ─── Item Row ─────────────────────────────────────────────────────────────
-function ItemRow({ item, onUpdate, onDelete }) {
+function ItemRow({ item, roomName, onUpdate, onDelete }) {
   const rate = item._rate ?? '';
   const lw = parseLW(item.size);
   const rateNum = parseFloat(rate) || 0;
@@ -55,6 +94,7 @@ function ItemRow({ item, onUpdate, onDelete }) {
           placeholder="Particular (e.g. Safety Door With CNC Jali)"
           value={item.particular || ''}
           onChange={e => onUpdate({ ...item, particular: e.target.value })}
+          list={roomName ? `datalist-${roomName.replace(/\s+/g, '-')}` : "particulars-list"}
         />
         <button className="btn btn-sm btn-danger" onClick={onDelete} style={{ padding: '7px 10px', flexShrink: 0 }}>
           <Trash2 size={14} />
@@ -181,7 +221,7 @@ function RoomSection({ room, index, onUpdate, onDelete, onMoveUp, onMoveDown, is
       {!collapsed && (
         <>
           {(room.items || []).map((item, i) => (
-            <ItemRow key={i} item={item} onUpdate={data => updateItem(i, data)} onDelete={() => deleteItem(i)} />
+            <ItemRow key={i} item={item} roomName={room.name} onUpdate={data => updateItem(i, data)} onDelete={() => deleteItem(i)} />
           ))}
           <div style={{ padding: '8px 16px' }}>
             <button className="btn btn-ghost btn-sm" onClick={addItem}>
@@ -199,9 +239,7 @@ export default function Builder() {
   const { clients, addQuotation, materialSpec, ROOMS_DEFAULT } = useApp();
   const [clientId, setClientId] = useState('');
   const [projectTitle, setProjectTitle] = useState('2 BHK INTERIOR DESIGN');
-  const [rooms, setRooms] = useState(() =>
-    ROOMS_DEFAULT.map(name => ({ name, items: [] }))
-  );
+  const [rooms, setRooms] = useState([]);
   const [customRoom, setCustomRoom] = useState('');
   const [showRoomPicker, setShowRoomPicker] = useState(false);
   const [includeGST, setIncludeGST] = useState(true);
@@ -214,7 +252,9 @@ export default function Builder() {
 
   const addRoom = (name) => {
     if (!name.trim()) return;
-    setRooms(prev => [...prev, { name: name.trim().toUpperCase(), items: [] }]);
+    const roomName = name.trim().toUpperCase();
+    
+    setRooms(prev => [...prev, { name: roomName, items: [] }]);
     setCustomRoom('');
     setShowRoomPicker(false);
   };
@@ -330,6 +370,21 @@ export default function Builder() {
           saved={saved} clientId={clientId}
         />
       </div>
+
+      {/* Global & Room-specific Datalists for Particulars */}
+      <datalist id="particulars-list">
+        <option value="Custom" />
+        {ALL_PRESET_ITEMS.map((p, idx) => (
+          <option key={idx} value={p} />
+        ))}
+      </datalist>
+      
+      {Object.entries(ROOM_PRESET_ITEMS).map(([roomName, items]) => (
+        <datalist key={roomName} id={`datalist-${roomName.replace(/\s+/g, '-')}`}>
+          <option value="Custom" />
+          {items.map((p, idx) => <option key={idx} value={p} />)}
+        </datalist>
+      ))}
 
       {/* Quotation Preview Modal */}
       {showPreview && (
