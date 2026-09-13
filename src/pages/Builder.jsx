@@ -243,6 +243,7 @@ export default function Builder() {
   const [customRoom, setCustomRoom] = useState('');
   const [showRoomPicker, setShowRoomPicker] = useState(false);
   const [includeGST, setIncludeGST] = useState(true);
+  const [showItemAmount, setShowItemAmount] = useState(true);
   const [saved, setSaved] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
@@ -283,6 +284,7 @@ export default function Builder() {
         rooms,
         total,
         materialSpec,
+        showItemAmount,
         status: 'DRAFT',
       });
       setSaved(true);
@@ -310,6 +312,7 @@ export default function Builder() {
       rooms,
       total,
       materialSpec,
+      showItemAmount,
     };
   };
 
@@ -359,6 +362,7 @@ export default function Builder() {
         <BuilderRight
           subtotal={subtotal} gst={gst} total={total} totalItems={totalItems}
           includeGST={includeGST} setIncludeGST={setIncludeGST}
+          showItemAmount={showItemAmount} setShowItemAmount={setShowItemAmount}
           onSave={handleSave} onPreview={() => setShowPreview(true)}
           saved={saved} clientId={clientId}
         />
@@ -375,6 +379,7 @@ export default function Builder() {
         <BuilderRight
           subtotal={subtotal} gst={gst} total={total} totalItems={totalItems}
           includeGST={includeGST} setIncludeGST={setIncludeGST}
+          showItemAmount={showItemAmount} setShowItemAmount={setShowItemAmount}
           onSave={handleSave} onPreview={() => setShowPreview(true)}
           saved={saved} clientId={clientId}
         />
@@ -397,7 +402,11 @@ export default function Builder() {
 
       {/* Quotation Preview Modal */}
       {showPreview && (
-        <QuotationPreview quotation={buildQuotation()} onClose={() => setShowPreview(false)} />
+        <QuotationPreview
+          quotation={buildQuotation()}
+          onClose={() => setShowPreview(false)}
+          onUpdateShowItemAmount={setShowItemAmount}
+        />
       )}
     </div>
   );
@@ -458,7 +467,7 @@ function BuilderLeft({ rooms, updateRoom, deleteRoom, moveRoom, showRoomPicker, 
 }
 
 // ─── Builder Right (Summary Panel) ───────────────────────────────────────
-function BuilderRight({ subtotal, gst, total, totalItems, includeGST, setIncludeGST, onSave, onPreview, saved, clientId }) {
+function BuilderRight({ subtotal, gst, total, totalItems, includeGST, setIncludeGST, showItemAmount, setShowItemAmount, onSave, onPreview, saved, clientId }) {
   return (
     <div>
       {/* Summary */}
@@ -481,6 +490,27 @@ function BuilderRight({ subtotal, gst, total, totalItems, includeGST, setInclude
               </label>
             </div>
             <span style={{ fontWeight: 600 }}>₹{formatIndianCurrency(gst)}</span>
+          </div>
+
+          {/* Option to show or hide item-level amounts */}
+          <div className="summary-row" style={{ alignItems: 'center', padding: '6px 0', borderTop: '1px dashed rgba(255,255,255,0.1)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ opacity: 0.85, fontSize: '0.85rem' }}>Item Amounts</span>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={showItemAmount}
+                  onChange={e => setShowItemAmount(e.target.checked)}
+                  style={{ accentColor: '#1a56ff' }}
+                />
+                <span style={{ fontSize: '0.7rem', opacity: 0.75 }}>
+                  {showItemAmount ? 'Show in PDF' : 'Hide in PDF'}
+                </span>
+              </label>
+            </div>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: showItemAmount ? '#60a5fa' : '#94a3b8' }}>
+              {showItemAmount ? 'Detailed' : 'Lump Sum'}
+            </span>
           </div>
           <hr className="summary-divider" />
           <div className="summary-total-label">Final Total Amount</div>

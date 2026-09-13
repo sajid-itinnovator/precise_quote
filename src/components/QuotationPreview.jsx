@@ -8,14 +8,16 @@ import { useApp } from '../context/AppContext';
    Generates a fully self-contained HTML string for the quotation
    This is opened in a new window and printed from there.
    ────────────────────────────────────────────────────────────── */
-function buildPrintHTML(quotation, total, tenantName, tenantLogo) {
+function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount = true) {
   let srNo = 1;
   let matSrNo = 1;
+
+  const colSpan = showItemAmount ? 4 : 3;
 
   const scopeRows = (quotation.rooms || []).map(room => {
     const headerRow = `
       <tr>
-        <td colspan="4" style="background:#f8cbab;color:#000;font-weight:bold;text-align:center;
+        <td colspan="${colSpan}" style="background:#f8cbab;color:#000;font-weight:bold;text-align:center;
           padding:5px 6px;font-size:10pt;border:1px solid #000;">
           ${room.name}
         </td>
@@ -25,9 +27,10 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo) {
         <td style="padding:4px 6px;border:1px solid #000;text-align:center;font-size:9pt;">${srNo++}</td>
         <td style="padding:4px 6px;border:1px solid #000;font-size:9pt;">${item.particular || ''}</td>
         <td style="padding:4px 6px;border:1px solid #000;text-align:center;font-size:9pt;">${item.size || ''}</td>
+        ${showItemAmount ? `
         <td style="padding:4px 6px;border:1px solid #000;text-align:center;font-size:9pt;">
           ${item.amount ? Number(item.amount).toLocaleString('en-IN') : '—'}
-        </td>
+        </td>` : ''}
       </tr>`).join('');
     return headerRow + items;
   }).join('');
@@ -145,8 +148,8 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo) {
       <tr>
         <th style="width:50px;">SR .NO</th>
         <th>Particular</th>
-        <th style="width:120px;">Size</th>
-        <th style="width:100px;">Amount</th>
+        <th style="width:${showItemAmount ? '120px' : '150px'};">Size</th>
+        ${showItemAmount ? `<th style="width:100px;">Amount</th>` : ''}
       </tr>
     </thead>
     <tbody>${scopeRows}</tbody>
@@ -208,17 +211,28 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo) {
 /* ──────────────────────────────────────────────────────────────
    QuotationPreview — In-app preview modal & triggers new window print
    ────────────────────────────────────────────────────────────── */
-export default function QuotationPreview({ quotation, onClose }) {
+export default function QuotationPreview({ quotation, onClose, onUpdateShowItemAmount }) {
   const { userProfile } = useAuth();
   const { tenantLogo } = useApp();
   const tenantName = userProfile?.tenantName || 'Workspace';
+
+  const [showItemAmount, setShowItemAmount] = React.useState(
+    quotation.showItemAmount !== undefined ? quotation.showItemAmount : true
+  );
 
   const total = quotation.total ||
     (quotation.rooms || []).reduce((s, r) =>
       s + (r.items || []).reduce((ss, i) => ss + (Number(i.amount) || 0), 0), 0);
 
+  const handleToggleAmount = (val) => {
+    setShowItemAmount(val);
+    if (onUpdateShowItemAmount) {
+      onUpdateShowItemAmount(val);
+    }
+  };
+
   const handlePrint = () => {
-    const html = buildPrintHTML(quotation, total, tenantName, tenantLogo);
+    const html = buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount);
     const win = window.open('', '_blank', 'width=900,height=1000,scrollbars=yes');
     if (!win) { alert('Please allow popups for this site to print.'); return; }
     win.document.open();
@@ -242,6 +256,7 @@ export default function QuotationPreview({ quotation, onClose }) {
       <div style={{
         background: '#0d1b4b', borderBottom: '1px solid rgba(255,255,255,0.1)',
         padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0,
+        flexWrap: 'wrap'
       }}>
         <button onClick={onClose} style={{
           background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 6,
@@ -253,9 +268,27 @@ export default function QuotationPreview({ quotation, onClose }) {
           <X size={16} /> Close Preview
         </button>
 
-        <div style={{ flex: 1, textAlign: 'center', color: '#fff', fontWeight: 600, fontSize: '0.95rem', letterSpacing: '0.5px' }}>
+        <div style={{ flex: 1, textAlign: 'center', color: '#fff', fontWeight: 600, fontSize: '0.95rem', letterSpacing: '0.5px', minWidth: 200 }}>
           Quotation: {quotation.clientName} (QT-{quotation.quotationNo})
         </div>
+
+        {/* Toggle Show/Hide Item Amounts */}
+        <label style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          background: showItemAmount ? 'rgba(26, 86, 255, 0.3)' : 'rgba(255, 255, 255, 0.12)',
+          border: showItemAmount ? '1px solid #3b82f6' : '1px solid rgba(255, 255, 255, 0.2)',
+          padding: '7px 14px', borderRadius: 6,
+          color: '#fff', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer',
+          userSelect: 'none', transition: 'all 0.2s'
+        }}>
+          <input
+            type="checkbox"
+            checked={showItemAmount}
+            onChange={e => handleToggleAmount(e.target.checked)}
+            style={{ accentColor: '#1a56ff', width: 16, height: 16, cursor: 'pointer' }}
+          />
+          <span>Show Item Amount</span>
+        </label>
 
         <button onClick={handlePrint} style={{
           background: '#1a56ff', border: 'none', borderRadius: 6,
@@ -271,7 +304,7 @@ export default function QuotationPreview({ quotation, onClose }) {
 
       <div style={{ flex: 1, overflow: 'auto', padding: '32px 0', display: 'flex', justifyContent: 'center' }}>
         <div style={{ pointerEvents: 'none' }}>
-          <QuotationDocument quotation={quotation} total={total} tenantName={tenantName} tenantLogo={tenantLogo} />
+          <QuotationDocument quotation={quotation} total={total} tenantName={tenantName} tenantLogo={tenantLogo} showItemAmount={showItemAmount} />
         </div>
       </div>
     </div>
@@ -282,9 +315,10 @@ export default function QuotationPreview({ quotation, onClose }) {
    QuotationDocument — HTML preview inside the modal using React
    Matches the buildPrintHTML structure exactly.
    ────────────────────────────────────────────────────────────── */
-function QuotationDocument({ quotation, total, tenantName, tenantLogo }) {
+function QuotationDocument({ quotation, total, tenantName, tenantLogo, showItemAmount = true }) {
   let scopeSrNo = 1;
   let matSrNo = 1;
+  const colSpan = showItemAmount ? 4 : 3;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* PAGE 1 */}
@@ -293,7 +327,7 @@ function QuotationDocument({ quotation, total, tenantName, tenantLogo }) {
           {tenantLogo ? (
             <img src={tenantLogo} alt="Logo" style={{ height: 60, objectFit: 'contain' }} />
           ) : (
-            <h2 style={{ margin: 0, color: '#1e1b4b', fontSize: 28 }}>{userProfile?.tenantName || 'Company'}</h2>
+            <h2 style={{ margin: 0, color: '#1e1b4b', fontSize: 28 }}>{tenantName || 'Company'}</h2>
           )}
           <div>
             <h1 style={{ color: '#002060', margin: 0, fontSize: 22, fontWeight: 'bold', letterSpacing: 0.5 }}>
@@ -340,15 +374,15 @@ function QuotationDocument({ quotation, total, tenantName, tenantLogo }) {
             <tr>
               <th style={{ width: 50, ...thStyle }}>SR .NO</th>
               <th style={thStyle}>Particular</th>
-              <th style={{ width: 120, ...thStyle }}>Size</th>
-              <th style={{ width: 100, ...thStyle }}>Amount</th>
+              <th style={{ width: showItemAmount ? 120 : 150, ...thStyle }}>Size</th>
+              {showItemAmount && <th style={{ width: 100, ...thStyle }}>Amount</th>}
             </tr>
           </thead>
           <tbody>
             {(quotation.rooms || []).map((room, ri) => (
               <React.Fragment key={`room-${ri}`}>
                 <tr>
-                  <td colSpan={4} style={{ background: '#f8cbab', color: '#000', fontWeight: 'bold', textAlign: 'center', padding: '5px 6px', fontSize: 10, border: '1px solid #000' }}>
+                  <td colSpan={colSpan} style={{ background: '#f8cbab', color: '#000', fontWeight: 'bold', textAlign: 'center', padding: '5px 6px', fontSize: 10, border: '1px solid #000' }}>
                     {room.name}
                   </td>
                 </tr>
@@ -357,7 +391,9 @@ function QuotationDocument({ quotation, total, tenantName, tenantLogo }) {
                     <td style={{ ...tdStyle, textAlign: 'center' }}>{scopeSrNo++}</td>
                     <td style={tdStyle}>{item.particular}</td>
                     <td style={{ ...tdStyle, textAlign: 'center' }}>{item.size}</td>
-                    <td style={{ ...tdStyle, textAlign: 'center' }}>{item.amount ? Number(item.amount).toLocaleString('en-IN') : '—'}</td>
+                    {showItemAmount && (
+                      <td style={{ ...tdStyle, textAlign: 'center' }}>{item.amount ? Number(item.amount).toLocaleString('en-IN') : '—'}</td>
+                    )}
                   </tr>
                 ))}
               </React.Fragment>
