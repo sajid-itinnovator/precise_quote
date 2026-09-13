@@ -1,4 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { collection, getDocs, addDoc, doc, setDoc, deleteDoc, updateDoc, query, where } from 'firebase/firestore';
+import { db } from '../firebase';
+import { useAuth } from './AuthContext';
 
 const AppContext = createContext(null);
 
@@ -442,50 +445,227 @@ function loadFromStorage(key, fallback) {
 }
 
 export function AppProvider({ children }) {
-  const [clients, setClients] = useState(() => loadFromStorage('vi_clients', SAMPLE_CLIENTS));
-  const [projects, setProjects] = useState(() => loadFromStorage('vi_projects', SAMPLE_PROJECTS));
-  const [quotations, setQuotations] = useState(() => loadFromStorage('vi_quotations', SAMPLE_QUOTATIONS));
-  const [products, setProducts] = useState(() => loadFromStorage('vi_products', SAMPLE_PRODUCTS));
-  const [materialSpec, setMaterialSpec] = useState(() => loadFromStorage('vi_materialspec', MATERIAL_SPEC_DEFAULT));
-  const [nextQuoteNo, setNextQuoteNo] = useState(() => loadFromStorage('vi_nextquoteno', 1290));
+  const { currentUser, userProfile, loading: authLoading } = useAuth();
+  const [clients, setClients] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [quotations, setQuotations] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [materialSpec, setMaterialSpec] = useState(MATERIAL_SPEC_DEFAULT);
+  const [nextQuoteNo, setNextQuoteNo] = useState(1290);
+  const [tenantLogo, setTenantLogo] = useState(null);
+  const [subscription, setSubscription] = useState({ plan: 'trial', trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() });
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => { localStorage.setItem('vi_clients', JSON.stringify(clients)); }, [clients]);
-  useEffect(() => { localStorage.setItem('vi_projects', JSON.stringify(projects)); }, [projects]);
-  useEffect(() => { localStorage.setItem('vi_quotations', JSON.stringify(quotations)); }, [quotations]);
-  useEffect(() => { localStorage.setItem('vi_products', JSON.stringify(products)); }, [products]);
-  useEffect(() => { localStorage.setItem('vi_materialspec', JSON.stringify(materialSpec)); }, [materialSpec]);
-  useEffect(() => { localStorage.setItem('vi_nextquoteno', JSON.stringify(nextQuoteNo)); }, [nextQuoteNo]);
+  // Load from Firebase
+  useEffect(() => {
+    if (authLoading || !currentUser || !userProfile) {
+      if (!authLoading && !currentUser) setLoading(false);
+      return;
+    }
+
+    const loadData = async () => {
+      try {
+        const isPrivate = userProfile.dataAccess === 'private';
+        const tenantId = userProfile.tenantId;
+
+        if (!tenantId) {
+          console.error("User profile has no tenantId! Cannot load data.");
+          setLoading(false);
+          return;
+        }
+        
+        let clientsQ = query(collection(db, 'clients'), where('tenantId', '==', tenantId));
+        const clientsSnap = await getDocs(clientsQ);
+        let loadedClients = clientsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        if (isPrivate) loadedClients = loadedClients.filter(c => c.createdBy === currentUser.uid);
+        
+        // If DB is completely empty for this tenant, seed it with sample data
+        if (loadedClients.length === 0 && !isPrivate) {
+          console.log("Seeding database with initial data for new tenant...");
+          
+          await setDoc(doc(db, 'config', `${tenantId}_materialSpec`), { data: MATERIAL_SPEC_DEFAULT, tenantId });
+          await setDoc(doc(db, 'config', `${tenantId}_nextQuoteNo`), { value: 1290, tenantId });
+          await setDoc(doc(db, 'config', `${tenantId}_tenantLogo`), { data: null, tenantId });
+          const trialDate = new Date();
+          trialDate.setDate(trialDate.getDate() + 30);
+          await setDoc(doc(db, 'config', `${tenantId}_subscription`), { plan: 'trial', trialEndsAt: trialDate.toISOString(), tenantId });
+
+          for (const pr of SAMPLE_PRODUCTS) await setDoc(doc(db, 'products', `${tenantId}_${pr.id}`), { ...pr, tenantId });
+          setProducts(SAMPLE_PRODUCTS.map(pr => ({...pr, id: `${tenantId}_${pr.id}`, tenantId})));
+
+          // Only seed Vistara demo clients/projects for Vistara accounts
+          if (userProfile.companyName && userProfile.companyName.toLowerCase().includes('vistara')) {
+            for (const c of SAMPLE_CLIENTS) await setDoc(doc(db, 'clients', `${tenantId}_${c.id}`), { ...c, tenantId, createdBy: currentUser.uid });
+            for (const p of SAMPLE_PROJECTS) await setDoc(doc(db, 'projects', `${tenantId}_${p.id}`), { ...p, clientId: `${tenantId}_${p.clientId}`, tenantId, createdBy: currentUser.uid });
+            for (const q of SAMPLE_QUOTATIONS) await setDoc(doc(db, 'quotations', `${tenantId}_${q.id}`), { ...q, clientId: `${tenantId}_${q.clientId}`, tenantId, createdBy: currentUser.uid });
+
+            setClients(SAMPLE_CLIENTS.map(c => ({...c, id: `${tenantId}_${c.id}`, tenantId})));
+            setProjects(SAMPLE_PROJECTS.map(p => ({...p, id: `${tenantId}_${p.id}`, clientId: `${tenantId}_${p.clientId}`, tenantId})));
+            setQuotations(SAMPLE_QUOTATIONS.map(q => ({...q, id: `${tenantId}_${q.id}`, clientId: `${tenantId}_${q.clientId}`, tenantId})));
+          } else {
+            setClients([]);
+            setProjects([]);
+            setQuotations([]);
+          }
+        } else {
+          setClients(loadedClients);
+          
+          let projectsQ = query(collection(db, 'projects'), where('tenantId', '==', tenantId));
+          const projectsSnap = await getDocs(projectsQ);
+          let loadedProjects = projectsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          if (isPrivate) loadedProjects = loadedProjects.filter(p => p.createdBy === currentUser.uid);
+          setProjects(loadedProjects);
+          
+          let quotesQ = query(collection(db, 'quotations'), where('tenantId', '==', tenantId));
+          const quotationsSnap = await getDocs(quotesQ);
+          let loadedQuotes = quotationsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          if (isPrivate) loadedQuotes = loadedQuotes.filter(q => q.createdBy === currentUser.uid);
+          setQuotations(loadedQuotes);
+          
+          let productsQ = query(collection(db, 'products'), where('tenantId', '==', tenantId));
+          const productsSnap = await getDocs(productsQ);
+          setProducts(productsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+          
+          const specSnap = await getDocs(query(collection(db, 'config'), where('tenantId', '==', tenantId)));
+          specSnap.docs.forEach(doc => {
+            if (doc.id.includes('materialSpec')) setMaterialSpec(doc.data().data);
+            if (doc.id.includes('nextQuoteNo')) setNextQuoteNo(doc.data().value);
+            if (doc.id.includes('tenantLogo')) setTenantLogo(doc.data().data);
+            if (doc.id.includes('subscription')) {
+              setSubscription({ 
+                plan: doc.data().plan, 
+                quoteLimit: doc.data().quoteLimit,
+                trialEndsAt: doc.data().trialEndsAt 
+              });
+            }
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load Firebase data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, [currentUser, userProfile, authLoading]);
+
+  // Sync materialSpec and nextQuoteNo to Firebase when they change
+  useEffect(() => {
+    if (loading || !userProfile?.tenantId) return;
+    const saveSpec = async () => {
+      try { await setDoc(doc(db, 'config', `${userProfile.tenantId}_materialSpec`), { data: materialSpec, tenantId: userProfile.tenantId }); } 
+      catch (e) { console.error("Error saving material specs", e); }
+    };
+    saveSpec();
+  }, [materialSpec, loading, userProfile]);
+
+  useEffect(() => {
+    if (loading || !userProfile?.tenantId) return;
+    const saveNextNo = async () => {
+      try { await setDoc(doc(db, 'config', `${userProfile.tenantId}_nextQuoteNo`), { value: nextQuoteNo, tenantId: userProfile.tenantId }); } 
+      catch (e) { console.error("Error saving next quote no", e); }
+    };
+    saveNextNo();
+  }, [nextQuoteNo, loading, userProfile]);
+
+  useEffect(() => {
+    if (loading || !userProfile?.tenantId || tenantLogo === null) return;
+    const saveLogo = async () => {
+      try { await setDoc(doc(db, 'config', `${userProfile.tenantId}_tenantLogo`), { data: tenantLogo, tenantId: userProfile.tenantId }); } 
+      catch (e) { console.error("Error saving tenant logo", e); }
+    };
+    saveLogo();
+  }, [tenantLogo, loading, userProfile]);
 
   // Clients CRUD
-  const addClient = (client) => { const c = { ...client, id: `c${Date.now()}` }; setClients(p => [...p, c]); return c; };
-  const updateClient = (id, data) => setClients(p => p.map(c => c.id === id ? { ...c, ...data } : c));
-  const deleteClient = (id) => setClients(p => p.filter(c => c.id !== id));
+  const addClient = async (client) => {
+    const docRef = await addDoc(collection(db, 'clients'), { ...client, createdBy: currentUser?.uid, tenantId: userProfile?.tenantId });
+    setClients(prev => [...prev, { ...client, id: docRef.id, createdBy: currentUser?.uid, tenantId: userProfile?.tenantId }]);
+    return docRef.id;
+  };
+  const updateClient = async (id, data) => {
+    await updateDoc(doc(db, 'clients', id), data);
+    setClients(prev => prev.map(c => c.id === id ? { ...c, ...data } : c));
+  };
+  const deleteClient = async (id) => {
+    await deleteDoc(doc(db, 'clients', id));
+    setClients(prev => prev.filter(c => c.id !== id));
+  };
 
   // Projects CRUD
-  const addProject = (project) => { const p = { ...project, id: `p${Date.now()}` }; setProjects(prev => [...prev, p]); return p; };
-  const updateProject = (id, data) => setProjects(p => p.map(pr => pr.id === id ? { ...pr, ...data } : pr));
-  const deleteProject = (id) => setProjects(p => p.filter(pr => pr.id !== id));
+  const addProject = async (project) => {
+    const docRef = await addDoc(collection(db, 'projects'), { ...project, createdBy: currentUser?.uid, tenantId: userProfile?.tenantId });
+    setProjects(prev => [...prev, { ...project, id: docRef.id, createdBy: currentUser?.uid, tenantId: userProfile?.tenantId }]);
+    return docRef.id;
+  };
+  const updateProject = async (id, data) => {
+    await updateDoc(doc(db, 'projects', id), data);
+    setProjects(p => p.map(pr => pr.id === id ? { ...pr, ...data } : pr));
+  };
+  const deleteProject = async (id) => {
+    await deleteDoc(doc(db, 'projects', id));
+    setProjects(p => p.filter(pr => pr.id !== id));
+  };
 
   // Quotations CRUD
-  const addQuotation = (quot) => {
-    const q = { ...quot, id: `q${Date.now()}`, quotationNo: `QT-${nextQuoteNo}`, date: new Date().toISOString().slice(0, 10) };
-    setQuotations(prev => [q, ...prev]);
-    setNextQuoteNo(n => n + 1);
-    return q;
+  const addQuotation = async (quotation) => {
+    if (subscription.plan === 'trial') {
+      if (new Date() > new Date(subscription.trialEndsAt)) {
+        throw new Error('SUBSCRIPTION_LIMIT_REACHED');
+      }
+    } else if (subscription.plan !== 'enterprise' && subscription.plan !== 'pro') {
+      if (subscription.quoteLimit && quotations.length >= subscription.quoteLimit) {
+        throw new Error('SUBSCRIPTION_LIMIT_REACHED');
+      }
+    }
+
+    const qWithDetails = { 
+      ...quotation, 
+      quotationNo: String(nextQuoteNo),
+      createdBy: currentUser?.uid,
+      tenantId: userProfile?.tenantId
+    };
+    const docRef = await addDoc(collection(db, 'quotations'), qWithDetails);
+    
+    const newNextNo = nextQuoteNo + 1;
+    await setDoc(doc(db, 'config', `${userProfile.tenantId}_nextQuoteNo`), { value: newNextNo, tenantId: userProfile.tenantId });
+    
+    setQuotations(prev => [...prev, { ...qWithDetails, id: docRef.id }]);
+    setNextQuoteNo(newNextNo);
+    return docRef.id;
   };
-  const updateQuotation = (id, data) => setQuotations(p => p.map(q => q.id === id ? { ...q, ...data } : q));
-  const deleteQuotation = (id) => setQuotations(p => p.filter(q => q.id !== id));
+  const updateQuotation = async (id, data) => {
+    await updateDoc(doc(db, 'quotations', id), data);
+    setQuotations(p => p.map(q => q.id === id ? { ...q, ...data } : q));
+  };
+  const deleteQuotation = async (id) => {
+    await deleteDoc(doc(db, 'quotations', id));
+    setQuotations(p => p.filter(q => q.id !== id));
+  };
 
   // Products CRUD
-  const addProduct = (prod) => { const p = { ...prod, id: `pr${Date.now()}` }; setProducts(prev => [...prev, p]); return p; };
-  const updateProduct = (id, data) => setProducts(p => p.map(pr => pr.id === id ? { ...pr, ...data } : pr));
-  const deleteProduct = (id) => setProducts(p => p.filter(pr => pr.id !== id));
+  const addProduct = async (prod) => { 
+    const pData = { ...prod };
+    const ref = await addDoc(collection(db, 'products'), pData);
+    const p = { id: ref.id, ...pData };
+    setProducts(prev => [...prev, p]); 
+    return p; 
+  };
+  const updateProduct = async (id, data) => {
+    await updateDoc(doc(db, 'products', id), data);
+    setProducts(p => p.map(pr => pr.id === id ? { ...pr, ...data } : pr));
+  };
+  const deleteProduct = async (id) => {
+    await deleteDoc(doc(db, 'products', id));
+    setProducts(p => p.filter(pr => pr.id !== id));
+  };
 
   // Material spec
   const updateMaterialSpec = (spec) => setMaterialSpec(spec);
 
   const value = {
-    clients, projects, quotations, products, materialSpec, nextQuoteNo,
+    clients, projects, quotations, products, materialSpec, nextQuoteNo, tenantLogo, setTenantLogo, subscription, loading,
     addClient, updateClient, deleteClient,
     addProject, updateProject, deleteProject,
     addQuotation, updateQuotation, deleteQuotation,

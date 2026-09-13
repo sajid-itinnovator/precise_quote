@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Sidebar, TopBar, BottomNav } from './Navigation';
 import { NewProjectModal } from './Modals';
+import { useAuth } from '../context/AuthContext';
+import { useApp } from '../context/AppContext';
 
 export function Layout({ children, title }) {
   const [showNewProject, setShowNewProject] = useState(false);
@@ -33,18 +35,26 @@ export function Layout({ children, title }) {
 }
 
 function MobileTopBar({ title }) {
+  const { userProfile } = useAuth();
+  const { tenantLogo } = useApp();
+  const tenantName = userProfile?.tenantName || 'Workspace';
+  const initials = userProfile?.name 
+    ? userProfile.name.substring(0,2).toUpperCase() 
+    : 'VI';
+
   return (
     <header className="mobile-topbar">
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{
-          width: 28, height: 28, background: 'var(--secondary)', borderRadius: 5,
-          display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>
-          <span style={{ color: '#fff', fontWeight: 900, fontSize: 14 }}>V</span>
-        </div>
+        {tenantLogo ? (
+          <img src={tenantLogo} alt="Logo" style={{ width: 34, height: 34, objectFit: 'contain' }} />
+        ) : (
+          <div style={{ width: 34, height: 34, borderRadius: 6, background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 18, fontWeight: 'bold' }}>
+            {userProfile?.tenantName ? userProfile.tenantName.substring(0, 1).toUpperCase() : 'W'}
+          </div>
+        )}
         <div>
           <div style={{ fontWeight: 800, fontSize: '0.8rem', color: 'var(--secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Vistara Interiors
+            {tenantName}
           </div>
           <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Project & Customer Hub
@@ -52,7 +62,7 @@ function MobileTopBar({ title }) {
         </div>
       </div>
       <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '0.7rem' }}>
-        VI
+        {initials}
       </div>
     </header>
   );

@@ -21,16 +21,18 @@ export function NewProjectModal({ onClose }) {
   const [form, setForm] = useState({ name: '', clientId: '', status: 'DRAFT', tags: '' });
   const [newClient, setNewClient] = useState({ name: '', contact: '', email: '', address: '' });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     let clientId = form.clientId;
     if (mode === 'new') {
-      const c = addClient(newClient);
-      clientId = c.id;
+      clientId = await addClient(newClient);
     }
     if (!form.name || !clientId) return;
-    addProject({ name: form.name, clientId, status: form.status, tags: form.tags.split(',').map(t => t.trim()).filter(Boolean), amount: 0 });
+    
+    const projectId = await addProject({ name: form.name, clientId, status: form.status, tags: form.tags.split(',').map(t => t.trim()).filter(Boolean), amount: 0 });
     onClose();
+    // navigate to the builder for this new project? Or just the builder home?
+    // the previous code just did navigate('/builder')
     navigate('/builder');
   };
 

@@ -1,12 +1,14 @@
 import React from 'react';
 import { X, Printer } from 'lucide-react';
 import { formatIndianCurrency, numberToWords, formatDate } from '../utils/helpers';
+import { useAuth } from '../context/AuthContext';
+import { useApp } from '../context/AppContext';
 
 /* ──────────────────────────────────────────────────────────────
    Generates a fully self-contained HTML string for the quotation
    This is opened in a new window and printed from there.
    ────────────────────────────────────────────────────────────── */
-function buildPrintHTML(quotation, total) {
+function buildPrintHTML(quotation, total, tenantName, tenantLogo) {
   let srNo = 1;
   let matSrNo = 1;
 
@@ -51,7 +53,7 @@ function buildPrintHTML(quotation, total) {
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <title>Vistara Quotation - ${quotation.clientName}</title>
+  <title>${tenantName || 'Quotation'} - ${quotation.clientName}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { 
@@ -101,9 +103,9 @@ function buildPrintHTML(quotation, total) {
 
 <div class="page">
   <div class="header-container">
-    <div class="logo-v">V<span style="font-size:24pt;margin-left:-8px;">I</span></div>
+          ${tenantLogo ? `<img src="${tenantLogo}" alt="Logo" style="height: 60px; object-fit: contain;" />` : `<h2 style="margin:0; color: #1e1b4b; font-size: 28px;">${userProfile?.tenantName || 'Company'}</h2>`}
     <div class="header-text">
-      <h1>VISTARA INTERIOR'S</h1>
+      <h1>${tenantName ? tenantName.toUpperCase() : "VISTARA INTERIOR'S"}</h1>
       <p>Designing Dreams Creating Reality......</p>
     </div>
   </div>
@@ -180,7 +182,7 @@ function buildPrintHTML(quotation, total) {
   <div class="terms-bullet">• Installation &amp; Finishing Work</div>
   <div class="terms-bullet">• Project Timeline: 60–65 Days</div>
 
-  <div class="section-title">2. Why Choose Vistara Interiors?</div>
+  <div class="section-title">2. Why Choose ${tenantName || 'Us'}?</div>
   <div class="terms-bullet">• Transparent Pricing – No Hidden Charges</div>
   <div class="terms-bullet">• High-Quality Materials &amp; Craftsmanship</div>
   <div class="terms-bullet">• Personalized Design with 3D Views</div>
@@ -207,12 +209,16 @@ function buildPrintHTML(quotation, total) {
    QuotationPreview — In-app preview modal & triggers new window print
    ────────────────────────────────────────────────────────────── */
 export default function QuotationPreview({ quotation, onClose }) {
+  const { userProfile } = useAuth();
+  const { tenantLogo } = useApp();
+  const tenantName = userProfile?.tenantName || 'Workspace';
+
   const total = quotation.total ||
     (quotation.rooms || []).reduce((s, r) =>
       s + (r.items || []).reduce((ss, i) => ss + (Number(i.amount) || 0), 0), 0);
 
   const handlePrint = () => {
-    const html = buildPrintHTML(quotation, total);
+    const html = buildPrintHTML(quotation, total, tenantName, tenantLogo);
     const win = window.open('', '_blank', 'width=900,height=1000,scrollbars=yes');
     if (!win) { alert('Please allow popups for this site to print.'); return; }
     win.document.open();
@@ -265,7 +271,7 @@ export default function QuotationPreview({ quotation, onClose }) {
 
       <div style={{ flex: 1, overflow: 'auto', padding: '32px 0', display: 'flex', justifyContent: 'center' }}>
         <div style={{ pointerEvents: 'none' }}>
-          <QuotationDocument quotation={quotation} total={total} />
+          <QuotationDocument quotation={quotation} total={total} tenantName={tenantName} tenantLogo={tenantLogo} />
         </div>
       </div>
     </div>
@@ -276,7 +282,7 @@ export default function QuotationPreview({ quotation, onClose }) {
    QuotationDocument — HTML preview inside the modal using React
    Matches the buildPrintHTML structure exactly.
    ────────────────────────────────────────────────────────────── */
-function QuotationDocument({ quotation, total }) {
+function QuotationDocument({ quotation, total, tenantName, tenantLogo }) {
   let scopeSrNo = 1;
   let matSrNo = 1;
   return (
@@ -284,12 +290,14 @@ function QuotationDocument({ quotation, total }) {
       {/* PAGE 1 */}
       <Page>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 15, marginBottom: 10 }}>
-          <div style={{ fontSize: 38, fontWeight: 900, color: '#002060', fontFamily: 'Arial, sans-serif', lineHeight: 1 }}>
-            V<span style={{ fontSize: 24, marginLeft: -8 }}>I</span>
-          </div>
+          {tenantLogo ? (
+            <img src={tenantLogo} alt="Logo" style={{ height: 60, objectFit: 'contain' }} />
+          ) : (
+            <h2 style={{ margin: 0, color: '#1e1b4b', fontSize: 28 }}>{userProfile?.tenantName || 'Company'}</h2>
+          )}
           <div>
             <h1 style={{ color: '#002060', margin: 0, fontSize: 22, fontWeight: 'bold', letterSpacing: 0.5 }}>
-              VISTARA INTERIOR'S
+              {tenantName ? tenantName.toUpperCase() : "VISTARA INTERIOR'S"}
             </h1>
             <p style={{ color: '#000', margin: 0, fontSize: 9, fontStyle: 'italic', textAlign: 'right', marginTop: 2 }}>
               Designing Dreams Creating Reality......

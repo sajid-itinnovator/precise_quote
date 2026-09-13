@@ -102,7 +102,7 @@ function ItemRow({ item, roomName, onUpdate, onDelete }) {
       </div>
 
       {/* Row 2: Size | Rate | Amount */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+      <div className="item-row-grid">
 
         <div>
           <label className="form-label" style={{ fontSize: '0.6rem', marginBottom: 3, display: 'block' }}>
@@ -271,21 +271,30 @@ export default function Builder() {
 
   const getClient = () => clients.find(c => c.id === clientId);
 
-  const handleSave = () => {
-    const client = getClient();
-    addQuotation({
-      clientId,
-      clientName: client?.name || 'Client',
-      clientContact: client?.contact || '',
-      clientAddress: client?.address || '',
-      projectTitle,
-      rooms,
-      total,
-      materialSpec,
-      status: 'DRAFT',
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+  const handleSave = async () => {
+    try {
+      const client = getClient();
+      await addQuotation({
+        clientId,
+        clientName: client?.name || 'Client',
+        clientContact: client?.contact || '',
+        clientAddress: client?.address || '',
+        projectTitle,
+        rooms,
+        total,
+        materialSpec,
+        status: 'DRAFT',
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      if (err.message === 'SUBSCRIPTION_LIMIT_REACHED') {
+        alert("Subscription Limit Reached! You have reached the maximum number of quotes allowed on your current plan. Please upgrade your plan to generate more.");
+      } else {
+        console.error(err);
+        alert("An error occurred while saving the quotation.");
+      }
+    }
   };
 
   // Build the quotation object for preview

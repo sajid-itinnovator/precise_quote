@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
 import { formatIndianCurrency } from '../utils/helpers';
 import { NewProjectModal } from '../components/Modals';
+import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const STATUS_BADGE = {
   'IN PROGRESS': 'badge-success',
@@ -93,6 +94,32 @@ export default function Hub() {
     (getClient(p.clientId)?.name || '').toLowerCase().includes(search.toLowerCase())
   );
 
+  // ─── Analytics Data Prep ───────────────────────────────────────────────
+  
+  // 1. Conversion Rates (Pie Chart)
+  const statusCounts = quotations.reduce((acc, q) => {
+    acc[q.status] = (acc[q.status] || 0) + 1;
+    return acc;
+  }, {});
+  const conversionData = Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
+  const PIE_COLORS = { 'DRAFT': '#94a3b8', 'PENDING': '#eab308', 'APPROVED': '#22c55e', 'REJECTED': '#ef4444', 'COMMERCIAL': '#8b5cf6' };
+
+  // 2. Monthly Revenue & Growth (Area & Bar Charts)
+  const monthlyDataMap = {};
+  quotations.forEach(q => {
+    if (!q.date) return;
+    const month = q.date.substring(0, 7); // e.g. "2026-05"
+    if (!monthlyDataMap[month]) {
+      monthlyDataMap[month] = { name: month, revenue: 0, quotes: 0 };
+    }
+    monthlyDataMap[month].quotes += 1;
+    if (q.status === 'APPROVED' || q.status === 'COMMERCIAL') {
+      monthlyDataMap[month].revenue += (Number(q.total) || 0);
+    }
+  });
+  
+  const monthlyData = Object.values(monthlyDataMap).sort((a, b) => a.name.localeCompare(b.name));
+
   return (
     <div>
       {/* Hero */}
@@ -132,6 +159,91 @@ export default function Hub() {
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>{pendingQuotes.length} Quote{pendingQuotes.length !== 1 ? 's' : ''} awaiting approval</div>
         </div>
       </div>
+
+      {/* Analytics Dashboard */}
+      {quotations.length > 0 && (
+        <>
+          <div className="section-header" style={{ marginTop: 32, marginBottom: 16 }}>
+            <div>
+              <div className="section-title">Analytics Overview</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Revenue and conversion metrics</div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginBottom: 32 }}>
+            {/* Revenue Trend Area Chart */}
+            <div className="card" style={{ padding: 16 }}>
+              <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--secondary)', marginBottom: 16 }}>Revenue Growth</div>
+              <div style={{ height: 220, width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={monthlyData}>
+                    <defs>
+                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e0e0" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} tickFormatter={(value) => `₹${value >= 100000 ? (value/100000).toFixed(1) + 'L' : value}`} />
+                    <Tooltip formatter={(value) => `₹${formatIndianCurrency(value)}`} />
+                    <Area type="monotone" dataKey="revenue" stroke="var(--primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Conversion Rates Pie Chart */}
+            <div className="card" style={{ padding: 16 }}>
+              <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--secondary)', marginBottom: 16 }}>Conversion Rates (Quotes)</div>
+              <div style={{ height: 220, width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={conversionData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {conversionData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={PIE_COLORS[entry.name] || 'var(--primary)'} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value, name) => [value, name]} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginTop: 10 }}>
+                {conversionData.map(entry => (
+                  <div key={entry.name} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: PIE_COLORS[entry.name] || 'var(--primary)' }} />
+                    {entry.name}: {entry.value}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Monthly Output Bar Chart */}
+            <div className="card" style={{ padding: 16 }}>
+              <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--secondary)', marginBottom: 16 }}>Quotations Generated</div>
+              <div style={{ height: 220, width: '100%' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={monthlyData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e0e0e0" />
+                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} />
+                    <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} />
+                    <Tooltip />
+                    <Bar dataKey="quotes" fill="#0ea5e9" radius={[4, 4, 0, 0]} barSize={30} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Recent Projects */}
       <div className="section-header">
