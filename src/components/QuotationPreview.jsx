@@ -1,8 +1,9 @@
-import React from 'react';
-import { X, Printer } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Printer, Layers } from 'lucide-react';
 import { formatIndianCurrency, numberToWords, formatDate } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
+import MaterialSpecEditor from './MaterialSpecEditor';
 
 /* ──────────────────────────────────────────────────────────────
    Generates a fully self-contained HTML string for the quotation
@@ -211,14 +212,16 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
 /* ──────────────────────────────────────────────────────────────
    QuotationPreview — In-app preview modal & triggers new window print
    ────────────────────────────────────────────────────────────── */
-export default function QuotationPreview({ quotation, onClose, onUpdateShowItemAmount }) {
+export default function QuotationPreview({ quotation, onClose, onUpdateShowItemAmount, onUpdateMaterialSpec }) {
   const { userProfile } = useAuth();
   const { tenantLogo } = useApp();
   const tenantName = userProfile?.tenantName || 'Workspace';
 
-  const [showItemAmount, setShowItemAmount] = React.useState(
+  const [showItemAmount, setShowItemAmount] = useState(
     quotation.showItemAmount !== undefined ? quotation.showItemAmount : true
   );
+  const [currentSpec, setCurrentSpec] = useState(quotation.materialSpec || []);
+  const [showBrandEditor, setShowBrandEditor] = useState(false);
 
   const total = quotation.total ||
     (quotation.rooms || []).reduce((s, r) =>
@@ -231,8 +234,16 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
     }
   };
 
+  const handleSpecChange = (newSpec) => {
+    setCurrentSpec(newSpec);
+    if (onUpdateMaterialSpec) {
+      onUpdateMaterialSpec(newSpec);
+    }
+  };
+
   const handlePrint = () => {
-    const html = buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount);
+    const qWithSpec = { ...quotation, materialSpec: currentSpec };
+    const html = buildPrintHTML(qWithSpec, total, tenantName, tenantLogo, showItemAmount);
     const win = window.open('', '_blank', 'width=900,height=1000,scrollbars=yes');
     if (!win) { alert('Please allow popups for this site to print.'); return; }
     win.document.open();
@@ -246,6 +257,8 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
       }, 500);
     };
   };
+
+  const currentQuotation = { ...quotation, materialSpec: currentSpec };
 
   return (
     <div style={{
@@ -271,6 +284,23 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
         <div style={{ flex: 1, textAlign: 'center', color: '#fff', fontWeight: 600, fontSize: '0.95rem', letterSpacing: '0.5px', minWidth: 200 }}>
           Quotation: {quotation.clientName} (QT-{quotation.quotationNo})
         </div>
+
+        {/* Customize Brands button */}
+        <button
+          type="button"
+          onClick={() => setShowBrandEditor(true)}
+          style={{
+            background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)',
+            borderRadius: 6, padding: '7px 14px', color: '#fff', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600,
+            transition: 'background 0.2s'
+          }}
+          onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
+          onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+          title="Customize materials & brands for Page 2 of this invoice"
+        >
+          <Layers size={15} /> Customize Brands
+        </button>
 
         {/* Toggle Show/Hide Item Amounts */}
         <label style={{
@@ -304,9 +334,72 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
 
       <div style={{ flex: 1, overflow: 'auto', padding: '32px 0', display: 'flex', justifyContent: 'center' }}>
         <div style={{ pointerEvents: 'none' }}>
-          <QuotationDocument quotation={quotation} total={total} tenantName={tenantName} tenantLogo={tenantLogo} showItemAmount={showItemAmount} />
+          <QuotationDocument quotation={currentQuotation} total={total} tenantName={tenantName} tenantLogo={tenantLogo} showItemAmount={showItemAmount} />
         </div>
       </div>
+
+      {/* Brand Customization Modal Overlay */}
+      {showBrandEditor && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1100,
+            background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(3px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowBrandEditor(false); }}
+        >
+          <div
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius)',
+              width: '100%', maxWidth: 750, maxHeight: '85vh',
+              display: 'flex', flexDirection: 'column',
+              boxShadow: 'var(--shadow-xl)', overflow: 'hidden'
+            }}
+          >
+            <div style={{
+              padding: '16px 20px', borderBottom: '1px solid var(--border)',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              background: 'var(--surface-2)'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>Customize Brands for this Invoice</h3>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                  These brands appear in the Material Specification table on Page 2 of this invoice.
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn-icon btn-ghost"
+                onClick={() => setShowBrandEditor(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ padding: 20, overflowY: 'auto', flex: 1 }}>
+              <MaterialSpecEditor
+                spec={currentSpec}
+                onChange={handleSpecChange}
+              />
+            </div>
+
+            <div style={{
+              padding: '12px 20px', borderTop: '1px solid var(--border)',
+              display: 'flex', justifyContent: 'flex-end', gap: 10, background: 'var(--surface-2)'
+            }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setShowBrandEditor(false)}
+              >
+                Done / Apply to Invoice
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Plus, Trash2, ChevronDown, ChevronUp, Calculator, Eye, Home, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Trash2, ChevronDown, ChevronUp, Calculator, Eye, Home, ArrowRight, Building, Layers } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { formatIndianCurrency, numberToWords } from '../utils/helpers';
 import QuotationPreview from '../components/QuotationPreview';
+import MaterialSpecEditor from '../components/MaterialSpecEditor';
 
 const GST_RATE = 0.18;
 
@@ -236,7 +237,7 @@ function RoomSection({ room, index, onUpdate, onDelete, onMoveUp, onMoveDown, is
 
 // ─── Main Builder Page ────────────────────────────────────────────────────
 export default function Builder() {
-  const { clients, addQuotation, materialSpec, ROOMS_DEFAULT } = useApp();
+  const { clients, addQuotation, materialSpec, updateMaterialSpec, ROOMS_DEFAULT } = useApp();
   const [clientId, setClientId] = useState('');
   const [projectTitle, setProjectTitle] = useState('2 BHK INTERIOR DESIGN');
   const [rooms, setRooms] = useState([]);
@@ -246,6 +247,18 @@ export default function Builder() {
   const [showItemAmount, setShowItemAmount] = useState(true);
   const [saved, setSaved] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+
+  // Material & Brand customization state for this quotation
+  const [quoteMaterialSpec, setQuoteMaterialSpec] = useState(() =>
+    materialSpec && materialSpec.length > 0 ? JSON.parse(JSON.stringify(materialSpec)) : []
+  );
+  const [activeTab, setActiveTab] = useState('scope'); // 'scope' | 'materials'
+
+  useEffect(() => {
+    if (materialSpec && materialSpec.length > 0 && quoteMaterialSpec.length === 0) {
+      setQuoteMaterialSpec(JSON.parse(JSON.stringify(materialSpec)));
+    }
+  }, [materialSpec]);
 
   const subtotal = rooms.reduce((s, r) => s + (r.items || []).reduce((ss, item) => ss + (Number(item.amount) || 0), 0), 0);
   const gst = includeGST ? Math.round(subtotal * GST_RATE) : 0;
@@ -283,7 +296,7 @@ export default function Builder() {
         projectTitle,
         rooms,
         total,
-        materialSpec,
+        materialSpec: quoteMaterialSpec,
         showItemAmount,
         status: 'DRAFT',
       });
@@ -311,7 +324,7 @@ export default function Builder() {
       projectTitle,
       rooms,
       total,
-      materialSpec,
+      materialSpec: quoteMaterialSpec,
       showItemAmount,
     };
   };
@@ -351,14 +364,64 @@ export default function Builder() {
         )}
       </div>
 
+      {/* Builder Navigation Tabs */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+        <button
+          type="button"
+          onClick={() => setActiveTab('scope')}
+          className={`btn ${activeTab === 'scope' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ gap: 8, padding: '9px 18px', fontWeight: 600, fontSize: '0.875rem' }}
+        >
+          <Building size={16} /> 1. Scope of Work ({rooms.length} Rooms, {totalItems} Items)
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('materials')}
+          className={`btn ${activeTab === 'materials' ? 'btn-primary' : 'btn-secondary'}`}
+          style={{ gap: 8, padding: '9px 18px', fontWeight: 600, fontSize: '0.875rem' }}
+        >
+          <Layers size={16} /> 2. Material Brands &amp; Specs ({quoteMaterialSpec.length} Categories)
+        </button>
+      </div>
+
       {/* Desktop layout: 2 columns */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20 }} className="desktop-only">
-        <BuilderLeft
-          rooms={rooms} updateRoom={updateRoom} deleteRoom={deleteRoom} moveRoom={moveRoom}
-          showRoomPicker={showRoomPicker} setShowRoomPicker={setShowRoomPicker}
-          customRoom={customRoom} setCustomRoom={setCustomRoom} addRoom={addRoom}
-          PRESET_ROOMS={PRESET_ROOMS}
-        />
+        {activeTab === 'scope' ? (
+          <BuilderLeft
+            rooms={rooms} updateRoom={updateRoom} deleteRoom={deleteRoom} moveRoom={moveRoom}
+            showRoomPicker={showRoomPicker} setShowRoomPicker={setShowRoomPicker}
+            customRoom={customRoom} setCustomRoom={setCustomRoom} addRoom={addRoom}
+            PRESET_ROOMS={PRESET_ROOMS}
+          />
+        ) : (
+          <div className="card" style={{ padding: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--secondary)' }}>
+                  Material Specifications &amp; Brands
+                </h2>
+                <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  These brands will appear in the "2. MATERIAL SPECIFICATION" table on Page 2 of this invoice.
+                </p>
+              </div>
+            </div>
+            <MaterialSpecEditor
+              spec={quoteMaterialSpec}
+              onChange={setQuoteMaterialSpec}
+              onReset={() => {
+                if (window.confirm('Reset all brands to company standard defaults?')) {
+                  setQuoteMaterialSpec(JSON.parse(JSON.stringify(materialSpec)));
+                }
+              }}
+              onSaveAsDefault={async () => {
+                if (window.confirm('Save these brands as company-wide default for all future quotes?')) {
+                  updateMaterialSpec(quoteMaterialSpec);
+                  alert('Saved as company default brands!');
+                }
+              }}
+            />
+          </div>
+        )}
         <BuilderRight
           subtotal={subtotal} gst={gst} total={total} totalItems={totalItems}
           includeGST={includeGST} setIncludeGST={setIncludeGST}
@@ -370,12 +433,38 @@ export default function Builder() {
 
       {/* Mobile layout: stacked */}
       <div className="mobile-only">
-        <BuilderLeft
-          rooms={rooms} updateRoom={updateRoom} deleteRoom={deleteRoom} moveRoom={moveRoom}
-          showRoomPicker={showRoomPicker} setShowRoomPicker={setShowRoomPicker}
-          customRoom={customRoom} setCustomRoom={setCustomRoom} addRoom={addRoom}
-          PRESET_ROOMS={PRESET_ROOMS}
-        />
+        {activeTab === 'scope' ? (
+          <BuilderLeft
+            rooms={rooms} updateRoom={updateRoom} deleteRoom={deleteRoom} moveRoom={moveRoom}
+            showRoomPicker={showRoomPicker} setShowRoomPicker={setShowRoomPicker}
+            customRoom={customRoom} setCustomRoom={setCustomRoom} addRoom={addRoom}
+            PRESET_ROOMS={PRESET_ROOMS}
+          />
+        ) : (
+          <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+            <h2 style={{ margin: '0 0 4px', fontSize: '1.1rem', fontWeight: 700 }}>
+              Material Specifications &amp; Brands
+            </h2>
+            <p style={{ margin: '0 0 14px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              Brands for Page 2 of this invoice.
+            </p>
+            <MaterialSpecEditor
+              spec={quoteMaterialSpec}
+              onChange={setQuoteMaterialSpec}
+              onReset={() => {
+                if (window.confirm('Reset all brands to company standard defaults?')) {
+                  setQuoteMaterialSpec(JSON.parse(JSON.stringify(materialSpec)));
+                }
+              }}
+              onSaveAsDefault={async () => {
+                if (window.confirm('Save these brands as company-wide default for all future quotes?')) {
+                  updateMaterialSpec(quoteMaterialSpec);
+                  alert('Saved as company default brands!');
+                }
+              }}
+            />
+          </div>
+        )}
         <BuilderRight
           subtotal={subtotal} gst={gst} total={total} totalItems={totalItems}
           includeGST={includeGST} setIncludeGST={setIncludeGST}
@@ -406,6 +495,7 @@ export default function Builder() {
           quotation={buildQuotation()}
           onClose={() => setShowPreview(false)}
           onUpdateShowItemAmount={setShowItemAmount}
+          onUpdateMaterialSpec={setQuoteMaterialSpec}
         />
       )}
     </div>
