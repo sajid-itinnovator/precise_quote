@@ -1,6 +1,6 @@
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { numberToWords, formatDate, cleanCustomerProjectTitle } from './helpers';
+import { numberToWords, formatDate, cleanCustomerProjectTitle } from './helpers.js';
 
 const BRAND_BLUE = [26, 86, 255];      // #1a56ff
 const DARK_NAVY = [15, 36, 62];        // #0F243E (matching Word doc table headers and theme)
@@ -101,18 +101,34 @@ function addClientDetails(doc, quotation, startY) {
 function buildScopeTable(quotation) {
   const body = [];
   let srNo = 1;
+  const showAmount = quotation.showItemAmount !== false;
+  const colSpan = showAmount ? 4 : 3;
 
   (quotation.rooms || []).forEach(room => {
-    // Room header row with #BFBFBF silver gray background and bold black text
-    body.push([{ content: room.name, colSpan: 4, styles: { fillColor: GRAY_HEADER, textColor: BLACK, fontStyle: 'bold', halign: 'center', fontSize: 9 } }]);
+    // Room headline row with #BFBFBF silver gray background and bold black text centered
+    body.push([{ 
+      content: room.name, 
+      colSpan: colSpan, 
+      styles: { 
+        fillColor: GRAY_HEADER, 
+        textColor: BLACK, 
+        fontStyle: 'bold', 
+        halign: 'center', 
+        valign: 'middle',
+        fontSize: 9.5 
+      } 
+    }]);
 
     (room.items || []).forEach(item => {
-      body.push([
-        { content: String(srNo++), styles: { halign: 'center' } },
-        item.particular || '',
-        { content: item.size || '', styles: { halign: 'center' } },
-        { content: item.amount ? Number(item.amount).toLocaleString('en-IN') : '', styles: { halign: 'right' } },
-      ]);
+      const row = [
+        { content: String(srNo++), styles: { halign: 'center', valign: 'middle' } },
+        { content: item.particular || '', styles: { halign: 'left', valign: 'middle' } },
+        { content: item.size || '', styles: { halign: 'center', valign: 'middle' } },
+      ];
+      if (showAmount) {
+        row.push({ content: item.amount ? Number(item.amount).toLocaleString('en-IN') : '', styles: { halign: 'right', valign: 'middle' } });
+      }
+      body.push(row);
     });
   });
 
@@ -121,6 +137,7 @@ function buildScopeTable(quotation) {
 
 function addScopeOfWork(doc, quotation, startY) {
   const w = doc.internal.pageSize.getWidth();
+  const showAmount = quotation.showItemAmount !== false;
 
   doc.setFont('times', 'bold');
   doc.setFontSize(11);
@@ -131,32 +148,45 @@ function addScopeOfWork(doc, quotation, startY) {
   const total = (quotation.rooms || []).reduce((sum, room) =>
     sum + (room.items || []).reduce((s, item) => s + (Number(item.amount) || 0), 0), 0);
 
+  const head = showAmount ? [[
+    { content: 'SR .NO', styles: { halign: 'center', valign: 'middle' } },
+    { content: 'Particular', styles: { halign: 'left', valign: 'middle' } },
+    { content: 'Size', styles: { halign: 'center', valign: 'middle' } },
+    { content: 'Amount', styles: { halign: 'right', valign: 'middle' } },
+  ]] : [[
+    { content: 'SR .NO', styles: { halign: 'center', valign: 'middle' } },
+    { content: 'Particular', styles: { halign: 'left', valign: 'middle' } },
+    { content: 'Size', styles: { halign: 'center', valign: 'middle' } },
+  ]];
+
+  const columnStyles = showAmount ? {
+    0: { cellWidth: 16, halign: 'center', valign: 'middle' },
+    1: { cellWidth: 'auto', halign: 'left', valign: 'middle' },
+    2: { cellWidth: 38, halign: 'center', valign: 'middle' },
+    3: { cellWidth: 30, halign: 'right', valign: 'middle' },
+  } : {
+    0: { cellWidth: 16, halign: 'center', valign: 'middle' },
+    1: { cellWidth: 'auto', halign: 'left', valign: 'middle' },
+    2: { cellWidth: 45, halign: 'center', valign: 'middle' },
+  };
+
   autoTable(doc, {
     startY: startY + 4,
-    head: [[
-      { content: 'SR .NO', styles: { halign: 'center' } },
-      'Particular',
-      { content: 'Size', styles: { halign: 'center' } },
-      { content: 'Amount', styles: { halign: 'right' } },
-    ]],
+    head,
     body,
     theme: 'grid',
-    styles: { font: 'times', fontSize: 8.5, cellPadding: 3, textColor: BLACK },
-    headStyles: { fillColor: DARK_NAVY, textColor: WHITE, fontStyle: 'bold', fontSize: 9 },
-    columnStyles: {
-      0: { cellWidth: 14, halign: 'center' },
-      1: { cellWidth: 'auto' },
-      2: { cellWidth: 38, halign: 'center' },
-      3: { cellWidth: 30, halign: 'right' },
-    },
+    styles: { font: 'times', fontSize: 8.5, cellPadding: 3, textColor: BLACK, valign: 'middle' },
+    headStyles: { fillColor: DARK_NAVY, textColor: WHITE, fontStyle: 'bold', fontSize: 9, valign: 'middle' },
+    columnStyles,
     margin: { left: 14, right: 14 },
     alternateRowStyles: { fillColor: [255, 255, 255] },
     didParseCell: (data) => {
-      if (data.row.raw && Array.isArray(data.row.raw) && data.row.raw[0]?.colSpan === 4) {
+      if (data.row.raw && Array.isArray(data.row.raw) && data.row.raw[0]?.colSpan) {
         data.cell.styles.fillColor = GRAY_HEADER;
         data.cell.styles.textColor = BLACK;
         data.cell.styles.fontStyle = 'bold';
         data.cell.styles.halign = 'center';
+        data.cell.styles.valign = 'middle';
       }
     },
   });
@@ -172,7 +202,7 @@ function addScopeOfWork(doc, quotation, startY) {
   doc.setFont('times', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(...BLACK);
-  doc.text(`COMPLETE INTERIOR TOTAL BUDGET – APPROX. ₹${total.toLocaleString('en-IN')}/-`, w / 2, afterTable + 7, { align: 'center' });
+  doc.text(`COMPLETE INTERIOR TOTAL BUDGET – APPROX. Rs. ${total.toLocaleString('en-IN')}/-`, w / 2, afterTable + 7, { align: 'center' });
   doc.setFont('times', 'bold');
   doc.setFontSize(9);
   doc.text(`AMOUNT IN WORDS – ${numberToWords(total).replace('Rupees ', '').replace(' Rupees', '')} Only`, w / 2, afterTable + 13, { align: 'center' });
@@ -185,7 +215,6 @@ function addMaterialSpec(doc, materialSpec, startY) {
   // If not enough room on current page, add new page
   if (y > 220) {
     doc.addPage();
-    addPageBorder(doc);
     y = 20;
   }
 
@@ -199,7 +228,7 @@ function addMaterialSpec(doc, materialSpec, startY) {
   let srNo = 1;
 
   (materialSpec || []).forEach(cat => {
-    // Category header row
+    // Category headline row
     body.push([{ 
       content: cat.category, 
       colSpan: 3, 
@@ -208,14 +237,15 @@ function addMaterialSpec(doc, materialSpec, startY) {
         textColor: BLACK, 
         fontStyle: 'bold', 
         halign: 'center', 
-        fontSize: 9 
+        valign: 'middle',
+        fontSize: 9.5 
       } 
     }]);
     (cat.items || []).forEach(item => {
       body.push([
-        { content: String(srNo++), styles: { halign: 'center' } },
-        item.material || '',
-        { content: item.brand || '', styles: { halign: 'center' } },
+        { content: String(srNo++), styles: { halign: 'center', valign: 'middle' } },
+        { content: item.material || '', styles: { halign: 'left', valign: 'middle' } },
+        { content: item.brand || '', styles: { halign: 'center', valign: 'middle' } },
       ]);
     });
   });
@@ -223,18 +253,18 @@ function addMaterialSpec(doc, materialSpec, startY) {
   autoTable(doc, {
     startY: y,
     head: [[
-      { content: 'SR .NO', styles: { halign: 'center' } },
-      'MATERIAL',
-      { content: 'BRAND', styles: { halign: 'center' } },
+      { content: 'SR .NO', styles: { halign: 'center', valign: 'middle' } },
+      { content: 'MATERIAL', styles: { halign: 'left', valign: 'middle' } },
+      { content: 'BRAND', styles: { halign: 'center', valign: 'middle' } },
     ]],
     body,
     theme: 'grid',
-    styles: { font: 'times', fontSize: 8.5, cellPadding: 3, textColor: BLACK },
-    headStyles: { fillColor: DARK_NAVY, textColor: WHITE, fontStyle: 'bold', fontSize: 9 },
+    styles: { font: 'times', fontSize: 8.5, cellPadding: 3, textColor: BLACK, valign: 'middle' },
+    headStyles: { fillColor: DARK_NAVY, textColor: WHITE, fontStyle: 'bold', fontSize: 9, valign: 'middle' },
     columnStyles: {
-      0: { cellWidth: 14, halign: 'center' },
-      1: { cellWidth: 65, halign: 'left' },
-      2: { cellWidth: 'auto', halign: 'center' },
+      0: { cellWidth: 16, halign: 'center', valign: 'middle' },
+      1: { cellWidth: 65, halign: 'left', valign: 'middle' },
+      2: { cellWidth: 'auto', halign: 'center', valign: 'middle' },
     },
     margin: { left: 14, right: 14 },
     alternateRowStyles: { fillColor: [255, 255, 255] },
@@ -244,6 +274,7 @@ function addMaterialSpec(doc, materialSpec, startY) {
         data.cell.styles.textColor = BLACK;
         data.cell.styles.fontStyle = 'bold';
         data.cell.styles.halign = 'center';
+        data.cell.styles.valign = 'middle';
       }
     },
   });
@@ -256,7 +287,7 @@ function addServicesTerms(doc, startY) {
   const w = doc.internal.pageSize.getWidth();
 
   // Check if we need a new page
-  if (y > 220) { doc.addPage(); addPageBorder(doc); y = 20; }
+  if (y > 220) { doc.addPage(); y = 20; }
 
   doc.setFont('times', 'bold');
   doc.setFontSize(11);
@@ -276,7 +307,7 @@ function addServicesTerms(doc, startY) {
   designItems.forEach(item => { doc.text(`• ${item}`, 18, y); y += 4.5; });
 
   y += 3;
-  if (y > 220) { doc.addPage(); addPageBorder(doc); y = 20; }
+  if (y > 220) { doc.addPage(); y = 20; }
 
   doc.setFont('times', 'bold');
   doc.setFontSize(11);
@@ -302,7 +333,7 @@ function addServicesTerms(doc, startY) {
   });
 
   y += 3;
-  if (y > 230) { doc.addPage(); addPageBorder(doc); y = 20; }
+  if (y > 230) { doc.addPage(); y = 20; }
 
   doc.setFont('times', 'bold');
   doc.setFontSize(11);
@@ -321,41 +352,27 @@ function addServicesTerms(doc, startY) {
 
   y += 8;
 
-  // Thank you section
-  if (y > 250) { doc.addPage(); addPageBorder(doc); y = 25; }
+  // Thank you section (aligned at left as requested by user)
+  if (y > 250) { doc.addPage(); y = 25; }
   doc.setFont('times', 'bolditalic');
   doc.setFontSize(12);
   doc.setTextColor(...TITLE_BLUE);
-  doc.text('THANK YOU!', w / 2, y, { align: 'center' });
+  doc.text('THANK YOU!', 14, y);
   y += 5;
   doc.setFont('times', 'italic');
   doc.setFontSize(8.5);
   doc.setTextColor(80, 80, 80);
-  doc.text('For any queries, feel free to contact us.', w / 2, y, { align: 'center' });
+  doc.text('For any queries, feel free to contact us.', 14, y);
   y += 6;
   doc.setFont('times', 'bold');
   doc.setFontSize(10.5);
   doc.setTextColor(...DARK_NAVY);
-  doc.text('TEAM VISTARA INTERIORS', w / 2, y, { align: 'center' });
-  y += 8;
-
-  // Logo footer
-  if (y <= 270) {
-    doc.setFillColor(...DARK_NAVY);
-    doc.rect(w / 2 - 10, y, 20, 16, 'F');
-    doc.setFont('times', 'bold');
-    doc.setFontSize(14);
-    doc.setTextColor(...WHITE);
-    doc.text('V', w / 2, y + 10, { align: 'center' });
-    doc.setFontSize(4.5);
-    doc.text('VISTARA', w / 2, y + 14, { align: 'center' });
-  }
+  doc.text('TEAM VISTARA INTERIORS', 14, y);
 }
 
 export function buildQuotationPDFDoc(quotation) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-  addPageBorder(doc);
   let y = addHeader(doc, quotation);
   y = addClientDetails(doc, quotation, y);
   const scopeEndY = addScopeOfWork(doc, quotation, y + 4);
@@ -363,6 +380,13 @@ export function buildQuotationPDFDoc(quotation) {
   // Material spec appears immediately after total if space permits
   const specY = addMaterialSpec(doc, quotation.materialSpec, scopeEndY + 6);
   addServicesTerms(doc, specY);
+
+  // Apply border to ALL pages (guarantees autoTable-generated multi-page splits and all pages have borders)
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    addPageBorder(doc);
+  }
 
   return doc;
 }

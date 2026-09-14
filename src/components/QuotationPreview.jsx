@@ -90,8 +90,9 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
     tr { page-break-inside: avoid; break-inside: avoid; }
     th { 
       padding: 6px 8px; border: 1px solid #000; font-size: 10pt; font-weight: bold; 
-      background: #0F243E; color: #fff; text-align: center;
+      background: #0F243E; color: #fff; text-align: center; vertical-align: middle;
     }
+    td { vertical-align: middle; }
     
     .divider { border: none; border-top: 1px solid #666; margin: 8px 0; }
     
@@ -210,7 +211,7 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
     </ol>
   </div>
 
-  <div style="margin-top: 30px; text-align: center;">
+  <div style="margin-top: 30px; text-align: left;">
     <div style="font-size: 13pt; font-weight: bold; font-style: italic; color: #17365D; margin-bottom: 4px;">THANK YOU!</div>
     <div style="font-size: 9.5pt; font-style: italic; color: #555; margin-bottom: 6px;">For any queries, feel free to contact us.</div>
     <div style="font-size: 11.5pt; font-weight: bold; color: #0F243E;">TEAM VISTARA INTERIORS</div>
@@ -784,7 +785,7 @@ function QuotationDocument({ quotation, total, tenantName, tenantLogo, showItemA
           <li>Warranty will not be applicable for physical damage.</li>
         </ol>
 
-        <div style={{ marginTop: 30, textAlign: 'center' }}>
+        <div style={{ marginTop: 30, textAlign: 'left' }}>
           <div style={{ fontSize: 13, fontWeight: 'bold', fontStyle: 'italic', color: '#17365D', marginBottom: 4 }}>THANK YOU!</div>
           <div style={{ fontSize: 9.5, fontStyle: 'italic', color: '#555', marginBottom: 6 }}>For any queries, feel free to contact us.</div>
           <div style={{ fontSize: 11.5, fontWeight: 'bold', color: '#0F243E' }}>TEAM VISTARA INTERIORS</div>
@@ -809,8 +810,10 @@ function Page({ children }) {
 // Helper cell styles for React HTML equivalent
 const thStyle = {
   padding: '6px 8px', border: '1px solid #000', fontSize: '10pt',
-  fontWeight: 'bold', background: '#0F243E', color: '#fff', textAlign: 'center'
+  fontWeight: 'bold', background: '#0F243E', color: '#fff', textAlign: 'center',
+  verticalAlign: 'middle'
 };
 const tdStyle = {
-  padding: '5px 8px', border: '1px solid #000', fontSize: '9.5pt'
+  padding: '5px 8px', border: '1px solid #000', fontSize: '9.5pt',
+  verticalAlign: 'middle'
 };
