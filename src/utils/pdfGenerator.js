@@ -150,12 +150,12 @@ function addScopeOfWork(doc, quotation, startY) {
 
   const head = showAmount ? [[
     { content: 'SR .NO', styles: { halign: 'center', valign: 'middle' } },
-    { content: 'Particular', styles: { halign: 'left', valign: 'middle' } },
+    { content: 'Particular', styles: { halign: 'center', valign: 'middle' } },
     { content: 'Size', styles: { halign: 'center', valign: 'middle' } },
     { content: 'Amount', styles: { halign: 'center', valign: 'middle' } },
   ]] : [[
     { content: 'SR .NO', styles: { halign: 'center', valign: 'middle' } },
-    { content: 'Particular', styles: { halign: 'left', valign: 'middle' } },
+    { content: 'Particular', styles: { halign: 'center', valign: 'middle' } },
     { content: 'Size', styles: { halign: 'center', valign: 'middle' } },
   ]];
 
@@ -254,7 +254,7 @@ function addMaterialSpec(doc, materialSpec, startY) {
     startY: y,
     head: [[
       { content: 'SR .NO', styles: { halign: 'center', valign: 'middle' } },
-      { content: 'MATERIAL', styles: { halign: 'left', valign: 'middle' } },
+      { content: 'MATERIAL', styles: { halign: 'center', valign: 'middle' } },
       { content: 'BRAND', styles: { halign: 'center', valign: 'middle' } },
     ]],
     body,

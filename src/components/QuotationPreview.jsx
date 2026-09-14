@@ -156,10 +156,10 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
   <table>
     <thead>
       <tr>
-        <th style="width:50px;">SR .NO</th>
-        <th>Particular</th>
-        <th style="width:${showItemAmount ? '120px' : '150px'};">Size</th>
-        ${showItemAmount ? `<th style="width:100px;">Amount</th>` : ''}
+        <th style="width:50px; text-align:center;">SR .NO</th>
+        <th style="text-align:center;">Particular</th>
+        <th style="width:${showItemAmount ? '120px' : '150px'}; text-align:center;">Size</th>
+        ${showItemAmount ? `<th style="width:100px; text-align:center;">Amount</th>` : ''}
       </tr>
     </thead>
     <tbody>${scopeRows}</tbody>
@@ -178,9 +178,9 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
   <table>
     <thead>
       <tr>
-        <th style="width:50px;">SR .NO</th>
-        <th style="width:200px;">MATERIAL</th>
-        <th>BRAND</th>
+        <th style="width:50px; text-align:center;">SR .NO</th>
+        <th style="width:200px; text-align:center;">MATERIAL</th>
+        <th style="text-align:center;">BRAND</th>
       </tr>
     </thead>
     <tbody>${matRows}</tbody>
