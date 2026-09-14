@@ -126,9 +126,22 @@ export default function Hub() {
       <div className="hero-banner">
         <div className="hero-title">Create something<br />new today.</div>
         <div className="hero-sub">Launch a new client project or add a new contact to your professional hub.</div>
-        <button className="btn" style={{ background: '#fff', color: 'var(--primary)', fontWeight: 700, gap: 8 }} onClick={() => setShowNewProject(true)}>
+        <button 
+          type="button"
+          className="btn" 
+          style={{ 
+            background: '#fff', 
+            color: 'var(--primary)', 
+            fontWeight: 700, 
+            gap: 8,
+            position: 'relative',
+            zIndex: 5,
+            cursor: 'pointer'
+          }} 
+          onClick={() => setShowNewProject(true)}
+        >
           <Plus size={16} />
-          Add New Customer/Project
+          <span>Add New Customer/Project</span>
         </button>
       </div>
 

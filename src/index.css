@@ -92,6 +92,10 @@ input, textarea, select { font-family: inherit; }
   font-size: 0.875rem;
   transition: all 0.18s ease;
   white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .btn-primary {
@@ -369,6 +373,7 @@ input, textarea, select { font-family: inherit; }
   width: 200px; height: 200px;
   border-radius: 50%;
   background: rgba(255,255,255,0.06);
+  pointer-events: none;
 }
 .hero-banner::before {
   content: '';
@@ -377,6 +382,13 @@ input, textarea, select { font-family: inherit; }
   width: 180px; height: 180px;
   border-radius: 50%;
   background: rgba(255,255,255,0.04);
+  pointer-events: none;
+}
+.hero-banner button,
+.hero-banner .btn {
+  position: relative;
+  z-index: 2;
+  cursor: pointer;
 }
 .hero-title { font-size: 1.5rem; font-weight: 800; line-height: 1.25; margin-bottom: 8px; }
 .hero-sub { font-size: 0.85rem; opacity: 0.8; margin-bottom: 18px; }

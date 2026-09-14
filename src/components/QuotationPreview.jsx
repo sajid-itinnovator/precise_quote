@@ -48,7 +48,7 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
       <tr>
         <td style="padding:4px 6px;border:1px solid #000;text-align:center;font-size:9pt;">${matSrNo++}</td>
         <td style="padding:4px 6px;border:1px solid #000;font-size:9pt;">${item.material || ''}</td>
-        <td style="padding:4px 6px;border:1px solid #000;font-size:9pt;">${item.brand || ''}</td>
+        <td style="padding:4px 6px;border:1px solid #000;font-size:9pt;white-space:pre-line;">${(item.brand || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>
       </tr>`).join('');
     return catHeader + items;
   }).join('');
@@ -527,7 +527,7 @@ function QuotationDocument({ quotation, total, tenantName, tenantLogo, showItemA
                   <tr key={`mat-${ci}-${ii}`}>
                     <td style={{ ...tdStyle, textAlign: 'center' }}>{matSrNo++}</td>
                     <td style={tdStyle}>{item.material}</td>
-                    <td style={tdStyle}>{item.brand}</td>
+                    <td style={{ ...tdStyle, whiteSpace: 'pre-line' }}>{item.brand}</td>
                   </tr>
                 ))}
               </React.Fragment>

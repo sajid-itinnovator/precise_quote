@@ -35,6 +35,24 @@ const POPULAR_BRANDS = [
   'Nerolac Impressions Ultra'
 ];
 
+const LAMINATE_PRESETS = [
+  'ADVANCE / REAL TOUCH',
+  'Merino 1mm (High Gloss / Suede)',
+  'Century Laminates (1mm)',
+  'Greenlam Designer Laminates (1mm)',
+  'Royale Touche Luxury (1.25mm)',
+  'Anti-Fingerprint Acrylic (1.5mm)'
+];
+
+const PAINTS_PRESETS = [
+  'ASIAN\n(Luster with Wall Putty, Primer +2 Coat)',
+  'Asian Paints Royale Luxury Emulsion\n(2 Coats Putty + 1 Primer + 2 Coats)',
+  'Asian Paints Tractor Emulsion (Economy)',
+  'Berger Silk Glamor High Sheen Luxury',
+  'Nerolac Impressions Ultra HD',
+  'Dulux Velvet Touch Pearl Glow'
+];
+
 export default function MaterialSpecEditor({ spec = [], onChange, onReset, onSaveAsDefault }) {
   const [collapsed, setCollapsed] = useState({});
   const [newCatName, setNewCatName] = useState('');
@@ -207,46 +225,122 @@ export default function MaterialSpecEditor({ spec = [], onChange, onReset, onSav
             {/* Category Items */}
             {!isCollapsed && (
               <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {(cat.items || []).map((item, ii) => (
-                  <div
-                    key={ii}
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '1fr 1.2fr 36px',
-                      gap: 10,
-                      alignItems: 'center'
-                    }}
-                  >
-                    <div>
-                      <input
-                        className="form-input"
-                        style={{ fontSize: '0.82rem', padding: '6px 10px' }}
-                        value={item.material || ''}
-                        onChange={e => handleUpdateItem(ci, ii, 'material', e.target.value)}
-                        placeholder="Material (e.g. Furniture: Gurjan)"
-                      />
-                    </div>
-                    <div>
-                      <input
-                        className="form-input"
-                        style={{ fontSize: '0.82rem', padding: '6px 10px', fontWeight: 600, color: 'var(--primary)' }}
-                        list="brand-suggestions"
-                        value={item.brand || ''}
-                        onChange={e => handleUpdateItem(ci, ii, 'brand', e.target.value)}
-                        placeholder="Brand / Spec (e.g. BWR ISI710, ONYX)"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      className="btn-icon btn-ghost"
-                      style={{ color: 'var(--danger)', padding: 6 }}
-                      onClick={() => handleDeleteItem(ci, ii)}
-                      title="Remove item"
+                {(cat.items || []).map((item, ii) => {
+                  const isLaminate = (cat.category || '').toUpperCase().includes('LAMINATE');
+                  const isPaints = (cat.category || '').toUpperCase().includes('PAINT');
+                  const isFreeText = isLaminate || isPaints || (item.brand && item.brand.includes('\n'));
+
+                  return (
+                    <div
+                      key={ii}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 6,
+                        background: isFreeText ? 'var(--surface-2)' : 'transparent',
+                        padding: isFreeText ? '10px 12px' : '2px 0',
+                        borderRadius: 6,
+                        border: isFreeText ? '1px solid var(--border)' : 'none'
+                      }}
                     >
-                      <Trash2 size={15} />
-                    </button>
-                  </div>
-                ))}
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 1.4fr 36px',
+                          gap: 10,
+                          alignItems: isFreeText ? 'flex-start' : 'center'
+                        }}
+                      >
+                        <div>
+                          {isFreeText && (
+                            <label style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', marginBottom: 3 }}>
+                              Material Particular
+                            </label>
+                          )}
+                          <input
+                            className="form-input"
+                            style={{ fontSize: '0.82rem', padding: '6px 10px' }}
+                            value={item.material || ''}
+                            onChange={e => handleUpdateItem(ci, ii, 'material', e.target.value)}
+                            placeholder="Material (e.g. Furniture: Gurjan)"
+                          />
+                        </div>
+
+                        <div>
+                          {isFreeText ? (
+                            <div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                                <label style={{ fontSize: '0.72rem', color: 'var(--primary)', fontWeight: 700 }}>
+                                  {isPaints ? '🎨 Paint Brand & Specifications (Free Text)' : isLaminate ? '🏷️ Laminate Brand & Finish (Free Text)' : 'Brand / Specification (Free Text)'}
+                                </label>
+                                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                  Multi-line supported
+                                </span>
+                              </div>
+                              <textarea
+                                className="form-input"
+                                rows={isPaints || (item.brand && item.brand.includes('\n')) ? 3 : 2}
+                                style={{
+                                  fontSize: '0.82rem', padding: '6px 10px', fontWeight: 600,
+                                  color: 'var(--primary)', resize: 'vertical', fontFamily: 'inherit',
+                                  lineHeight: 1.4
+                                }}
+                                value={item.brand || ''}
+                                onChange={e => handleUpdateItem(ci, ii, 'brand', e.target.value)}
+                                placeholder={isPaints ? "Type any custom paint brand, coat specs, sheen...\n(e.g. ASIAN PAINTS ROYALE - 2 coats with primer & putty)" : "Type any custom laminate brand, thickness, code...\n(e.g. ADVANCE / REAL TOUCH 1mm High Gloss)"}
+                              />
+                            </div>
+                          ) : (
+                            <input
+                              className="form-input"
+                              style={{ fontSize: '0.82rem', padding: '6px 10px', fontWeight: 600, color: 'var(--primary)' }}
+                              list="brand-suggestions"
+                              value={item.brand || ''}
+                              onChange={e => handleUpdateItem(ci, ii, 'brand', e.target.value)}
+                              placeholder="Brand / Spec (e.g. BWR ISI710, ONYX)"
+                            />
+                          )}
+                        </div>
+
+                        <div style={{ paddingTop: isFreeText ? 20 : 0 }}>
+                          <button
+                            type="button"
+                            className="btn-icon btn-ghost"
+                            style={{ color: 'var(--danger)', padding: 6 }}
+                            onClick={() => handleDeleteItem(ci, ii)}
+                            title="Remove item"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Quick Preset Chips for Laminate & Paints */}
+                      {isFreeText && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                          <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600 }}>Quick Presets:</span>
+                          {(isPaints ? PAINTS_PRESETS : LAMINATE_PRESETS).map((preset, pi) => (
+                            <button
+                              key={pi}
+                              type="button"
+                              className="tag"
+                              style={{
+                                cursor: 'pointer', fontSize: '0.68rem', padding: '3px 8px',
+                                background: item.brand === preset ? 'var(--primary-light)' : 'var(--surface)',
+                                color: item.brand === preset ? 'var(--primary)' : 'var(--text-secondary)',
+                                border: '1px solid var(--border)', fontWeight: item.brand === preset ? 700 : 500
+                              }}
+                              onClick={() => handleUpdateItem(ci, ii, 'brand', preset)}
+                              title="Click to insert this preset"
+                            >
+                              {preset.split('\n')[0]}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
 
                 {(cat.items || []).length === 0 && (
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textAlign: 'center', padding: '10px 0' }}>
