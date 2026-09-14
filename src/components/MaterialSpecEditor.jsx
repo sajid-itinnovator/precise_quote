@@ -74,7 +74,11 @@ export default function MaterialSpecEditor({ spec = [], onChange, onReset, onSav
     onChange(updated);
   };
 
+  const [scrollTargetItem, setScrollTargetItem] = useState(null);
+
   const handleAddItem = (catIdx) => {
+    setCollapsedCats(prev => ({ ...prev, [catIdx]: false }));
+    const targetIdx = (spec[catIdx]?.items || []).length;
     const updated = spec.map((cat, ci) => {
       if (ci !== catIdx) return cat;
       return {
@@ -83,7 +87,23 @@ export default function MaterialSpecEditor({ spec = [], onChange, onReset, onSav
       };
     });
     onChange(updated);
+    setScrollTargetItem({ catIdx, itemIdx: targetIdx });
   };
+
+  useEffect(() => {
+    if (scrollTargetItem) {
+      const timer = setTimeout(() => {
+        const el = document.querySelector(`[data-spec-row="${scrollTargetItem.catIdx}-${scrollTargetItem.itemIdx}"]`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const input = el.querySelector('input');
+          if (input) input.focus();
+        }
+      }, 60);
+      setScrollTargetItem(null);
+      return () => clearTimeout(timer);
+    }
+  }, [spec, scrollTargetItem]);
 
   const handleDeleteItem = (catIdx, itemIdx) => {
     const updated = spec.map((cat, ci) => {
@@ -233,6 +253,7 @@ export default function MaterialSpecEditor({ spec = [], onChange, onReset, onSav
                   return (
                     <div
                       key={ii}
+                      data-spec-row={`${ci}-${ii}`}
                       style={{
                         display: 'flex',
                         flexDirection: 'column',

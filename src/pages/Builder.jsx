@@ -53,9 +53,34 @@ const ALL_PRESET_ITEMS = Array.from(new Set(Object.values(ROOM_PRESET_ITEMS).fla
 
 // ─── Parse "L X W" string → { l, w } or null ─────────────────────────────
 function parseLW(sizeStr) {
-  const match = (sizeStr || '').trim().match(/^([\d.]+)\s*[xX×]\s*([\d.]+)$/);
+  const match = (sizeStr || '').trim().match(/^([\d.]+)\s*[xX×*]\s*([\d.]+)$/);
   if (!match) return null;
   return { l: parseFloat(match[1]), w: parseFloat(match[2]) };
+}
+
+// ─── Calculate SQFT for an Item (Interior Designer Only) ─────────────────
+export function calculateItemSqft(item) {
+  if (!item) return 0;
+  if (item.sqft && !isNaN(Number(item.sqft))) return Number(item.sqft);
+  
+  const sizeStr = (item.size || '').trim();
+  const lw = parseLW(sizeStr);
+  if (lw && lw.l > 0 && lw.w > 0) {
+    return Math.round(lw.l * lw.w * 100) / 100;
+  }
+
+  const sqftMatch = sizeStr.match(/^([\d.]+)\s*(?:sq\.?\s*ft|sft)$/i);
+  if (sqftMatch) {
+    return parseFloat(sqftMatch[1]) || 0;
+  }
+
+  const rateNum = parseFloat(item._rate) || 0;
+  const amtNum = parseFloat(item.amount) || 0;
+  if (rateNum > 0 && amtNum > 0) {
+    return Math.round((amtNum / rateNum) * 100) / 100;
+  }
+
+  return 0;
 }
 
 // ─── Item Row ─────────────────────────────────────────────────────────────
@@ -65,6 +90,7 @@ function ItemRow({ item, roomName, onUpdate, onDelete }) {
   const rateNum = parseFloat(rate) || 0;
   const isAutoCalc = lw !== null && rateNum > 0;
   const autoAmount = isAutoCalc ? Math.round(lw.l * lw.w * rateNum) : null;
+  const itemSqft = calculateItemSqft(item);
 
   const updateSize = (val) => {
     const parsed = parseLW(val);
@@ -106,8 +132,13 @@ function ItemRow({ item, roomName, onUpdate, onDelete }) {
       <div className="item-row-grid">
 
         <div>
-          <label className="form-label" style={{ fontSize: '0.6rem', marginBottom: 3, display: 'block' }}>
-            SIZE / DESCRIPTION
+          <label className="form-label" style={{ fontSize: '0.6rem', marginBottom: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>SIZE / DESCRIPTION</span>
+            {itemSqft > 0 && (
+              <span style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '0.62rem' }}>
+                📐 {itemSqft} sqft
+              </span>
+            )}
           </label>
           <input
             className="form-input"
@@ -170,7 +201,7 @@ function ItemRow({ item, roomName, onUpdate, onDelete }) {
         }}>
           <Calculator size={12} style={{ color: 'var(--primary)', flexShrink: 0 }} />
           <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600 }}>
-            {lw.l} × {lw.w} sqft × ₹{rate}/sqft = ₹{formatIndianCurrency(autoAmount)}
+            {lw.l} × {lw.w} = {Math.round(lw.l * lw.w * 100) / 100} sqft × ₹{rate}/sqft = ₹{formatIndianCurrency(autoAmount)}
           </span>
         </div>
       )}
@@ -181,10 +212,30 @@ function ItemRow({ item, roomName, onUpdate, onDelete }) {
 // ─── Room Section ─────────────────────────────────────────────────────────
 function RoomSection({ room, index, onUpdate, onDelete, onMoveUp, onMoveDown, isFirst, isLast }) {
   const [collapsed, setCollapsed] = useState(false);
+  const sectionRef = React.useRef(null);
+  const [shouldScrollNewItem, setShouldScrollNewItem] = useState(false);
 
   const addItem = () => {
+    setCollapsed(false);
     onUpdate({ ...room, items: [...(room.items || []), { particular: '', size: '', amount: 0 }] });
+    setShouldScrollNewItem(true);
   };
+
+  React.useEffect(() => {
+    if (shouldScrollNewItem && sectionRef.current) {
+      const timer = setTimeout(() => {
+        const items = sectionRef.current?.querySelectorAll('.room-item');
+        if (items && items.length > 0) {
+          const lastItem = items[items.length - 1];
+          lastItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const input = lastItem.querySelector('input');
+          if (input) input.focus();
+        }
+      }, 60);
+      setShouldScrollNewItem(false);
+      return () => clearTimeout(timer);
+    }
+  }, [room.items, shouldScrollNewItem]);
 
   const updateItem = (i, data) => {
     const items = [...(room.items || [])];
@@ -198,12 +249,18 @@ function RoomSection({ room, index, onUpdate, onDelete, onMoveUp, onMoveDown, is
   };
 
   const roomTotal = (room.items || []).reduce((s, item) => s + (Number(item.amount) || 0), 0);
+  const roomSqft = Math.round((room.items || []).reduce((s, item) => s + calculateItemSqft(item), 0) * 100) / 100;
 
   return (
-    <div className="room-group">
+    <div className="room-group" ref={sectionRef}>
       <div className="room-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
-          <span>{room.name}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, flexWrap: 'wrap' }}>
+          <span style={{ fontWeight: 700 }}>{room.name}</span>
+          {roomSqft > 0 && (
+            <span style={{ fontSize: '0.72rem', background: 'rgba(255,255,255,0.22)', padding: '2px 8px', borderRadius: 99, fontWeight: 700 }}>
+              📐 {roomSqft.toLocaleString('en-IN')} SQFT
+            </span>
+          )}
           {roomTotal > 0 && (
             <span style={{ fontSize: '0.72rem', background: 'rgba(255,255,255,0.15)', padding: '2px 8px', borderRadius: 99 }}>
               ₹{formatIndianCurrency(roomTotal)}
@@ -211,10 +268,10 @@ function RoomSection({ room, index, onUpdate, onDelete, onMoveUp, onMoveDown, is
           )}
         </div>
         <div style={{ display: 'flex', gap: 4 }}>
-          {!isFirst && <button style={{ color: '#fff', opacity: 0.7 }} className="btn-icon" onClick={onMoveUp}>↑</button>}
-          {!isLast && <button style={{ color: '#fff', opacity: 0.7 }} className="btn-icon" onClick={onMoveDown}>↓</button>}
-          <button style={{ color: '#fff', opacity: 0.7 }} className="btn-icon" onClick={onDelete}>✕</button>
-          <button style={{ color: '#fff' }} className="btn-icon" onClick={() => setCollapsed(c => !c)}>
+          {!isFirst && <button type="button" style={{ color: '#fff', opacity: 0.7 }} className="btn-icon" onClick={onMoveUp}>↑</button>}
+          {!isLast && <button type="button" style={{ color: '#fff', opacity: 0.7 }} className="btn-icon" onClick={onMoveDown}>↓</button>}
+          <button type="button" style={{ color: '#fff', opacity: 0.7 }} className="btn-icon" onClick={onDelete}>✕</button>
+          <button type="button" style={{ color: '#fff' }} className="btn-icon" onClick={() => setCollapsed(c => !c)}>
             {collapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
           </button>
         </div>
@@ -225,7 +282,7 @@ function RoomSection({ room, index, onUpdate, onDelete, onMoveUp, onMoveDown, is
             <ItemRow key={i} item={item} roomName={room.name} onUpdate={data => updateItem(i, data)} onDelete={() => deleteItem(i)} />
           ))}
           <div style={{ padding: '8px 16px' }}>
-            <button className="btn btn-ghost btn-sm" onClick={addItem}>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={addItem}>
               <Plus size={14} /> Add Item
             </button>
           </div>
@@ -263,15 +320,47 @@ export default function Builder() {
   const subtotal = rooms.reduce((s, r) => s + (r.items || []).reduce((ss, item) => ss + (Number(item.amount) || 0), 0), 0);
   const gst = includeGST ? Math.round(subtotal * GST_RATE) : 0;
   const total = subtotal + gst;
+  const totalSqft = Math.round(
+    rooms.reduce((s, r) => s + (r.items || []).reduce((ss, item) => ss + calculateItemSqft(item), 0), 0) * 100
+  ) / 100;
 
-  const addRoom = (name) => {
+  const [scrollTargetRoomIndex, setScrollTargetRoomIndex] = useState(null);
+
+  const addRoom = (name, insertAfterIndex) => {
     if (!name.trim()) return;
     const roomName = name.trim().toUpperCase();
+    const newRoom = { name: roomName, items: [] };
     
-    setRooms(prev => [...prev, { name: roomName, items: [] }]);
+    setRooms(prev => {
+      let targetIndex;
+      let next;
+      if (insertAfterIndex !== undefined && insertAfterIndex >= 0 && insertAfterIndex < prev.length) {
+        targetIndex = insertAfterIndex + 1;
+        next = [...prev];
+        next.splice(targetIndex, 0, newRoom);
+      } else {
+        targetIndex = prev.length;
+        next = [...prev, newRoom];
+      }
+      setScrollTargetRoomIndex(targetIndex);
+      return next;
+    });
     setCustomRoom('');
     setShowRoomPicker(false);
   };
+
+  useEffect(() => {
+    if (scrollTargetRoomIndex !== null) {
+      const timer = setTimeout(() => {
+        const roomGroups = document.querySelectorAll('.room-group');
+        if (roomGroups && roomGroups[scrollTargetRoomIndex]) {
+          roomGroups[scrollTargetRoomIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+      setScrollTargetRoomIndex(null);
+      return () => clearTimeout(timer);
+    }
+  }, [rooms, scrollTargetRoomIndex]);
 
   const updateRoom = (i, data) => setRooms(prev => prev.map((r, idx) => idx === i ? data : r));
   const deleteRoom = (i) => setRooms(prev => prev.filter((_, idx) => idx !== i));
@@ -296,6 +385,7 @@ export default function Builder() {
         projectTitle,
         rooms,
         total,
+        totalSqft,
         materialSpec: quoteMaterialSpec,
         showItemAmount,
         status: 'DRAFT',
@@ -372,7 +462,7 @@ export default function Builder() {
           className={`btn ${activeTab === 'scope' ? 'btn-primary' : 'btn-secondary'}`}
           style={{ gap: 8, padding: '9px 18px', fontWeight: 600, fontSize: '0.875rem' }}
         >
-          <Building size={16} /> 1. Scope of Work ({rooms.length} Rooms, {totalItems} Items)
+          <Building size={16} /> 1. Scope of Work ({rooms.length} Rooms, {totalItems} Items{totalSqft > 0 ? `, ${totalSqft.toLocaleString('en-IN')} SQFT` : ''})
         </button>
         <button
           type="button"
@@ -423,7 +513,7 @@ export default function Builder() {
           </div>
         )}
         <BuilderRight
-          subtotal={subtotal} gst={gst} total={total} totalItems={totalItems}
+          subtotal={subtotal} gst={gst} total={total} totalItems={totalItems} totalSqft={totalSqft}
           includeGST={includeGST} setIncludeGST={setIncludeGST}
           showItemAmount={showItemAmount} setShowItemAmount={setShowItemAmount}
           onSave={handleSave} onPreview={() => setShowPreview(true)}
@@ -466,7 +556,7 @@ export default function Builder() {
           </div>
         )}
         <BuilderRight
-          subtotal={subtotal} gst={gst} total={total} totalItems={totalItems}
+          subtotal={subtotal} gst={gst} total={total} totalItems={totalItems} totalSqft={totalSqft}
           includeGST={includeGST} setIncludeGST={setIncludeGST}
           showItemAmount={showItemAmount} setShowItemAmount={setShowItemAmount}
           onSave={handleSave} onPreview={() => setShowPreview(true)}
@@ -504,29 +594,54 @@ export default function Builder() {
 
 // ─── Builder Left (Scope of Work) ─────────────────────────────────────────
 function BuilderLeft({ rooms, updateRoom, deleteRoom, moveRoom, showRoomPicker, setShowRoomPicker, customRoom, setCustomRoom, addRoom, PRESET_ROOMS }) {
+  const [activePickerIndex, setActivePickerIndex] = useState(null);
+  const [inlineCustomRoom, setInlineCustomRoom] = useState('');
+
   return (
     <div>
       <div className="section-header" style={{ marginBottom: 12 }}>
         <div className="section-title">Scope of Work</div>
-        <button className="btn btn-secondary btn-sm" onClick={() => setShowRoomPicker(p => !p)}>
+        <button 
+          type="button" 
+          className="btn btn-secondary btn-sm" 
+          onClick={() => {
+            setShowRoomPicker(p => !p);
+            setActivePickerIndex(null);
+          }}
+        >
           <Plus size={14} /> Add Room
         </button>
       </div>
 
       {showRoomPicker && (
-        <div className="card" style={{ padding: 14, marginBottom: 12 }}>
-          <div className="form-label" style={{ marginBottom: 8 }}>Select Preset Room</div>
+        <div className="card" style={{ padding: 14, marginBottom: 12, border: '1.5px solid var(--primary)', background: 'var(--surface)' }}>
+          <div className="form-label" style={{ marginBottom: 8, color: 'var(--primary)', fontWeight: 700 }}>Select Preset Room</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
             {PRESET_ROOMS.map(r => (
-              <button key={r} className="tag" style={{ cursor: 'pointer', fontSize: '0.75rem', padding: '5px 12px' }} onClick={() => addRoom(r)}>
-                {r}
+              <button 
+                key={r} 
+                type="button" 
+                className="tag" 
+                style={{ cursor: 'pointer', fontSize: '0.75rem', padding: '5px 12px', background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 600 }} 
+                onClick={() => addRoom(r)}
+              >
+                + {r}
               </button>
             ))}
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <input className="form-input" placeholder="Custom room name..." value={customRoom} onChange={e => setCustomRoom(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && addRoom(customRoom)} />
-            <button className="btn btn-primary btn-sm" onClick={() => addRoom(customRoom)}>Add</button>
+            <input 
+              className="form-input" 
+              placeholder="Custom room name..." 
+              value={customRoom} 
+              onChange={e => setCustomRoom(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && customRoom.trim()) {
+                  addRoom(customRoom);
+                }
+              }} 
+            />
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => addRoom(customRoom)}>Add</button>
           </div>
         </div>
       )}
@@ -540,33 +655,171 @@ function BuilderLeft({ rooms, updateRoom, deleteRoom, moveRoom, showRoomPicker, 
       )}
 
       {rooms.map((room, i) => (
-        <RoomSection
-          key={i}
-          room={room}
-          index={i}
-          onUpdate={data => updateRoom(i, data)}
-          onDelete={() => deleteRoom(i)}
-          onMoveUp={() => moveRoom(i, -1)}
-          onMoveDown={() => moveRoom(i, 1)}
-          isFirst={i === 0}
-          isLast={i === rooms.length - 1}
-        />
+        <React.Fragment key={i}>
+          <RoomSection
+            room={room}
+            index={i}
+            onUpdate={data => updateRoom(i, data)}
+            onDelete={() => deleteRoom(i)}
+            onMoveUp={() => moveRoom(i, -1)}
+            onMoveDown={() => moveRoom(i, 1)}
+            isFirst={i === 0}
+            isLast={i === rooms.length - 1}
+          />
+
+          {/* Add Room button after each room */}
+          <div style={{ margin: '14px 0 20px' }}>
+            {activePickerIndex === i ? (
+              <div className="card" style={{ padding: 14, border: '1.5px solid var(--primary)', background: 'var(--surface)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div className="form-label" style={{ margin: 0, fontWeight: 700, color: 'var(--primary)', fontSize: '0.82rem' }}>
+                    + Add Room After {room.name}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn-icon"
+                    style={{ padding: '2px 6px', color: 'var(--text-muted)' }}
+                    onClick={() => setActivePickerIndex(null)}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                  {PRESET_ROOMS.map(r => (
+                    <button
+                      key={r}
+                      type="button"
+                      className="tag"
+                      style={{
+                        cursor: 'pointer',
+                        fontSize: '0.75rem',
+                        padding: '5px 12px',
+                        background: 'var(--primary-light)',
+                        color: 'var(--primary)',
+                        fontWeight: 600,
+                        border: '1px solid rgba(26, 86, 255, 0.2)'
+                      }}
+                      onClick={() => {
+                        addRoom(r, i);
+                        setActivePickerIndex(null);
+                      }}
+                    >
+                      + {r}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    className="form-input"
+                    placeholder="Or enter custom room name..."
+                    value={inlineCustomRoom}
+                    onChange={e => setInlineCustomRoom(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && inlineCustomRoom.trim()) {
+                        addRoom(inlineCustomRoom, i);
+                        setInlineCustomRoom('');
+                        setActivePickerIndex(null);
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={() => {
+                      if (inlineCustomRoom.trim()) {
+                        addRoom(inlineCustomRoom, i);
+                        setInlineCustomRoom('');
+                        setActivePickerIndex(null);
+                      }
+                    }}
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '8px 0 16px' }}>
+                <div style={{ flex: 1, height: 1, background: 'var(--border-light)' }} />
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  style={{
+                    borderColor: 'var(--primary)',
+                    color: 'var(--primary)',
+                    background: 'var(--surface)',
+                    fontWeight: 600,
+                    fontSize: '0.8rem',
+                    padding: '6px 16px',
+                    borderRadius: 20,
+                    boxShadow: 'var(--shadow-xs)',
+                    gap: 6
+                  }}
+                  onClick={() => {
+                    setActivePickerIndex(i);
+                    setShowRoomPicker(false);
+                  }}
+                >
+                  <Plus size={14} /> Add Room
+                </button>
+                <div style={{ flex: 1, height: 1, background: 'var(--border-light)' }} />
+              </div>
+            )}
+          </div>
+        </React.Fragment>
       ))}
     </div>
   );
 }
 
 // ─── Builder Right (Summary Panel) ───────────────────────────────────────
-function BuilderRight({ subtotal, gst, total, totalItems, includeGST, setIncludeGST, showItemAmount, setShowItemAmount, onSave, onPreview, saved, clientId }) {
+function BuilderRight({ subtotal, gst, total, totalItems, totalSqft = 0, includeGST, setIncludeGST, showItemAmount, setShowItemAmount, onSave, onPreview, saved, clientId }) {
   return (
     <div>
       {/* Summary */}
       <div style={{ marginBottom: 16 }}>
         <div className="section-header" style={{ marginBottom: 10 }}>
           <div className="section-title">Summary</div>
-          <span className="badge badge-info">{totalItems} Items</span>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            {totalSqft > 0 && (
+              <span className="badge" style={{ background: '#dbeafe', color: '#1d4ed8', fontWeight: 700 }}>
+                {totalSqft.toLocaleString('en-IN')} SQFT
+              </span>
+            )}
+            <span className="badge badge-info">{totalItems} Items</span>
+          </div>
         </div>
         <div className="summary-panel">
+          {/* Total SQFT Card for Interior Designers */}
+          <div style={{
+            background: 'rgba(255,255,255,0.1)',
+            backdropFilter: 'blur(4px)',
+            borderRadius: 8,
+            padding: '10px 12px',
+            marginBottom: 12,
+            border: '1px solid rgba(255,255,255,0.15)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.9 }}>
+                  📐 Total Interior Area
+                </div>
+                <div style={{ fontSize: '0.65rem', opacity: 0.7, marginTop: 2 }}>
+                  Designer metric (hidden in invoice)
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>
+                  {totalSqft.toLocaleString('en-IN')} <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>SQFT</span>
+                </div>
+                {totalSqft > 0 && subtotal > 0 && (
+                  <div style={{ fontSize: '0.68rem', opacity: 0.8, marginTop: 2 }}>
+                    avg ₹{Math.round(subtotal / totalSqft).toLocaleString('en-IN')}/sqft
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
           <div className="summary-row">
             <span style={{ opacity: 0.8 }}>Subtotal</span>
             <span style={{ fontWeight: 600 }}>₹{formatIndianCurrency(subtotal)}</span>
