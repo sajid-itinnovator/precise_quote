@@ -3,8 +3,10 @@ import autoTable from 'jspdf-autotable';
 import { numberToWords, formatDate, cleanCustomerProjectTitle } from './helpers';
 
 const BRAND_BLUE = [26, 86, 255];      // #1a56ff
-const DARK_NAVY = [13, 27, 75];        // #0d1b4b
-const ORANGE_HEADER = [180, 120, 60];  // table room header color (matches reference)
+const DARK_NAVY = [15, 36, 62];        // #0F243E (matching Word doc table headers and theme)
+const TITLE_BLUE = [23, 54, 93];       // #17365D (matching Word doc company name)
+const GRAY_HEADER = [191, 191, 191];   // #BFBFBF (matching Word doc category rows)
+const TEXT_DARK = [34, 34, 34];        // #222222 (matching Word doc headings)
 const WHITE = [255, 255, 255];
 const LIGHT_GRAY = [245, 247, 252];
 const BLACK = [0, 0, 0];
@@ -33,13 +35,13 @@ function addHeader(doc, quotation) {
   doc.text('VISTARA', 29, 39, { align: 'center' });
 
   // Company name
-  doc.setTextColor(...DARK_NAVY);
+  doc.setTextColor(...TITLE_BLUE);
   doc.setFontSize(22);
   doc.setFont('times', 'bold');
   doc.text("VISTARA INTERIOR'S", 50, 26);
 
   // Tagline
-  doc.setFontSize(9);
+  doc.setFontSize(9.5);
   doc.setFont('times', 'italic');
   doc.setTextColor(80, 80, 80);
   doc.text('Designing Dreams Creating Reality......', 50, 33);
@@ -70,11 +72,11 @@ function addHeader(doc, quotation) {
 function addClientDetails(doc, quotation, startY) {
   const w = doc.internal.pageSize.getWidth();
 
-  // Section title
+  // Section title (centered per reference)
   doc.setFont('times', 'bold');
-  doc.setFontSize(10);
+  doc.setFontSize(10.5);
   doc.setTextColor(...DARK_NAVY);
-  doc.text('CLIENT DETAILS', 16, startY + 5);
+  doc.text('CLIENT DETAILS', w / 2, startY + 5, { align: 'center' });
 
   doc.setFontSize(9);
   doc.setFont('times', 'normal');
@@ -88,8 +90,8 @@ function addClientDetails(doc, quotation, startY) {
 
   // Project title (clean customer-facing title)
   doc.setFont('times', 'bold');
-  doc.setFontSize(13);
-  doc.setTextColor(...DARK_NAVY);
+  doc.setFontSize(14);
+  doc.setTextColor(...TITLE_BLUE);
   const cleanTitle = cleanCustomerProjectTitle(quotation.projectTitle) || 'INTERIOR DESIGN';
   doc.text(cleanTitle, w / 2, startY + 36, { align: 'center' });
 
@@ -101,14 +103,14 @@ function buildScopeTable(quotation) {
   let srNo = 1;
 
   (quotation.rooms || []).forEach(room => {
-    // Room header row
-    body.push([{ content: room.name, colSpan: 4, styles: { fillColor: [180, 120, 50], textColor: WHITE, fontStyle: 'bold', halign: 'center', fontSize: 9 } }]);
+    // Room header row with #BFBFBF silver gray background and bold black text
+    body.push([{ content: room.name, colSpan: 4, styles: { fillColor: GRAY_HEADER, textColor: BLACK, fontStyle: 'bold', halign: 'center', fontSize: 9 } }]);
 
     (room.items || []).forEach(item => {
       body.push([
         { content: String(srNo++), styles: { halign: 'center' } },
         item.particular || '',
-        item.size || '',
+        { content: item.size || '', styles: { halign: 'center' } },
         { content: item.amount ? Number(item.amount).toLocaleString('en-IN') : '', styles: { halign: 'right' } },
       ]);
     });
@@ -121,9 +123,9 @@ function addScopeOfWork(doc, quotation, startY) {
   const w = doc.internal.pageSize.getWidth();
 
   doc.setFont('times', 'bold');
-  doc.setFontSize(10);
-  doc.setTextColor(...DARK_NAVY);
-  doc.text('SCOPE OF WORK', 14, startY);
+  doc.setFontSize(11);
+  doc.setTextColor(...TEXT_DARK);
+  doc.text('SCOPE OF WORK:', 14, startY);
 
   const body = buildScopeTable(quotation);
   const total = (quotation.rooms || []).reduce((sum, room) =>
@@ -132,9 +134,9 @@ function addScopeOfWork(doc, quotation, startY) {
   autoTable(doc, {
     startY: startY + 4,
     head: [[
-      { content: 'SR.NO', styles: { halign: 'center' } },
+      { content: 'SR .NO', styles: { halign: 'center' } },
       'Particular',
-      'Size',
+      { content: 'Size', styles: { halign: 'center' } },
       { content: 'Amount', styles: { halign: 'right' } },
     ]],
     body,
@@ -144,34 +146,38 @@ function addScopeOfWork(doc, quotation, startY) {
     columnStyles: {
       0: { cellWidth: 14, halign: 'center' },
       1: { cellWidth: 'auto' },
-      2: { cellWidth: 38 },
+      2: { cellWidth: 38, halign: 'center' },
       3: { cellWidth: 30, halign: 'right' },
     },
     margin: { left: 14, right: 14 },
-    alternateRowStyles: { fillColor: LIGHT_GRAY },
+    alternateRowStyles: { fillColor: [255, 255, 255] },
     didParseCell: (data) => {
       if (data.row.raw && Array.isArray(data.row.raw) && data.row.raw[0]?.colSpan === 4) {
-        data.cell.styles.fillColor = [180, 120, 50];
-        data.cell.styles.textColor = WHITE;
+        data.cell.styles.fillColor = GRAY_HEADER;
+        data.cell.styles.textColor = BLACK;
         data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.halign = 'center';
       }
     },
   });
 
   const afterTable = doc.lastAutoTable.finalY + 6;
 
-  // Total box
-  doc.setFillColor(240, 240, 240);
-  doc.roundedRect(14, afterTable, w - 28, 20, 2, 2, 'F');
+  // Total box (centered styling matching Word)
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.3);
+  doc.line(14, afterTable, w - 14, afterTable);
+  doc.line(14, afterTable + 18, w - 14, afterTable + 18);
+
   doc.setFont('times', 'bold');
   doc.setFontSize(10);
-  doc.setTextColor(...DARK_NAVY);
-  doc.text(`COMPLETE INTERIOR TOTAL BUDGET – APPROX. ₹${total.toLocaleString('en-IN')}/-`, 20, afterTable + 8);
+  doc.setTextColor(...BLACK);
+  doc.text(`COMPLETE INTERIOR TOTAL BUDGET – APPROX. ₹${total.toLocaleString('en-IN')}/-`, w / 2, afterTable + 7, { align: 'center' });
   doc.setFont('times', 'bold');
   doc.setFontSize(9);
-  doc.text(`AMOUNT IN WORDS: ${numberToWords(total)} Only`, 20, afterTable + 15);
+  doc.text(`AMOUNT IN WORDS – ${numberToWords(total).replace('Rupees ', '').replace(' Rupees', '')} Only`, w / 2, afterTable + 13, { align: 'center' });
 
-  return afterTable + 26;
+  return afterTable + 24;
 }
 
 function addMaterialSpec(doc, materialSpec, startY) {
@@ -184,22 +190,32 @@ function addMaterialSpec(doc, materialSpec, startY) {
   }
 
   doc.setFont('times', 'bold');
-  doc.setFontSize(13);
-  doc.setTextColor(...DARK_NAVY);
-  doc.text('2. MATERIAL SPECIFICATION', 14, y);
-  y += 6;
+  doc.setFontSize(11);
+  doc.setTextColor(...TEXT_DARK);
+  doc.text('MATERIAL SPECIFICATION:', 14, y);
+  y += 4;
 
   const body = [];
   let srNo = 1;
 
   (materialSpec || []).forEach(cat => {
     // Category header row
-    body.push([{ content: cat.category, colSpan: 3, styles: { fillColor: [180, 120, 50], textColor: WHITE, fontStyle: 'bold', halign: 'center', fontSize: 9 } }]);
+    body.push([{ 
+      content: cat.category, 
+      colSpan: 3, 
+      styles: { 
+        fillColor: GRAY_HEADER, 
+        textColor: BLACK, 
+        fontStyle: 'bold', 
+        halign: 'center', 
+        fontSize: 9 
+      } 
+    }]);
     (cat.items || []).forEach(item => {
       body.push([
         { content: String(srNo++), styles: { halign: 'center' } },
         item.material || '',
-        item.brand || '',
+        { content: item.brand || '', styles: { halign: 'center' } },
       ]);
     });
   });
@@ -207,21 +223,29 @@ function addMaterialSpec(doc, materialSpec, startY) {
   autoTable(doc, {
     startY: y,
     head: [[
-      { content: 'SR.NO', styles: { halign: 'center' } },
+      { content: 'SR .NO', styles: { halign: 'center' } },
       'MATERIAL',
-      'BRAND',
+      { content: 'BRAND', styles: { halign: 'center' } },
     ]],
     body,
     theme: 'grid',
     styles: { font: 'times', fontSize: 8.5, cellPadding: 3, textColor: BLACK },
-    headStyles: { fillColor: DARK_NAVY, textColor: WHITE, fontStyle: 'bold' },
+    headStyles: { fillColor: DARK_NAVY, textColor: WHITE, fontStyle: 'bold', fontSize: 9 },
     columnStyles: {
       0: { cellWidth: 14, halign: 'center' },
-      1: { cellWidth: 65 },
-      2: { cellWidth: 'auto' },
+      1: { cellWidth: 65, halign: 'left' },
+      2: { cellWidth: 'auto', halign: 'center' },
     },
     margin: { left: 14, right: 14 },
-    alternateRowStyles: { fillColor: LIGHT_GRAY },
+    alternateRowStyles: { fillColor: [255, 255, 255] },
+    didParseCell: (data) => {
+      if (data.row.raw && Array.isArray(data.row.raw) && data.row.raw[0]?.colSpan === 3) {
+        data.cell.styles.fillColor = GRAY_HEADER;
+        data.cell.styles.textColor = BLACK;
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.halign = 'center';
+      }
+    },
   });
 
   return doc.lastAutoTable.finalY + 10;
@@ -231,117 +255,101 @@ function addServicesTerms(doc, startY) {
   let y = startY;
   const w = doc.internal.pageSize.getWidth();
 
-  const addSection = (title, items, numbered = false) => {
-    if (y > 240) { doc.addPage(); addPageBorder(doc); y = 20; }
-    doc.setFont('times', 'bold');
-    doc.setFontSize(10);
-    doc.setTextColor(...DARK_NAVY);
-    doc.text(title, 14, y);
-    y += 6;
-    doc.setFont('times', 'normal');
-    doc.setFontSize(8.5);
-    doc.setTextColor(40, 40, 40);
-    items.forEach((item, i) => {
-      const lines = doc.splitTextToSize(item, w - 30);
-      doc.text(lines, 20, y);
-      y += lines.length * 5 + 1;
-    });
-    y += 4;
-  };
-
   // Check if we need a new page
-  if (y > 200) { doc.addPage(); addPageBorder(doc); y = 20; }
+  if (y > 220) { doc.addPage(); addPageBorder(doc); y = 20; }
 
   doc.setFont('times', 'bold');
-  doc.setFontSize(10);
-  doc.setTextColor(...DARK_NAVY);
-  doc.text('3. Design & Execution:', 14, y);
-  y += 6;
+  doc.setFontSize(11);
+  doc.setTextColor(...TEXT_DARK);
+  doc.text('1. Design & Execution:', 14, y);
+  y += 5.5;
   const designItems = [
     '2D & 3D Designing & Visualization',
     'Material Selection Assistance',
     'On-site Supervision',
     'Installation & Finishing Work',
-    'Project Timeline: 60-65 Days',
+    'Project Timeline: 60–65 Days',
   ];
   doc.setFont('times', 'normal');
   doc.setFontSize(8.5);
-  doc.setTextColor(40, 40, 40);
-  designItems.forEach(item => { doc.text(`• ${item}`, 20, y); y += 5; });
+  doc.setTextColor(...TEXT_DARK);
+  designItems.forEach(item => { doc.text(`• ${item}`, 18, y); y += 4.5; });
 
-  y += 4;
+  y += 3;
   if (y > 220) { doc.addPage(); addPageBorder(doc); y = 20; }
 
   doc.setFont('times', 'bold');
-  doc.setFontSize(10);
-  doc.setTextColor(...DARK_NAVY);
-  doc.text('4. Why Choose Us?', 14, y);
-  y += 6;
+  doc.setFontSize(11);
+  doc.setTextColor(...TEXT_DARK);
+  doc.text('2. Why Choose Vistara Interiors?', 14, y);
+  y += 5.5;
   const whyItems = [
-    'Transparent Pricing - No Hidden Charges',
+    'Transparent Pricing – No Hidden Charges',
     'High-Quality Materials & Craftsmanship',
     'Personalized Design with 3D Views',
     '10-Year Warranty on Workmanship',
     'Professional Team with End-to-End Support',
     'Deep Cleaning will be provided by us',
-    'All Furniture Edge Work Will Be Done In Laminate Matching PVC Edge Binds',
+    'All Furniture Edge Work Will Be Done In Laminate Matching PVC Edge Binds to Ensure Smooth Edges and Seamless Finishing',
   ];
   doc.setFont('times', 'normal');
   doc.setFontSize(8.5);
-  doc.setTextColor(40, 40, 40);
+  doc.setTextColor(...TEXT_DARK);
   whyItems.forEach(item => {
-    const lines = doc.splitTextToSize(`• ${item}`, w - 30);
-    doc.text(lines, 20, y);
-    y += lines.length * 5;
+    const lines = doc.splitTextToSize(`• ${item}`, w - 32);
+    doc.text(lines, 18, y);
+    y += lines.length * 4.5;
   });
 
-  y += 4;
+  y += 3;
   if (y > 230) { doc.addPage(); addPageBorder(doc); y = 20; }
 
   doc.setFont('times', 'bold');
-  doc.setFontSize(10);
-  doc.setTextColor(...DARK_NAVY);
+  doc.setFontSize(11);
+  doc.setTextColor(...TEXT_DARK);
   doc.text('Terms & Conditions:', 14, y);
-  y += 6;
+  y += 5.5;
   const termsItems = [
-    'Quotation subject to revision based on final 3D design.',
-    'Standard wardrobe modules included; extra drawers at additional cost.',
-    'Warranty will not be applicable for physical damage.',
+    '1. Quotation subject to revision based on final 3D design.',
+    '2. Standard wardrobe modules included; extra drawers at additional cost.',
+    '3. Warranty will not be applicable for physical damage.',
   ];
   doc.setFont('times', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(40, 40, 40);
-  termsItems.forEach(item => { doc.text(item, 14, y); y += 5.5; });
+  doc.setFontSize(8.5);
+  doc.setTextColor(...TEXT_DARK);
+  termsItems.forEach(item => { doc.text(item, 18, y); y += 4.5; });
 
-  y += 10;
+  y += 8;
 
   // Thank you section
-  if (y > 250) { doc.addPage(); addPageBorder(doc); y = 30; }
+  if (y > 250) { doc.addPage(); addPageBorder(doc); y = 25; }
   doc.setFont('times', 'bolditalic');
-  doc.setFontSize(11);
-  doc.setTextColor(...BRAND_BLUE);
+  doc.setFontSize(12);
+  doc.setTextColor(...TITLE_BLUE);
   doc.text('THANK YOU!', w / 2, y, { align: 'center' });
-  y += 6;
+  y += 5;
   doc.setFont('times', 'italic');
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
   doc.setTextColor(80, 80, 80);
   doc.text('For any queries, feel free to contact us.', w / 2, y, { align: 'center' });
-  y += 7;
+  y += 6;
   doc.setFont('times', 'bold');
-  doc.setFontSize(10);
+  doc.setFontSize(10.5);
   doc.setTextColor(...DARK_NAVY);
   doc.text('TEAM VISTARA INTERIORS', w / 2, y, { align: 'center' });
-  y += 10;
+  y += 8;
 
   // Logo footer
-  doc.setFillColor(...DARK_NAVY);
-  doc.rect(w / 2 - 12, y, 24, 20, 'F');
-  doc.setFont('times', 'bold');
-  doc.setFontSize(16);
-  doc.setTextColor(...WHITE);
-  doc.text('V', w / 2, y + 13, { align: 'center' });
-  doc.setFontSize(5);
-  doc.text('VISTARA', w / 2, y + 17, { align: 'center' });
+  if (y <= 270) {
+    doc.setFillColor(...DARK_NAVY);
+    doc.rect(w / 2 - 10, y, 20, 16, 'F');
+    doc.setFont('times', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(...WHITE);
+    doc.text('V', w / 2, y + 10, { align: 'center' });
+    doc.setFontSize(4.5);
+    doc.text('VISTARA', w / 2, y + 14, { align: 'center' });
+  }
 }
 
 export function buildQuotationPDFDoc(quotation) {

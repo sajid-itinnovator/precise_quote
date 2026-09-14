@@ -20,18 +20,18 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
   const scopeRows = (quotation.rooms || []).map(room => {
     const headerRow = `
       <tr>
-        <td colspan="${colSpan}" style="background:#f8cbab;color:#000;font-weight:bold;text-align:center;
-          padding:5px 6px;font-size:10pt;border:1px solid #000;">
+        <td colspan="${colSpan}" style="background:#BFBFBF;color:#000;font-weight:bold;text-align:center;
+          padding:6px;font-size:10.5pt;border:1px solid #000;letter-spacing:0.5px;">
           ${room.name}
         </td>
       </tr>`;
     const items = (room.items || []).map((item) => `
       <tr>
-        <td style="padding:4px 6px;border:1px solid #000;text-align:center;font-size:9pt;">${srNo++}</td>
-        <td style="padding:4px 6px;border:1px solid #000;font-size:9pt;">${item.particular || ''}</td>
-        <td style="padding:4px 6px;border:1px solid #000;text-align:center;font-size:9pt;">${item.size || ''}</td>
+        <td style="padding:5px 6px;border:1px solid #000;text-align:center;font-size:9.5pt;">${srNo++}</td>
+        <td style="padding:5px 8px;border:1px solid #000;text-align:left;font-size:9.5pt;">${item.particular || ''}</td>
+        <td style="padding:5px 6px;border:1px solid #000;text-align:center;font-size:9.5pt;">${item.size || ''}</td>
         ${showItemAmount ? `
-        <td style="padding:4px 6px;border:1px solid #000;text-align:center;font-size:9pt;">
+        <td style="padding:5px 8px;border:1px solid #000;text-align:right;font-size:9.5pt;">
           ${item.amount ? Number(item.amount).toLocaleString('en-IN') : '—'}
         </td>` : ''}
       </tr>`).join('');
@@ -41,16 +41,16 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
   const matRows = (quotation.materialSpec || []).map(cat => {
     const catHeader = `
       <tr>
-        <td colspan="3" style="background:#e0e0e0;color:#000;font-weight:bold;text-align:center;
-          padding:5px 6px;font-size:10pt;border:1px solid #000;">
+        <td colspan="3" style="background:#BFBFBF;color:#000;font-weight:bold;text-align:center;
+          padding:6px;font-size:10.5pt;border:1px solid #000;letter-spacing:0.5px;">
           ${cat.category}
         </td>
       </tr>`;
     const items = (cat.items || []).map((item) => `
       <tr>
-        <td style="padding:4px 6px;border:1px solid #000;text-align:center;font-size:9pt;">${matSrNo++}</td>
-        <td style="padding:4px 6px;border:1px solid #000;font-size:9pt;">${item.material || ''}</td>
-        <td style="padding:4px 6px;border:1px solid #000;font-size:9pt;white-space:pre-line;">${(item.brand || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>
+        <td style="padding:5px 6px;border:1px solid #000;text-align:center;font-size:9.5pt;">${matSrNo++}</td>
+        <td style="padding:5px 8px;border:1px solid #000;text-align:left;font-size:9.5pt;">${item.material || ''}</td>
+        <td style="padding:5px 8px;border:1px solid #000;text-align:center;font-size:9.5pt;white-space:pre-line;">${(item.brand || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>
       </tr>`).join('');
     return catHeader + items;
   }).join('');
@@ -89,8 +89,8 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
     table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
     tr { page-break-inside: avoid; break-inside: avoid; }
     th { 
-      padding: 5px 6px; border: 1px solid #000; font-size: 9.5pt; font-weight: bold; 
-      background: #000; color: #fff; text-align: center;
+      padding: 6px 8px; border: 1px solid #000; font-size: 10pt; font-weight: bold; 
+      background: #0F243E; color: #fff; text-align: center;
     }
     
     .divider { border: none; border-top: 1px solid #666; margin: 8px 0; }
@@ -100,15 +100,14 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
     
     .total-box { 
       border-top: 1px solid #000; border-bottom: 1px solid #000; 
-      padding: 10px 0; margin: 16px 0; text-align: center; 
+      padding: 12px 0; margin: 18px 0; text-align: center; 
     }
-    .section-title { font-weight: bold; font-size: 11pt; color: #000; margin-bottom: 8px; margin-top:16px; }
-    .terms-bullet { margin-left: 20px; font-size: 9.5pt; line-height: 1.6; }
+    .section-title { font-weight: bold; font-size: 13.5pt; color: #222222; margin-bottom: 8px; margin-top: 18px; }
+    .terms-bullet { margin-left: 20px; font-size: 10pt; line-height: 1.6; }
     
     .header-container { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 10px; }
-    .logo-v { font-size: 38pt; font-weight: 900; color: #002060; font-family: Arial, sans-serif; line-height: 1; }
-    .header-text h1 { color: #002060; margin: 0; font-size: 22pt; font-weight: bold; letter-spacing: 0.5px; }
-    .header-text p { color: #000; margin: 0; font-size: 9pt; font-style: italic; text-align: right; margin-top:2px; }
+    .header-text h1 { color: #17365D; margin: 0; font-size: 26pt; font-weight: bold; font-family: Cambria, Georgia, serif; letter-spacing: 0.5px; }
+    .header-text p { color: #000; margin: 0; font-size: 9.5pt; font-style: italic; text-align: right; margin-top: 2px; }
     
   </style>
 </head>
@@ -116,7 +115,7 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
 
 <div class="page">
   <div class="header-container">
-          ${tenantLogo ? `<img src="${tenantLogo}" alt="Logo" style="height: 60px; object-fit: contain;" />` : `<h2 style="margin:0; color: #1e1b4b; font-size: 28px;">${userProfile?.tenantName || 'Company'}</h2>`}
+    ${tenantLogo ? `<img src="${tenantLogo}" alt="Logo" style="height: 60px; object-fit: contain;" />` : `<h2 style="margin:0; color: #17365D; font-size: 28px;">${userProfile?.tenantName || 'Company'}</h2>`}
     <div class="header-text">
       <h1>${tenantName ? tenantName.toUpperCase() : "VISTARA INTERIOR'S"}</h1>
       <p>Designing Dreams Creating Reality......</p>
@@ -125,19 +124,19 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
   
   <hr class="divider"/>
   
-  <div class="text-center" style="font-size:9.5pt; margin-bottom:4px;">
+  <div class="text-center" style="font-size:10pt; margin-bottom:4px;">
     Office Address: Office No.01, Ambekar Hotel Chowk, Undri Pisoli, Pune-411060
   </div>
-  <div class="text-center" style="font-size:9.5pt; margin-bottom:4px;">
+  <div class="text-center" style="font-size:10pt; margin-bottom:4px;">
     Contact: +91 7720097476 / 8482946451 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Email: <a href="mailto:teamvistarainteriors@gmail.com" style="color:blue;text-decoration:underline;">teamvistarainteriors@gmail.com</a>
   </div>
-  <div class="text-center" style="font-size:9.5pt;">
+  <div class="text-center" style="font-size:10pt;">
     Date: ${formatDate(quotation.date)} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Quotation No: ${quotation.quotationNo}
   </div>
   
   <hr class="divider"/>
 
-  <div class="text-bold" style="font-size:10.5pt; margin: 12px 0 6px; text-align: left;">
+  <div class="text-center text-bold" style="font-size:11pt; margin: 12px 0 6px;">
     CLIENT DETAILS
   </div>
   <div style="font-size:10pt; line-height: 1.6; text-align: left;">
@@ -148,11 +147,11 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
   
   <hr class="divider" style="margin-top:10px; border-color:#ccc;"/>
   
-  <div class="text-center text-bold" style="font-size:13pt; text-decoration: underline; margin: 15px 0;">
+  <div class="text-center text-bold" style="font-size:18pt; text-decoration: underline; margin: 16px 0 14px; color: #17365D;">
     ${cleanCustomerProjectTitle(quotation.projectTitle) || 'INTERIOR DESIGN'}
   </div>
 
-  <div class="section-title">SCOPE OF WORK</div>
+  <div class="section-title">SCOPE OF WORK:</div>
   <table>
     <thead>
       <tr>
@@ -166,15 +165,15 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
   </table>
 
   <div class="total-box">
-    <div class="text-bold" style="font-size:11pt; margin-bottom:6px;">
-      COMPLETE INTERIOR TOTAL BUDGET – APPROX. Rs ${total.toLocaleString('en-IN')} / -
+    <div class="text-bold" style="font-size:11.5pt; margin-bottom:6px; color: #000;">
+      COMPLETE INTERIOR TOTAL BUDGET – APPROX. ₹ ${total.toLocaleString('en-IN')}/-
     </div>
-    <div class="text-bold" style="font-size:10pt;">
+    <div class="text-bold" style="font-size:10.5pt; color: #000;">
       AMOUNT IN WORDS – ${numberToWords(total).replace('Rupees ', '').replace(' Rupees', '')} Only
     </div>
   </div>
 
-  <div class="section-title" style="margin-top:20px;">2. MATERIAL SPECIFICATION</div>
+  <div class="section-title" style="margin-top:20px;">MATERIAL SPECIFICATION:</div>
   <table>
     <thead>
       <tr>
@@ -203,12 +202,18 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
   <div class="terms-bullet">• All Furniture Edge Work Will Be Done In Laminate Matching PVC Edge Binds to Ensure Smooth Edges and Seamless Finishing</div>
 
   <div class="section-title" style="margin-top:15px;">Terms &amp; Conditions:</div>
-  <div style="margin-left:20px; font-size:9.5pt; line-height: 1.6;">
+  <div style="margin-left:20px; font-size:10pt; line-height: 1.6;">
     <ol style="margin-top:0; padding-left:15px;">
       <li>Quotation subject to revision based on final 3D design.</li>
       <li>Standard wardrobe modules included; extra drawers at additional cost.</li>
       <li>Warranty will not be applicable for physical damage.</li>
     </ol>
+  </div>
+
+  <div style="margin-top: 30px; text-align: center;">
+    <div style="font-size: 13pt; font-weight: bold; font-style: italic; color: #17365D; margin-bottom: 4px;">THANK YOU!</div>
+    <div style="font-size: 9.5pt; font-style: italic; color: #555; margin-bottom: 6px;">For any queries, feel free to contact us.</div>
+    <div style="font-size: 11.5pt; font-weight: bold; color: #0F243E;">TEAM VISTARA INTERIORS</div>
   </div>
 </div>
 
@@ -649,13 +654,13 @@ function QuotationDocument({ quotation, total, tenantName, tenantLogo, showItemA
           {tenantLogo ? (
             <img src={tenantLogo} alt="Logo" style={{ height: 60, objectFit: 'contain' }} />
           ) : (
-            <h2 style={{ margin: 0, color: '#1e1b4b', fontSize: 28 }}>{tenantName || 'Company'}</h2>
+            <h2 style={{ margin: 0, color: '#17365D', fontSize: 28 }}>{tenantName || 'Company'}</h2>
           )}
           <div>
-            <h1 style={{ color: '#002060', margin: 0, fontSize: 22, fontWeight: 'bold', letterSpacing: 0.5 }}>
+            <h1 style={{ color: '#17365D', margin: 0, fontSize: 26, fontWeight: 'bold', letterSpacing: 0.5, fontFamily: 'Cambria, Georgia, serif' }}>
               {tenantName ? tenantName.toUpperCase() : "VISTARA INTERIOR'S"}
             </h1>
-            <p style={{ color: '#000', margin: 0, fontSize: 9, fontStyle: 'italic', textAlign: 'right', marginTop: 2 }}>
+            <p style={{ color: '#000', margin: 0, fontSize: 9.5, fontStyle: 'italic', textAlign: 'right', marginTop: 2 }}>
               Designing Dreams Creating Reality......
             </p>
           </div>
@@ -663,19 +668,19 @@ function QuotationDocument({ quotation, total, tenantName, tenantLogo, showItemA
 
         <hr style={{ border: 'none', borderTop: '1px solid #666', margin: '8px 0' }} />
 
-        <div style={{ textAlign: 'center', fontSize: 9.5, marginBottom: 4 }}>
+        <div style={{ textAlign: 'center', fontSize: 10, marginBottom: 4 }}>
           Office Address: Office No.01, Ambekar Hotel Chowk, Undri Pisoli, Pune-411060
         </div>
-        <div style={{ textAlign: 'center', fontSize: 9.5, marginBottom: 4 }}>
+        <div style={{ textAlign: 'center', fontSize: 10, marginBottom: 4 }}>
           Contact: +91 7720097476 / 8482946451 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Email: <span style={{ color: 'blue', textDecoration: 'underline' }}>teamvistarainteriors@gmail.com</span>
         </div>
-        <div style={{ textAlign: 'center', fontSize: 9.5 }}>
+        <div style={{ textAlign: 'center', fontSize: 10 }}>
           Date: {formatDate(quotation.date)} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Quotation No: {quotation.quotationNo}
         </div>
 
         <hr style={{ border: 'none', borderTop: '1px solid #666', margin: '8px 0' }} />
 
-        <div style={{ textAlign: 'left', fontWeight: 'bold', fontSize: 10.5, margin: '12px 0 6px' }}>
+        <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 11, margin: '12px 0 6px' }}>
           CLIENT DETAILS
         </div>
         <div style={{ textAlign: 'left', fontSize: 10, lineHeight: 1.6 }}>
@@ -686,11 +691,11 @@ function QuotationDocument({ quotation, total, tenantName, tenantLogo, showItemA
 
         <hr style={{ border: 'none', borderTop: '1px solid #ccc', margin: '10px 0' }} />
 
-        <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 13, textDecoration: 'underline', margin: '15px 0' }}>
+        <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 18, textDecoration: 'underline', margin: '16px 0 14px', color: '#17365D' }}>
           {cleanCustomerProjectTitle(quotation.projectTitle) || 'INTERIOR DESIGN'}
         </div>
 
-        <div style={{ fontWeight: 'bold', fontSize: 11, marginBottom: 8, marginTop: 15 }}>SCOPE OF WORK</div>
+        <div style={{ fontWeight: 'bold', fontSize: 13.5, color: '#222222', marginBottom: 8, marginTop: 18 }}>SCOPE OF WORK:</div>
         <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 15 }}>
           <thead>
             <tr>
@@ -704,17 +709,17 @@ function QuotationDocument({ quotation, total, tenantName, tenantLogo, showItemA
             {(quotation.rooms || []).map((room, ri) => (
               <React.Fragment key={`room-${ri}`}>
                 <tr>
-                  <td colSpan={colSpan} style={{ background: '#f8cbab', color: '#000', fontWeight: 'bold', textAlign: 'center', padding: '5px 6px', fontSize: 10, border: '1px solid #000' }}>
+                  <td colSpan={colSpan} style={{ background: '#BFBFBF', color: '#000', fontWeight: 'bold', textAlign: 'center', padding: '6px', fontSize: 10.5, border: '1px solid #000', letterSpacing: 0.5 }}>
                     {room.name}
                   </td>
                 </tr>
                 {(room.items || []).map((item, ii) => (
                   <tr key={`item-${ri}-${ii}`}>
                     <td style={{ ...tdStyle, textAlign: 'center' }}>{scopeSrNo++}</td>
-                    <td style={tdStyle}>{item.particular}</td>
+                    <td style={{ ...tdStyle, textAlign: 'left' }}>{item.particular}</td>
                     <td style={{ ...tdStyle, textAlign: 'center' }}>{item.size}</td>
                     {showItemAmount && (
-                      <td style={{ ...tdStyle, textAlign: 'center' }}>{item.amount ? Number(item.amount).toLocaleString('en-IN') : '—'}</td>
+                      <td style={{ ...tdStyle, textAlign: 'right' }}>{item.amount ? Number(item.amount).toLocaleString('en-IN') : '—'}</td>
                     )}
                   </tr>
                 ))}
@@ -723,17 +728,17 @@ function QuotationDocument({ quotation, total, tenantName, tenantLogo, showItemA
           </tbody>
         </table>
 
-        <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '12px 0', margin: '20px 0', textAlign: 'center' }}>
-          <div style={{ fontWeight: 'bold', fontSize: 11, marginBottom: 6 }}>
-            COMPLETE INTERIOR TOTAL BUDGET – APPROX. Rs {total.toLocaleString('en-IN')} / -
+        <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '12px 0', margin: '18px 0', textAlign: 'center' }}>
+          <div style={{ fontWeight: 'bold', fontSize: 11.5, marginBottom: 6, color: '#000' }}>
+            COMPLETE INTERIOR TOTAL BUDGET – APPROX. ₹ {total.toLocaleString('en-IN')}/-
           </div>
-          <div style={{ fontWeight: 'bold', fontSize: 10 }}>
+          <div style={{ fontWeight: 'bold', fontSize: 10.5, color: '#000' }}>
             AMOUNT IN WORDS – {numberToWords(total).replace('Rupees ', '').replace(' Rupees', '')} Only
           </div>
         </div>
 
-        {/* 2. MATERIAL SPECIFICATION appears immediately after total amount */}
-        <div style={{ fontWeight: 'bold', fontSize: 11, margin: '20px 0 8px' }}>2. MATERIAL SPECIFICATION</div>
+        {/* MATERIAL SPECIFICATION appears immediately after total amount */}
+        <div style={{ fontWeight: 'bold', fontSize: 13.5, color: '#222222', margin: '20px 0 8px' }}>MATERIAL SPECIFICATION:</div>
         <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 15 }}>
           <thead>
             <tr>
@@ -746,15 +751,15 @@ function QuotationDocument({ quotation, total, tenantName, tenantLogo, showItemA
             {(quotation.materialSpec || []).map((cat, ci) => (
               <React.Fragment key={`cat-${ci}`}>
                 <tr>
-                  <td colSpan={3} style={{ background: '#e0e0e0', color: '#000', fontWeight: 'bold', textAlign: 'center', padding: '5px 6px', fontSize: 10, border: '1px solid #000' }}>
+                  <td colSpan={3} style={{ background: '#BFBFBF', color: '#000', fontWeight: 'bold', textAlign: 'center', padding: '6px', fontSize: 10.5, border: '1px solid #000', letterSpacing: 0.5 }}>
                     {cat.category}
                   </td>
                 </tr>
                 {(cat.items || []).map((item, ii) => (
                   <tr key={`mat-${ci}-${ii}`}>
                     <td style={{ ...tdStyle, textAlign: 'center' }}>{matSrNo++}</td>
-                    <td style={tdStyle}>{item.material}</td>
-                    <td style={{ ...tdStyle, whiteSpace: 'pre-line' }}>{item.brand}</td>
+                    <td style={{ ...tdStyle, textAlign: 'left' }}>{item.material}</td>
+                    <td style={{ ...tdStyle, textAlign: 'center', whiteSpace: 'pre-line' }}>{item.brand}</td>
                   </tr>
                 ))}
               </React.Fragment>
@@ -762,22 +767,28 @@ function QuotationDocument({ quotation, total, tenantName, tenantLogo, showItemA
           </tbody>
         </table>
 
-        <div style={{ fontWeight: 'bold', fontSize: 11, margin: '15px 0 8px' }}>1. Design &amp; Execution:</div>
+        <div style={{ fontWeight: 'bold', fontSize: 13.5, color: '#222222', margin: '18px 0 8px' }}>1. Design &amp; Execution:</div>
         {['2D & 3D Designing & Visualization', 'Material Selection Assistance', 'On-site Supervision', 'Installation & Finishing Work', 'Project Timeline: 60–65 Days'].map((t, i) => (
-          <div key={`s1-${i}`} style={{ marginLeft: 20, fontSize: 9.5, lineHeight: 1.6 }}>• {t}</div>
+          <div key={`s1-${i}`} style={{ marginLeft: 20, fontSize: 10, lineHeight: 1.6 }}>• {t}</div>
         ))}
 
-        <div style={{ fontWeight: 'bold', fontSize: 11, margin: '15px 0 8px' }}>2. Why Choose Vistara Interiors?</div>
+        <div style={{ fontWeight: 'bold', fontSize: 13.5, color: '#222222', margin: '18px 0 8px' }}>2. Why Choose {tenantName || 'Vistara Interiors'}?</div>
         {['Transparent Pricing – No Hidden Charges', 'High-Quality Materials & Craftsmanship', 'Personalized Design with 3D Views', '10-Year Warranty on Workmanship', 'Professional Team with End-to-End Support', 'Deep Cleaning will be provided by us', 'All Furniture Edge Work Will Be Done In Laminate Matching PVC Edge Binds to Ensure Smooth Edges and Seamless Finishing'].map((t, i) => (
-          <div key={`s2-${i}`} style={{ marginLeft: 20, fontSize: 9.5, lineHeight: 1.6 }}>• {t}</div>
+          <div key={`s2-${i}`} style={{ marginLeft: 20, fontSize: 10, lineHeight: 1.6 }}>• {t}</div>
         ))}
 
-        <div style={{ fontWeight: 'bold', fontSize: 11, margin: '15px 0 8px' }}>Terms &amp; Conditions:</div>
-        <ol style={{ margin: '0 0 0 20px', paddingLeft: 15, fontSize: 9.5, lineHeight: 1.6 }}>
+        <div style={{ fontWeight: 'bold', fontSize: 13.5, color: '#222222', margin: '18px 0 8px' }}>Terms &amp; Conditions:</div>
+        <ol style={{ margin: '0 0 0 20px', paddingLeft: 15, fontSize: 10, lineHeight: 1.6 }}>
           <li>Quotation subject to revision based on final 3D design.</li>
           <li>Standard wardrobe modules included; extra drawers at additional cost.</li>
           <li>Warranty will not be applicable for physical damage.</li>
         </ol>
+
+        <div style={{ marginTop: 30, textAlign: 'center' }}>
+          <div style={{ fontSize: 13, fontWeight: 'bold', fontStyle: 'italic', color: '#17365D', marginBottom: 4 }}>THANK YOU!</div>
+          <div style={{ fontSize: 9.5, fontStyle: 'italic', color: '#555', marginBottom: 6 }}>For any queries, feel free to contact us.</div>
+          <div style={{ fontSize: 11.5, fontWeight: 'bold', color: '#0F243E' }}>TEAM VISTARA INTERIORS</div>
+        </div>
       </Page>
     </div>
   );
@@ -797,9 +808,9 @@ function Page({ children }) {
 
 // Helper cell styles for React HTML equivalent
 const thStyle = {
-  padding: '5px 6px', border: '1px solid #000', fontSize: '9.5pt',
-  fontWeight: 'bold', background: '#000', color: '#fff', textAlign: 'center'
+  padding: '6px 8px', border: '1px solid #000', fontSize: '10pt',
+  fontWeight: 'bold', background: '#0F243E', color: '#fff', textAlign: 'center'
 };
 const tdStyle = {
-  padding: '4px 6px', border: '1px solid #000', fontSize: '9pt'
+  padding: '5px 8px', border: '1px solid #000', fontSize: '9.5pt'
 };
