@@ -563,8 +563,8 @@ function ItemRow({ item, index = 0, roomName, onUpdate, onDelete }) {
       <div className="item-row-grid">
 
         <div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span className="form-label" style={{ fontSize: '0.62rem', margin: 0, fontWeight: 700, color: 'var(--text-secondary)' }}>
                 SIZE / DESCRIPTION
               </span>
@@ -575,49 +575,35 @@ function ItemRow({ item, index = 0, roomName, onUpdate, onDelete }) {
               )}
             </div>
 
-            {/* Units Radio Buttons: Sq Ft | Per Point | Running Feet | Inches | Meters */}
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              background: 'var(--surface-2, #f8fafc)',
-              padding: '3px 8px',
-              borderRadius: 6,
-              border: '1px solid var(--border)',
-              flexWrap: 'wrap'
-            }}>
-              <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 600 }}>Unit:</span>
-              
-              {[
-                { id: 'sqft', label: 'Sq Ft' },
-                { id: 'point', label: 'Per Point' },
-                { id: 'rft', label: 'Running Feet' },
-                { id: 'inch', label: 'Inches' },
-                { id: 'meter', label: 'Meters' }
-              ].map(u => (
-                <label
-                  key={u.id}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 3,
-                    fontSize: '0.68rem',
-                    fontWeight: currentUnit === u.id ? 700 : 500,
-                    color: currentUnit === u.id ? 'var(--primary)' : 'var(--text-secondary)',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name={`item-unit-${roomName}-${index}`}
-                    value={u.id}
-                    checked={currentUnit === u.id}
-                    onChange={() => handleUnitChange(u.id)}
-                    style={{ accentColor: 'var(--primary)', cursor: 'pointer', margin: 0 }}
-                  />
-                  <span>{u.label}</span>
-                </label>
-              ))}
+            {/* Units Dropdown Menu */}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <label style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 600, margin: 0 }}>
+                Unit:
+              </label>
+              <select
+                className="form-select"
+                value={currentUnit}
+                onChange={e => handleUnitChange(e.target.value)}
+                style={{
+                  fontSize: '0.72rem',
+                  padding: '2px 20px 2px 6px',
+                  height: '24px',
+                  fontWeight: 600,
+                  color: 'var(--primary)',
+                  background: 'var(--surface-2, #f8fafc)',
+                  borderColor: 'var(--border, #cbd5e1)',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  lineHeight: 1
+                }}
+                title="Select measurement unit for size"
+              >
+                <option value="sqft">Sq Ft</option>
+                <option value="point">Per Point</option>
+                <option value="rft">Running Feet</option>
+                <option value="inch">Inches</option>
+                <option value="meter">Meters</option>
+              </select>
             </div>
           </div>
 
