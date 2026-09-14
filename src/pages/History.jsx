@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, MoreVertical, Eye, Trash2, FileText, Pencil, Copy, Calendar } from 'lucide-react';
+import { Search, Filter, MoreVertical, Eye, Trash2, FileText, Pencil, Copy, Calendar, MessageSquare } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { formatIndianCurrency, formatDate, formatDateTime } from '../utils/helpers';
 import { ConfirmModal } from '../components/Modals';
 import QuotationPreview from '../components/QuotationPreview';
+import WhatsAppShareModal from '../components/WhatsAppShareModal';
 
 const STATUS_BADGE = {
   'INVOICE CREATED': 'badge-primary',
@@ -15,7 +16,7 @@ const STATUS_BADGE = {
 
 const PAGE_SIZE = 5;
 
-function QuotationCard({ quotation, onDelete, onView }) {
+function QuotationCard({ quotation, onDelete, onView, onWhatsApp }) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const initials = (quotation.clientName || 'UN').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -45,6 +46,7 @@ function QuotationCard({ quotation, onDelete, onView }) {
               </button>
             </div>
           </div>
+          
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 10, flexWrap: 'wrap', paddingTop: 8, borderTop: '1px dashed var(--border-light)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <span className={`badge ${STATUS_BADGE[quotation.status] || 'badge-draft'}`} style={{ fontSize: '0.65rem' }}>
@@ -63,7 +65,7 @@ function QuotationCard({ quotation, onDelete, onView }) {
             </div>
 
             {/* Direct action buttons on card for 1-click access */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               {quotation.status !== 'APPROVED' ? (
                 <button
                   type="button"
@@ -95,6 +97,21 @@ function QuotationCard({ quotation, onDelete, onView }) {
               >
                 <Eye size={12} /> View
               </button>
+
+              <button
+                type="button"
+                className="btn btn-sm"
+                style={{
+                  padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600,
+                  background: '#25D366', color: '#fff', border: 'none',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  boxShadow: '0 1px 4px rgba(37,211,102,0.3)'
+                }}
+                onClick={onWhatsApp}
+                title="Send invoice to client on WhatsApp"
+              >
+                <MessageSquare size={12} /> WhatsApp
+              </button>
             </div>
           </div>
         </div>
@@ -104,7 +121,7 @@ function QuotationCard({ quotation, onDelete, onView }) {
         <div style={{
           position: 'absolute', top: 36, right: 12, zIndex: 10,
           background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
-          boxShadow: 'var(--shadow-md)', minWidth: 160, overflow: 'hidden',
+          boxShadow: 'var(--shadow-md)', minWidth: 170, overflow: 'hidden',
         }}>
           <button
             className="btn-ghost"
@@ -112,6 +129,13 @@ function QuotationCard({ quotation, onDelete, onView }) {
             onClick={() => { onView(); setMenuOpen(false); }}
           >
             <Eye size={14} /> View &amp; Print
+          </button>
+          <button
+            className="btn-ghost"
+            style={{ width: '100%', padding: '9px 14px', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', justifyContent: 'flex-start', color: '#16a34a', fontWeight: 600 }}
+            onClick={() => { onWhatsApp(); setMenuOpen(false); }}
+          >
+            <MessageSquare size={14} /> Send on WhatsApp
           </button>
           {quotation.status !== 'APPROVED' && (
             <button
@@ -148,6 +172,7 @@ function QuotationCard({ quotation, onDelete, onView }) {
   );
 }
 
+
 export default function History() {
   const { quotations, deleteQuotation } = useApp();
   const [search, setSearch] = useState('');
@@ -156,6 +181,7 @@ export default function History() {
   const [page, setPage] = useState(1);
   const [deleteId, setDeleteId] = useState(null);
   const [previewQuotation, setPreviewQuotation] = useState(null);
+  const [whatsAppQuotation, setWhatsAppQuotation] = useState(null);
 
   const filtered = quotations.filter(q => {
     const matchSearch = (q.clientName || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -215,6 +241,7 @@ export default function History() {
             quotation={q}
             onDelete={() => setDeleteId(q.id)}
             onView={() => setPreviewQuotation(q)}
+            onWhatsApp={() => setWhatsAppQuotation(q)}
           />
         ))
       )}
@@ -245,6 +272,13 @@ export default function History() {
 
       {previewQuotation && (
         <QuotationPreview quotation={previewQuotation} onClose={() => setPreviewQuotation(null)} />
+      )}
+
+      {whatsAppQuotation && (
+        <WhatsAppShareModal
+          quotation={whatsAppQuotation}
+          onClose={() => setWhatsAppQuotation(null)}
+        />
       )}
     </div>
   );

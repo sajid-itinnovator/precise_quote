@@ -173,15 +173,19 @@ function addScopeOfWork(doc, quotation, startY) {
   return afterTable + 26;
 }
 
-function addMaterialSpec(doc, materialSpec) {
-  doc.addPage();
-  addPageBorder(doc);
-  let y = 20;
+function addMaterialSpec(doc, materialSpec, startY) {
+  let y = startY || 20;
+  // If not enough room on current page, add new page
+  if (y > 220) {
+    doc.addPage();
+    addPageBorder(doc);
+    y = 20;
+  }
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
   doc.setTextColor(...DARK_NAVY);
-  doc.text('MATERIAL SPECIFICATION', 14, y);
+  doc.text('2. MATERIAL SPECIFICATION', 14, y);
   y += 6;
 
   const body = [];
@@ -248,55 +252,56 @@ function addServicesTerms(doc, startY) {
   if (y > 200) { doc.addPage(); addPageBorder(doc); y = 20; }
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setTextColor(...DARK_NAVY);
-  doc.text('1. Design & Execution:', 14, y);
-  y += 7;
-
-  const execItems = [
-    '• 2D & 3D Designing & Visualization',
-    '• Material Selection Assistance',
-    '• On-site Supervision',
-    '• Installation & Finishing Work',
-    '• Project Timeline: 60–65 Days',
+  doc.text('3. Design & Execution:', 14, y);
+  y += 6;
+  const designItems = [
+    '2D & 3D Designing & Visualization',
+    'Material Selection Assistance',
+    'On-site Supervision',
+    'Installation & Finishing Work',
+    'Project Timeline: 60-65 Days',
   ];
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
   doc.setTextColor(40, 40, 40);
-  execItems.forEach(item => { doc.text(item, 16, y); y += 5.5; });
+  designItems.forEach(item => { doc.text(`• ${item}`, 20, y); y += 5; });
 
   y += 4;
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(...DARK_NAVY);
-  doc.text('2. Why Choose Vistara Interiors?', 14, y);
-  y += 7;
+  if (y > 220) { doc.addPage(); addPageBorder(doc); y = 20; }
 
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(...DARK_NAVY);
+  doc.text('4. Why Choose Us?', 14, y);
+  y += 6;
   const whyItems = [
-    '• Transparent Pricing – No Hidden Charges',
-    '• High-Quality Materials & Craftsmanship',
-    '• Personalized Design with 3D Views',
-    '• 10-Year Warranty on Workmanship',
-    '• Professional Team with End-to-End Support',
-    '• Deep Cleaning will provided by us',
-    '• All Furniture Edge Work Will Be Done In Laminate Marching PVC Edge Binds to Ensure Smooth Edges and Seamless Finishing',
+    'Transparent Pricing - No Hidden Charges',
+    'High-Quality Materials & Craftsmanship',
+    'Personalized Design with 3D Views',
+    '10-Year Warranty on Workmanship',
+    'Professional Team with End-to-End Support',
+    'Deep Cleaning will be provided by us',
+    'All Furniture Edge Work Will Be Done In Laminate Matching PVC Edge Binds',
   ];
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
   doc.setTextColor(40, 40, 40);
   whyItems.forEach(item => {
-    const lines = doc.splitTextToSize(item, w - 30);
-    doc.text(lines, 16, y);
-    y += lines.length * 5.5;
+    const lines = doc.splitTextToSize(`• ${item}`, w - 30);
+    doc.text(lines, 20, y);
+    y += lines.length * 5;
   });
 
-  y += 6;
+  y += 4;
+  if (y > 230) { doc.addPage(); addPageBorder(doc); y = 20; }
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(...DARK_NAVY);
   doc.text('Terms & Conditions:', 14, y);
   y += 6;
-
   const termsItems = [
     'Quotation subject to revision based on final 3D design.',
     'Standard wardrobe modules included; extra drawers at additional cost.',
@@ -338,19 +343,25 @@ function addServicesTerms(doc, startY) {
   doc.text('VISTARA', w / 2, y + 17, { align: 'center' });
 }
 
-export function generateQuotationPDF(quotation) {
+export function buildQuotationPDFDoc(quotation) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
   addPageBorder(doc);
   let y = addHeader(doc, quotation);
   y = addClientDetails(doc, quotation, y);
-  addScopeOfWork(doc, quotation, y + 4);
+  const scopeEndY = addScopeOfWork(doc, quotation, y + 4);
 
-  // Material spec on next page
-  const specY = addMaterialSpec(doc, quotation.materialSpec);
+  // Material spec appears immediately after total if space permits
+  const specY = addMaterialSpec(doc, quotation.materialSpec, scopeEndY + 6);
   addServicesTerms(doc, specY);
 
-  // Save
-  const fileName = `Vistara_Quote_${quotation.quotationNo || 'Draft'}_${quotation.clientName?.replace(/\s+/g, '_') || 'Client'}.pdf`;
+  return doc;
+}
+
+export function generateQuotationPDF(quotation, customFileName) {
+  const doc = buildQuotationPDFDoc(quotation);
+  const cleanName = (customFileName || `Vistara_Invoice_${quotation.quotationNo || 'Quote'}_${quotation.clientName?.replace(/\s+/g, '_') || 'Client'}`).trim();
+  const fileName = cleanName.toLowerCase().endsWith('.pdf') ? cleanName : `${cleanName}.pdf`;
   doc.save(fileName);
+  return fileName;
 }

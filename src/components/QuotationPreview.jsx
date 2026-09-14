@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Printer, Layers, Pencil, Copy, Lock } from 'lucide-react';
+import { X, Printer, Layers, Pencil, Copy, Lock, MessageSquare } from 'lucide-react';
 import { formatIndianCurrency, numberToWords, formatDate } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import MaterialSpecEditor from './MaterialSpecEditor';
+import WhatsAppShareModal from './WhatsAppShareModal';
 
 /* ──────────────────────────────────────────────────────────────
    Generates a fully self-contained HTML string for the quotation
@@ -229,6 +230,7 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
   );
   const [currentSpec, setCurrentSpec] = useState(quotation.materialSpec || []);
   const [showBrandEditor, setShowBrandEditor] = useState(false);
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(quotation.status || 'DRAFT');
 
   const total = quotation.total ||
@@ -402,13 +404,25 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
 
         <button onClick={handlePrint} style={{
           background: '#1a56ff', border: 'none', borderRadius: 6,
-          padding: '9px 24px', color: '#fff', fontWeight: 700, cursor: 'pointer',
+          padding: '9px 20px', color: '#fff', fontWeight: 700, cursor: 'pointer',
           display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem',
           boxShadow: '0 4px 12px rgba(26,86,255,0.4)',
           transition: 'transform 0.15s, background 0.2s'
         }} onMouseOver={e => e.currentTarget.style.background = '#124ccf'}
            onMouseOut={e => e.currentTarget.style.background = '#1a56ff'}>
-          <Printer size={16} /> Print / Save as PDF
+          <Printer size={16} /> Print / Save PDF
+        </button>
+
+        <button onClick={() => setShowWhatsAppModal(true)} style={{
+          background: '#25D366', border: 'none', borderRadius: 6,
+          padding: '9px 18px', color: '#fff', fontWeight: 700, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: 7, fontSize: '0.875rem',
+          boxShadow: '0 4px 12px rgba(37,211,102,0.35)',
+          transition: 'transform 0.15s, background 0.2s'
+        }} onMouseOver={e => e.currentTarget.style.background = '#1ebd59'}
+           onMouseOut={e => e.currentTarget.style.background = '#25D366'}
+           title="Send invoice to client on WhatsApp with customized file name">
+          <MessageSquare size={16} /> Send on WhatsApp
         </button>
       </div>
 
@@ -557,6 +571,18 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
             </div>
           </div>
         </div>
+      )}
+
+      {/* WhatsApp Share Modal with File Name Customization */}
+      {showWhatsAppModal && (
+        <WhatsAppShareModal
+          quotation={currentQuotation}
+          onClose={() => setShowWhatsAppModal(false)}
+          onInvoiceSent={() => {
+            setCurrentStatus('INVOICE CREATED');
+            if (onInvoiceCreated) onInvoiceCreated();
+          }}
+        />
       )}
     </div>
   );
