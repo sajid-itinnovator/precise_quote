@@ -129,7 +129,8 @@ export function parseItemQuantity(item) {
         unit: 'cft',
         unitShort: 'cft',
         unitLabel: 'CFT',
-        formatted: `${d1} × ${d2} × ${d3}`,
+        formatted: `${total} CFT`,
+        formula: `${d1} × ${d2} × ${d3} = ${total} CFT`,
         is2D: false,
         is3D: true
       };
@@ -143,12 +144,15 @@ export function parseItemQuantity(item) {
     const d2 = parseFloat(match2[2]) || 0;
     if (d1 > 0 && d2 > 0) {
       const total = Math.round(d1 * d2 * 100) / 100;
+      const unitLbl = unit === 'meter' ? 'Meter' : unit === 'inch' ? 'Inch' : 'Sq Ft';
+      const unitSht = unit === 'meter' ? 'mtr' : unit === 'inch' ? 'inch' : 'sqft';
       return {
         qty: total,
         unit: unit === 'meter' ? 'meter' : unit === 'inch' ? 'inch' : 'sqft',
-        unitShort: unit === 'meter' ? 'mtr' : unit === 'inch' ? 'inch' : 'sqft',
-        unitLabel: unit === 'meter' ? 'Meters' : unit === 'inch' ? 'Inches' : 'Sq Ft',
-        formatted: `${d1} × ${d2}`,
+        unitShort: unitSht,
+        unitLabel: unitLbl,
+        formatted: `${total} ${unitLbl}`,
+        formula: `${d1} × ${d2} = ${total} ${unitLbl}`,
         is2D: true
       };
     }
@@ -681,7 +685,7 @@ function ItemRow({ item, index = 0, roomName, onUpdate, onDelete }) {
         }}>
           <Calculator size={12} style={{ color: 'var(--primary)', flexShrink: 0 }} />
           <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600 }}>
-            {parsedQty.formatted} × ₹{rate}/{parsedQty.unitShort} = ₹{formatIndianCurrency(autoAmount)}
+            {parsedQty.formula || parsedQty.formatted} × ₹{rate}/{parsedQty.unitShort} = ₹{formatIndianCurrency(autoAmount)}
           </span>
         </div>
       )}
