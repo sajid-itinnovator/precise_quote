@@ -31,7 +31,7 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
         <td style="padding:5px 8px;border:1px solid #000;text-align:left;font-size:9.5pt;">${item.particular || ''}</td>
         <td style="padding:5px 6px;border:1px solid #000;text-align:center;font-size:9.5pt;">${item.size || ''}</td>
         ${showItemAmount ? `
-        <td style="padding:5px 8px;border:1px solid #000;text-align:right;font-size:9.5pt;">
+        <td style="padding:5px 8px;border:1px solid #000;text-align:center;font-size:9.5pt;">
           ${item.amount ? Number(item.amount).toLocaleString('en-IN') : '—'}
         </td>` : ''}
       </tr>`).join('');
@@ -211,7 +211,7 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
     </ol>
   </div>
 
-  <div style="margin-top: 30px; text-align: left;">
+  <div style="margin-top: 30px; text-align: right;">
     <div style="font-size: 13pt; font-weight: bold; font-style: italic; color: #17365D; margin-bottom: 4px;">THANK YOU!</div>
     <div style="font-size: 9.5pt; font-style: italic; color: #555; margin-bottom: 6px;">For any queries, feel free to contact us.</div>
     <div style="font-size: 11.5pt; font-weight: bold; color: #0F243E;">TEAM VISTARA INTERIORS</div>
@@ -720,7 +720,7 @@ function QuotationDocument({ quotation, total, tenantName, tenantLogo, showItemA
                     <td style={{ ...tdStyle, textAlign: 'left' }}>{item.particular}</td>
                     <td style={{ ...tdStyle, textAlign: 'center' }}>{item.size}</td>
                     {showItemAmount && (
-                      <td style={{ ...tdStyle, textAlign: 'right' }}>{item.amount ? Number(item.amount).toLocaleString('en-IN') : '—'}</td>
+                      <td style={{ ...tdStyle, textAlign: 'center' }}>{item.amount ? Number(item.amount).toLocaleString('en-IN') : '—'}</td>
                     )}
                   </tr>
                 ))}
@@ -785,7 +785,7 @@ function QuotationDocument({ quotation, total, tenantName, tenantLogo, showItemA
           <li>Warranty will not be applicable for physical damage.</li>
         </ol>
 
-        <div style={{ marginTop: 30, textAlign: 'left' }}>
+        <div style={{ marginTop: 30, textAlign: 'right' }}>
           <div style={{ fontSize: 13, fontWeight: 'bold', fontStyle: 'italic', color: '#17365D', marginBottom: 4 }}>THANK YOU!</div>
           <div style={{ fontSize: 9.5, fontStyle: 'italic', color: '#555', marginBottom: 6 }}>For any queries, feel free to contact us.</div>
           <div style={{ fontSize: 11.5, fontWeight: 'bold', color: '#0F243E' }}>TEAM VISTARA INTERIORS</div>

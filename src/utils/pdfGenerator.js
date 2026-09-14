@@ -126,7 +126,7 @@ function buildScopeTable(quotation) {
         { content: item.size || '', styles: { halign: 'center', valign: 'middle' } },
       ];
       if (showAmount) {
-        row.push({ content: item.amount ? Number(item.amount).toLocaleString('en-IN') : '', styles: { halign: 'right', valign: 'middle' } });
+        row.push({ content: item.amount ? Number(item.amount).toLocaleString('en-IN') : '', styles: { halign: 'center', valign: 'middle' } });
       }
       body.push(row);
     });
@@ -152,7 +152,7 @@ function addScopeOfWork(doc, quotation, startY) {
     { content: 'SR .NO', styles: { halign: 'center', valign: 'middle' } },
     { content: 'Particular', styles: { halign: 'left', valign: 'middle' } },
     { content: 'Size', styles: { halign: 'center', valign: 'middle' } },
-    { content: 'Amount', styles: { halign: 'right', valign: 'middle' } },
+    { content: 'Amount', styles: { halign: 'center', valign: 'middle' } },
   ]] : [[
     { content: 'SR .NO', styles: { halign: 'center', valign: 'middle' } },
     { content: 'Particular', styles: { halign: 'left', valign: 'middle' } },
@@ -163,7 +163,7 @@ function addScopeOfWork(doc, quotation, startY) {
     0: { cellWidth: 16, halign: 'center', valign: 'middle' },
     1: { cellWidth: 'auto', halign: 'left', valign: 'middle' },
     2: { cellWidth: 38, halign: 'center', valign: 'middle' },
-    3: { cellWidth: 30, halign: 'right', valign: 'middle' },
+    3: { cellWidth: 30, halign: 'center', valign: 'middle' },
   } : {
     0: { cellWidth: 16, halign: 'center', valign: 'middle' },
     1: { cellWidth: 'auto', halign: 'left', valign: 'middle' },
@@ -352,22 +352,22 @@ function addServicesTerms(doc, startY) {
 
   y += 8;
 
-  // Thank you section (aligned at left as requested by user)
+  // Thank you section (aligned at right side as requested by user)
   if (y > 250) { doc.addPage(); y = 25; }
   doc.setFont('times', 'bolditalic');
   doc.setFontSize(12);
   doc.setTextColor(...TITLE_BLUE);
-  doc.text('THANK YOU!', 14, y);
+  doc.text('THANK YOU!', w - 14, y, { align: 'right' });
   y += 5;
   doc.setFont('times', 'italic');
   doc.setFontSize(8.5);
   doc.setTextColor(80, 80, 80);
-  doc.text('For any queries, feel free to contact us.', 14, y);
+  doc.text('For any queries, feel free to contact us.', w - 14, y, { align: 'right' });
   y += 6;
   doc.setFont('times', 'bold');
   doc.setFontSize(10.5);
   doc.setTextColor(...DARK_NAVY);
-  doc.text('TEAM VISTARA INTERIORS', 14, y);
+  doc.text('TEAM VISTARA INTERIORS', w - 14, y, { align: 'right' });
 }
 
 export function buildQuotationPDFDoc(quotation) {
