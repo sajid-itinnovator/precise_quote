@@ -1274,14 +1274,14 @@ export default function Builder() {
           onClick={() => setActiveTab('scope')}
           className={`btn builder-tab-btn ${activeTab === 'scope' ? 'btn-primary' : 'btn-secondary'}`}
         >
-          <Building size={16} /> 1. Scope of Work ({rooms.length} Rooms, {totalItems} Items{totalSqft > 0 ? `, ${totalSqft.toLocaleString('en-IN')} SQFT` : ''})
+          <Building size={16} /> Scope of Work ({rooms.length} Rooms, {totalItems} Items{totalSqft > 0 ? `, ${totalSqft.toLocaleString('en-IN')} SQFT` : ''})
         </button>
         <button
           type="button"
           onClick={() => setActiveTab('materials')}
           className={`btn builder-tab-btn ${activeTab === 'materials' ? 'btn-primary' : 'btn-secondary'}`}
         >
-          <Layers size={16} /> 2. Material Brands &amp; Specs ({quoteMaterialSpec.length} Categories)
+          <Layers size={16} /> Material Brands &amp; Specs ({quoteMaterialSpec.length} Categories)
         </button>
       </div>
 
