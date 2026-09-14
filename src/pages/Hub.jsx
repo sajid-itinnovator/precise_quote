@@ -253,10 +253,47 @@ export default function Hub() {
         </div>
       </div>
 
+      {/* Recent Projects (Appears before Analytics Overview) */}
+      <div className="section-header" style={{ marginTop: 24 }}>
+        <div>
+          <div className="section-title">Recent Projects</div>
+          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Manage and track your active interior commissions</div>
+        </div>
+        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--primary)' }} onClick={() => navigate('/history')}>
+          View All →
+        </button>
+      </div>
+
+      {/* Search */}
+      <div className="search-bar" style={{ marginBottom: 16 }}>
+        <Search size={15} style={{ color: 'var(--text-muted)' }} />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search customers or projects..." />
+      </div>
+
+      {/* Project grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16, marginBottom: 32 }}>
+        {filtered.length > 0 ? filtered.map((p, i) => (
+          <ProjectCard
+            key={p.id}
+            project={p}
+            client={getClient(p.clientId)}
+            latestQuote={getLatestQuote(p)}
+            index={i}
+            onViewQuote={(q) => setPreviewQuotation(q)}
+          />
+        )) : (
+          <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
+            <div className="empty-state-icon">📋</div>
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>No projects found</div>
+            <div className="text-sm">Create your first project to get started</div>
+          </div>
+        )}
+      </div>
+
       {/* Analytics Dashboard */}
       {quotations.length > 0 && (
         <>
-          <div className="section-header" style={{ marginTop: 32, marginBottom: 16 }}>
+          <div className="section-header" style={{ marginTop: 16, marginBottom: 16 }}>
             <div>
               <div className="section-title">Analytics Overview</div>
               <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Revenue and conversion metrics</div>
@@ -337,43 +374,6 @@ export default function Hub() {
           </div>
         </>
       )}
-
-      {/* Recent Projects */}
-      <div className="section-header">
-        <div>
-          <div className="section-title">Recent Projects</div>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Manage and track your active interior commissions</div>
-        </div>
-        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--primary)' }} onClick={() => navigate('/history')}>
-          View All →
-        </button>
-      </div>
-
-      {/* Search */}
-      <div className="search-bar" style={{ marginBottom: 16 }}>
-        <Search size={15} style={{ color: 'var(--text-muted)' }} />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search customers or projects..." />
-      </div>
-
-      {/* Project grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
-        {filtered.length > 0 ? filtered.map((p, i) => (
-          <ProjectCard
-            key={p.id}
-            project={p}
-            client={getClient(p.clientId)}
-            latestQuote={getLatestQuote(p)}
-            index={i}
-            onViewQuote={(q) => setPreviewQuotation(q)}
-          />
-        )) : (
-          <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
-            <div className="empty-state-icon">📋</div>
-            <div style={{ fontWeight: 600, marginBottom: 4 }}>No projects found</div>
-            <div className="text-sm">Create your first project to get started</div>
-          </div>
-        )}
-      </div>
 
       {/* FAB on mobile */}
       <button className="fab mobile-only" onClick={() => setShowNewProject(true)}>
