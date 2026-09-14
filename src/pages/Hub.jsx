@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Search, TrendingUp, FileText, Eye, Pencil, Plus } from 'lucide-react';
+import { Search, TrendingUp, FileText, Eye, Pencil, Plus, Calendar } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
-import { formatIndianCurrency } from '../utils/helpers';
+import { formatIndianCurrency, formatDate } from '../utils/helpers';
 import { NewProjectModal } from '../components/Modals';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -96,8 +96,17 @@ function ProjectCard({ project, client, latestQuote, index, onViewQuote }) {
             ₹{formatIndianCurrency(displayAmount)}
           </div>
           {latestQuote && (
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: 1 }}>
-              Latest Invoice #{latestQuote.quotationNo}
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+              <span>Latest Invoice #{latestQuote.quotationNo}</span>
+              {(latestQuote.date || latestQuote.createdAt) && (
+                <>
+                  <span style={{ opacity: 0.6 }}>•</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                    <Calendar size={10} style={{ opacity: 0.7 }} />
+                    {formatDate(latestQuote.date || latestQuote.createdAt)}
+                  </span>
+                </>
+              )}
             </div>
           )}
         </div>
