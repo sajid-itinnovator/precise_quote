@@ -65,3 +65,15 @@ export function formatDateTime(dateStr) {
     hour12: true
   });
 }
+
+/**
+ * Strips internal revision tags (e.g. "(Rev 1)", "(Rev - 1)", "Rev 2") from customer-facing titles
+ */
+export function cleanCustomerProjectTitle(title) {
+  if (!title) return 'INTERIOR DESIGN';
+  return title
+    .replace(/\s*\((?:Rev|Revision)\s*[-–—]?\s*\d+\)/gi, '')
+    .replace(/\s*[-–—]?\s*(?:Rev|Revision)\s*[-–—]?\s*\d+/gi, '')
+    .replace(/\s*\(v\d+\)/gi, '')
+    .trim();
+}

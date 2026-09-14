@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Send, Download, Phone, FileText, CheckCircle, MessageSquare } from 'lucide-react';
 import { buildQuotationPDFDoc, generateQuotationPDF } from '../utils/pdfGenerator';
-import { formatIndianCurrency, formatDate } from '../utils/helpers';
+import { formatIndianCurrency, formatDate, cleanCustomerProjectTitle } from '../utils/helpers';
 import { useApp } from '../context/AppContext';
 
 export default function WhatsAppShareModal({ quotation, onClose, onInvoiceSent }) {
@@ -20,13 +20,16 @@ export default function WhatsAppShareModal({ quotation, onClose, onInvoiceSent }
     (quotation.rooms || []).reduce((s, r) =>
       s + (r.items || []).reduce((ss, i) => ss + (Number(i.amount) || 0), 0), 0);
 
+  // Clean customer-facing title without version numbers
+  const displayProjectTitle = cleanCustomerProjectTitle(quotation.projectTitle || quotation.projectName) || 'Interior Project';
+
   // Pre-filled professional WhatsApp message template
   const defaultMsg = 
 `Dear ${quotation.clientName || 'Client'},
 
 Greetings from *Vistara Interior's*! ✨
 
-Please find attached your detailed interior quotation/invoice for *${quotation.projectName || 'Interior Project'}*.
+Please find attached your detailed interior quotation/invoice for *${displayProjectTitle}*.
 
 📄 *Quotation No:* QT-${quotation.quotationNo}
 📅 *Date:* ${formatDate(quotation.date || new Date().toISOString())}

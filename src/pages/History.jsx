@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, MoreVertical, Eye, Trash2, FileText, Pencil, Copy, Calendar, MessageSquare } from 'lucide-react';
+import { Search, Filter, MoreVertical, Eye, Trash2, FileText, Pencil, Copy, Calendar, MessageSquare, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { formatIndianCurrency, formatDate, formatDateTime } from '../utils/helpers';
 import { ConfirmModal } from '../components/Modals';
@@ -12,11 +12,13 @@ const STATUS_BADGE = {
   APPROVED: 'badge-success',
   PENDING: 'badge-warning',
   DRAFT: 'badge-draft',
+  REJECTED: 'badge-danger',
+  REJECT: 'badge-danger',
 };
 
 const PAGE_SIZE = 5;
 
-function QuotationCard({ quotation, onDelete, onView, onWhatsApp }) {
+function QuotationCard({ quotation, onDelete, onView, onWhatsApp, onUpdateStatus }) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const initials = (quotation.clientName || 'UN').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
@@ -121,7 +123,7 @@ function QuotationCard({ quotation, onDelete, onView, onWhatsApp }) {
         <div style={{
           position: 'absolute', top: 36, right: 12, zIndex: 10,
           background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
-          boxShadow: 'var(--shadow-md)', minWidth: 170, overflow: 'hidden',
+          boxShadow: 'var(--shadow-md)', minWidth: 175, overflow: 'hidden',
         }}>
           <button
             className="btn-ghost"
@@ -159,6 +161,39 @@ function QuotationCard({ quotation, onDelete, onView, onWhatsApp }) {
           >
             <Copy size={14} /> Create Revision
           </button>
+
+          {/* Quick Status Changers */}
+          {onUpdateStatus && (
+            <>
+              <div style={{ height: 1, background: 'var(--border-light)', margin: '4px 0' }} />
+              <div style={{ padding: '4px 14px', fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                Set Status
+              </div>
+              <button
+                className="btn-ghost"
+                style={{ width: '100%', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', justifyContent: 'flex-start', color: '#16a34a' }}
+                onClick={() => { onUpdateStatus(quotation.id, 'APPROVED'); setMenuOpen(false); }}
+              >
+                <CheckCircle size={13} /> Mark Approved
+              </button>
+              <button
+                className="btn-ghost"
+                style={{ width: '100%', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', justifyContent: 'flex-start', color: '#d97706' }}
+                onClick={() => { onUpdateStatus(quotation.id, 'PENDING'); setMenuOpen(false); }}
+              >
+                <Clock size={13} /> Mark Pending
+              </button>
+              <button
+                className="btn-ghost"
+                style={{ width: '100%', padding: '7px 14px', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', justifyContent: 'flex-start', color: '#dc2626' }}
+                onClick={() => { onUpdateStatus(quotation.id, 'REJECTED'); setMenuOpen(false); }}
+              >
+                <XCircle size={13} /> Mark Rejected
+              </button>
+            </>
+          )}
+
+          <div style={{ height: 1, background: 'var(--border-light)', margin: '4px 0' }} />
           <button
             className="btn-ghost"
             style={{ width: '100%', padding: '9px 14px', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', color: 'var(--danger)', justifyContent: 'flex-start' }}
@@ -174,7 +209,7 @@ function QuotationCard({ quotation, onDelete, onView, onWhatsApp }) {
 
 
 export default function History() {
-  const { quotations, deleteQuotation } = useApp();
+  const { quotations, deleteQuotation, updateQuotation, updateProject, projects } = useApp();
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('ALL');
   const [showFilters, setShowFilters] = useState(false);
@@ -182,6 +217,27 @@ export default function History() {
   const [deleteId, setDeleteId] = useState(null);
   const [previewQuotation, setPreviewQuotation] = useState(null);
   const [whatsAppQuotation, setWhatsAppQuotation] = useState(null);
+
+  const handleUpdateStatus = async (quotationId, newStatus) => {
+    try {
+      await updateQuotation(quotationId, { status: newStatus });
+      // Sync corresponding project in Firestore
+      const q = quotations.find(item => item.id === quotationId);
+      if (q && projects && updateProject) {
+        const qProjTitle = (q.projectTitle || '').toLowerCase();
+        const matchingProj = projects.find(p =>
+          (q.projectId && p.id === q.projectId) ||
+          (p.clientId && q.clientId && p.clientId === q.clientId) ||
+          (p.name && qProjTitle && qProjTitle.includes(p.name.toLowerCase()))
+        );
+        if (matchingProj) {
+          await updateProject(matchingProj.id, { status: newStatus });
+        }
+      }
+    } catch (e) {
+      console.error('Failed to update status', e);
+    }
+  };
 
   const filtered = quotations.filter(q => {
     const matchSearch = (q.clientName || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -215,7 +271,7 @@ export default function History() {
 
       {showFilters && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16, padding: '12px 14px', background: 'var(--surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
-          {['ALL', 'INVOICE CREATED', 'APPROVED', 'PENDING', 'DRAFT'].map(s => (
+          {['ALL', 'INVOICE CREATED', 'APPROVED', 'PENDING', 'REJECTED', 'DRAFT'].map(s => (
             <button
               key={s}
               className={`btn btn-sm ${filterStatus === s ? 'btn-primary' : 'btn-secondary'}`}
@@ -242,6 +298,7 @@ export default function History() {
             onDelete={() => setDeleteId(q.id)}
             onView={() => setPreviewQuotation(q)}
             onWhatsApp={() => setWhatsAppQuotation(q)}
+            onUpdateStatus={handleUpdateStatus}
           />
         ))
       )}

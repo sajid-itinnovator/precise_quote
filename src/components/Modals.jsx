@@ -21,19 +21,47 @@ export function NewProjectModal({ onClose }) {
   const [form, setForm] = useState({ name: '', clientId: '', status: 'DRAFT', tags: '' });
   const [newClient, setNewClient] = useState({ name: '', contact: '', email: '', address: '' });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    let clientId = form.clientId;
-    if (mode === 'new') {
-      clientId = await addClient(newClient);
+    if (isSubmitting) return;
+
+    try {
+      setIsSubmitting(true);
+      let finalClientId = form.clientId;
+      if (mode === 'new') {
+        if (!newClient.name.trim()) {
+          alert('Please enter a Client Name');
+          setIsSubmitting(false);
+          return;
+        }
+        finalClientId = await addClient(newClient);
+      }
+      if (!form.name.trim() || !finalClientId) {
+        alert('Please select or create a client, and enter a project name.');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      const tagsArr = form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+      const projectId = await addProject({
+        name: form.name.trim(),
+        clientId: finalClientId,
+        status: form.status || 'DRAFT',
+        tags: tagsArr,
+        amount: 0
+      });
+
+      onClose();
+      // Directly navigate to Quotation Builder with project title and client preloaded
+      navigate(`/builder?clientId=${finalClientId}&projectTitle=${encodeURIComponent(form.name.trim())}&projectId=${projectId}`);
+    } catch (err) {
+      console.error('Failed to create project:', err);
+      alert('An error occurred while creating the project. Please try again.');
+    } finally {
+      setIsSubmitting(false);
     }
-    if (!form.name || !clientId) return;
-    
-    const projectId = await addProject({ name: form.name, clientId, status: form.status, tags: form.tags.split(',').map(t => t.trim()).filter(Boolean), amount: 0 });
-    onClose();
-    // navigate to the builder for this new project? Or just the builder home?
-    // the previous code just did navigate('/builder')
-    navigate('/builder');
   };
 
   return (

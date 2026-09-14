@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { numberToWords, formatDate } from './helpers';
+import { numberToWords, formatDate, cleanCustomerProjectTitle } from './helpers';
 
 const BRAND_BLUE = [26, 86, 255];      // #1a56ff
 const DARK_NAVY = [13, 27, 75];        // #0d1b4b
@@ -26,21 +26,21 @@ function addHeader(doc, quotation) {
   // "V" letter in box
   doc.setTextColor(...WHITE);
   doc.setFontSize(20);
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('times', 'bold');
   doc.text('V', 29, 34, { align: 'center' });
   doc.setFontSize(6);
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('times', 'normal');
   doc.text('VISTARA', 29, 39, { align: 'center' });
 
   // Company name
   doc.setTextColor(...DARK_NAVY);
   doc.setFontSize(22);
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('times', 'bold');
   doc.text("VISTARA INTERIOR'S", 50, 26);
 
   // Tagline
   doc.setFontSize(9);
-  doc.setFont('helvetica', 'italic');
+  doc.setFont('times', 'italic');
   doc.setTextColor(80, 80, 80);
   doc.text('Designing Dreams Creating Reality......', 50, 33);
 
@@ -51,7 +51,7 @@ function addHeader(doc, quotation) {
 
   // Company details
   doc.setFontSize(8.5);
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('times', 'normal');
   doc.setTextColor(...BLACK);
   doc.text('Office Address: Office No.01, Ambekar Hotel Chowk, Undri Pisoli, Pune-411060', 14, 52);
   doc.text('Contact: +91 7720097476/8482946451', 14, 58);
@@ -71,13 +71,13 @@ function addClientDetails(doc, quotation, startY) {
   const w = doc.internal.pageSize.getWidth();
 
   // Section title
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('times', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(...DARK_NAVY);
   doc.text('CLIENT DETAILS', 16, startY + 5);
 
   doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('times', 'normal');
   doc.setTextColor(...BLACK);
   doc.text(`Client Name: ${quotation.clientName || ''}`, 16, startY + 12);
   doc.text(`Contact: ${quotation.clientContact || ''}`, 16, startY + 18);
@@ -86,11 +86,12 @@ function addClientDetails(doc, quotation, startY) {
   doc.setDrawColor(180, 180, 180);
   doc.line(14, startY + 28, w - 14, startY + 28);
 
-  // Project title
-  doc.setFont('helvetica', 'bold');
+  // Project title (clean customer-facing title)
+  doc.setFont('times', 'bold');
   doc.setFontSize(13);
   doc.setTextColor(...DARK_NAVY);
-  doc.text(quotation.projectTitle || 'INTERIOR DESIGN', w / 2, startY + 36, { align: 'center' });
+  const cleanTitle = cleanCustomerProjectTitle(quotation.projectTitle) || 'INTERIOR DESIGN';
+  doc.text(cleanTitle, w / 2, startY + 36, { align: 'center' });
 
   return startY + 44;
 }
@@ -119,7 +120,7 @@ function buildScopeTable(quotation) {
 function addScopeOfWork(doc, quotation, startY) {
   const w = doc.internal.pageSize.getWidth();
 
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('times', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(...DARK_NAVY);
   doc.text('SCOPE OF WORK', 14, startY);
@@ -138,7 +139,7 @@ function addScopeOfWork(doc, quotation, startY) {
     ]],
     body,
     theme: 'grid',
-    styles: { fontSize: 8.5, cellPadding: 3, textColor: BLACK },
+    styles: { font: 'times', fontSize: 8.5, cellPadding: 3, textColor: BLACK },
     headStyles: { fillColor: DARK_NAVY, textColor: WHITE, fontStyle: 'bold', fontSize: 9 },
     columnStyles: {
       0: { cellWidth: 14, halign: 'center' },
@@ -162,11 +163,11 @@ function addScopeOfWork(doc, quotation, startY) {
   // Total box
   doc.setFillColor(240, 240, 240);
   doc.roundedRect(14, afterTable, w - 28, 20, 2, 2, 'F');
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('times', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(...DARK_NAVY);
   doc.text(`COMPLETE INTERIOR TOTAL BUDGET – APPROX. ₹${total.toLocaleString('en-IN')}/-`, 20, afterTable + 8);
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('times', 'bold');
   doc.setFontSize(9);
   doc.text(`AMOUNT IN WORDS: ${numberToWords(total)} Only`, 20, afterTable + 15);
 
@@ -182,7 +183,7 @@ function addMaterialSpec(doc, materialSpec, startY) {
     y = 20;
   }
 
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('times', 'bold');
   doc.setFontSize(13);
   doc.setTextColor(...DARK_NAVY);
   doc.text('2. MATERIAL SPECIFICATION', 14, y);
@@ -212,7 +213,7 @@ function addMaterialSpec(doc, materialSpec, startY) {
     ]],
     body,
     theme: 'grid',
-    styles: { fontSize: 8.5, cellPadding: 3, textColor: BLACK },
+    styles: { font: 'times', fontSize: 8.5, cellPadding: 3, textColor: BLACK },
     headStyles: { fillColor: DARK_NAVY, textColor: WHITE, fontStyle: 'bold' },
     columnStyles: {
       0: { cellWidth: 14, halign: 'center' },
@@ -232,12 +233,12 @@ function addServicesTerms(doc, startY) {
 
   const addSection = (title, items, numbered = false) => {
     if (y > 240) { doc.addPage(); addPageBorder(doc); y = 20; }
-    doc.setFont('helvetica', 'bold');
+    doc.setFont('times', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(...DARK_NAVY);
     doc.text(title, 14, y);
     y += 6;
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('times', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(40, 40, 40);
     items.forEach((item, i) => {
@@ -251,7 +252,7 @@ function addServicesTerms(doc, startY) {
   // Check if we need a new page
   if (y > 200) { doc.addPage(); addPageBorder(doc); y = 20; }
 
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('times', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(...DARK_NAVY);
   doc.text('3. Design & Execution:', 14, y);
@@ -263,7 +264,7 @@ function addServicesTerms(doc, startY) {
     'Installation & Finishing Work',
     'Project Timeline: 60-65 Days',
   ];
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('times', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(40, 40, 40);
   designItems.forEach(item => { doc.text(`• ${item}`, 20, y); y += 5; });
@@ -271,7 +272,7 @@ function addServicesTerms(doc, startY) {
   y += 4;
   if (y > 220) { doc.addPage(); addPageBorder(doc); y = 20; }
 
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('times', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(...DARK_NAVY);
   doc.text('4. Why Choose Us?', 14, y);
@@ -285,7 +286,7 @@ function addServicesTerms(doc, startY) {
     'Deep Cleaning will be provided by us',
     'All Furniture Edge Work Will Be Done In Laminate Matching PVC Edge Binds',
   ];
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('times', 'normal');
   doc.setFontSize(8.5);
   doc.setTextColor(40, 40, 40);
   whyItems.forEach(item => {
@@ -297,7 +298,7 @@ function addServicesTerms(doc, startY) {
   y += 4;
   if (y > 230) { doc.addPage(); addPageBorder(doc); y = 20; }
 
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('times', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(...DARK_NAVY);
   doc.text('Terms & Conditions:', 14, y);
@@ -307,7 +308,7 @@ function addServicesTerms(doc, startY) {
     'Standard wardrobe modules included; extra drawers at additional cost.',
     'Warranty will not be applicable for physical damage.',
   ];
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('times', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(40, 40, 40);
   termsItems.forEach(item => { doc.text(item, 14, y); y += 5.5; });
@@ -316,17 +317,17 @@ function addServicesTerms(doc, startY) {
 
   // Thank you section
   if (y > 250) { doc.addPage(); addPageBorder(doc); y = 30; }
-  doc.setFont('helvetica', 'bolditalic');
+  doc.setFont('times', 'bolditalic');
   doc.setFontSize(11);
   doc.setTextColor(...BRAND_BLUE);
   doc.text('THANK YOU!', w / 2, y, { align: 'center' });
   y += 6;
-  doc.setFont('helvetica', 'italic');
+  doc.setFont('times', 'italic');
   doc.setFontSize(9);
   doc.setTextColor(80, 80, 80);
   doc.text('For any queries, feel free to contact us.', w / 2, y, { align: 'center' });
   y += 7;
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('times', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(...DARK_NAVY);
   doc.text('TEAM VISTARA INTERIORS', w / 2, y, { align: 'center' });
@@ -335,7 +336,7 @@ function addServicesTerms(doc, startY) {
   // Logo footer
   doc.setFillColor(...DARK_NAVY);
   doc.rect(w / 2 - 12, y, 24, 20, 'F');
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('times', 'bold');
   doc.setFontSize(16);
   doc.setTextColor(...WHITE);
   doc.text('V', w / 2, y + 13, { align: 'center' });

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Printer, Layers, Pencil, Copy, Lock, MessageSquare } from 'lucide-react';
-import { formatIndianCurrency, numberToWords, formatDate } from '../utils/helpers';
+import { formatIndianCurrency, numberToWords, formatDate, cleanCustomerProjectTitle } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import MaterialSpecEditor from './MaterialSpecEditor';
@@ -149,7 +149,7 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
   <hr class="divider" style="margin-top:10px; border-color:#ccc;"/>
   
   <div class="text-center text-bold" style="font-size:13pt; text-decoration: underline; margin: 15px 0;">
-    ${quotation.projectTitle || 'INTERIOR DESIGN'}
+    ${cleanCustomerProjectTitle(quotation.projectTitle) || 'INTERIOR DESIGN'}
   </div>
 
   <div class="section-title">SCOPE OF WORK</div>
@@ -222,7 +222,7 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
 export default function QuotationPreview({ quotation, onClose, onUpdateShowItemAmount, onUpdateMaterialSpec, onInvoiceCreated }) {
   const navigate = useNavigate();
   const { userProfile } = useAuth();
-  const { tenantLogo, updateQuotation } = useApp();
+  const { tenantLogo, updateQuotation, updateProject, projects } = useApp();
   const tenantName = userProfile?.tenantName || 'Workspace';
 
   const [showItemAmount, setShowItemAmount] = useState(
@@ -232,6 +232,33 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
   const [showBrandEditor, setShowBrandEditor] = useState(false);
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(quotation.status || 'DRAFT');
+
+  const handleStatusChange = async (newStatus) => {
+    setCurrentStatus(newStatus);
+    if (quotation.id && updateQuotation) {
+      try {
+        await updateQuotation(quotation.id, { status: newStatus });
+      } catch (err) {
+        console.error('Failed to update quotation status', err);
+      }
+    }
+    // Sync matching project status
+    if (projects && updateProject) {
+      const qProjTitle = (quotation.projectTitle || '').toLowerCase();
+      const matchingProj = projects.find(p =>
+        (quotation.projectId && p.id === quotation.projectId) ||
+        (p.clientId && quotation.clientId && p.clientId === quotation.clientId) ||
+        (p.name && qProjTitle && qProjTitle.includes(p.name.toLowerCase()))
+      );
+      if (matchingProj) {
+        try {
+          await updateProject(matchingProj.id, { status: newStatus });
+        } catch (err) {
+          console.error('Failed to sync project status', err);
+        }
+      }
+    }
+  };
 
   const total = quotation.total ||
     (quotation.rooms || []).reduce((s, r) =>
@@ -252,20 +279,15 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
   };
 
   const handlePrint = async () => {
-    // Automatically transition quotation to 'INVOICE CREATED' on printing
-    if (quotation.id && updateQuotation) {
-      try {
-        await updateQuotation(quotation.id, { status: 'INVOICE CREATED' });
-        setCurrentStatus('INVOICE CREATED');
-      } catch (err) {
-        console.error('Failed to update status to INVOICE CREATED', err);
-      }
+    // Automatically transition quotation to 'INVOICE CREATED' on printing if draft
+    if (currentStatus === 'DRAFT') {
+      await handleStatusChange('INVOICE CREATED');
     }
     if (onInvoiceCreated) {
       onInvoiceCreated();
     }
 
-    const qWithSpec = { ...quotation, materialSpec: currentSpec, status: 'INVOICE CREATED' };
+    const qWithSpec = { ...quotation, materialSpec: currentSpec, status: currentStatus === 'DRAFT' ? 'INVOICE CREATED' : currentStatus };
     const html = buildPrintHTML(qWithSpec, total, tenantName, tenantLogo, showItemAmount);
     const win = window.open('', '_blank', 'width=900,height=1000,scrollbars=yes');
     if (!win) { alert('Please allow popups for this site to print.'); return; }
@@ -308,12 +330,35 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
           <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem', letterSpacing: '0.3px' }}>
             {quotation.clientName} (QT-{quotation.quotationNo})
           </span>
-          <span
-            className={`badge ${currentStatus === 'INVOICE CREATED' ? 'badge-primary' : currentStatus === 'APPROVED' ? 'badge-success' : 'badge-draft'}`}
-            style={{ fontSize: '0.65rem' }}
-          >
-            {currentStatus}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', fontWeight: 600 }}>Status:</span>
+            <select
+              value={currentStatus}
+              onChange={(e) => handleStatusChange(e.target.value)}
+              style={{
+                background: currentStatus === 'APPROVED' ? '#166534'
+                          : currentStatus === 'INVOICE CREATED' ? '#1d4ed8'
+                          : (currentStatus === 'REJECTED' || currentStatus === 'REJECT') ? '#991b1b'
+                          : currentStatus === 'PENDING' ? '#b45309'
+                          : '#374151',
+                color: '#fff',
+                border: '1px solid rgba(255,255,255,0.35)',
+                borderRadius: 4,
+                padding: '3px 8px',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                outline: 'none',
+              }}
+              title="Change invoice and project status"
+            >
+              <option value="DRAFT">DRAFT</option>
+              <option value="INVOICE CREATED">INVOICE CREATED</option>
+              <option value="PENDING">PENDING</option>
+              <option value="APPROVED">APPROVED</option>
+              <option value="REJECTED">REJECTED</option>
+            </select>
+          </div>
         </div>
 
         {/* Edit & Revision Buttons */}
@@ -642,7 +687,7 @@ function QuotationDocument({ quotation, total, tenantName, tenantLogo, showItemA
         <hr style={{ border: 'none', borderTop: '1px solid #ccc', margin: '10px 0' }} />
 
         <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 13, textDecoration: 'underline', margin: '15px 0' }}>
-          {quotation.projectTitle || 'INTERIOR DESIGN'}
+          {cleanCustomerProjectTitle(quotation.projectTitle) || 'INTERIOR DESIGN'}
         </div>
 
         <div style={{ fontWeight: 'bold', fontSize: 11, marginBottom: 8, marginTop: 15 }}>SCOPE OF WORK</div>

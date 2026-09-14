@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, TrendingUp, FileText, Eye, Pencil, Plus, Calendar } from 'lucide-react';
+import { Search, TrendingUp, FileText, Eye, Pencil, Plus, Calendar, Trash2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
 import { formatIndianCurrency, formatDate } from '../utils/helpers';
@@ -16,6 +16,8 @@ const STATUS_BADGE = {
   'DRAFT': 'badge-draft',
   'COMMERCIAL': 'badge-commercial',
   'COMPLETED': 'badge-info',
+  'REJECTED': 'badge-danger',
+  'REJECT': 'badge-danger',
 };
 
 const PROJECT_COLORS = [
@@ -26,7 +28,7 @@ const PROJECT_COLORS = [
   'linear-gradient(135deg, #0c4a6e, #0284c7)',
 ];
 
-function ProjectCard({ project, client, latestQuote, index, onViewQuote }) {
+function ProjectCard({ project, client, latestQuote, index, onViewQuote, onDeleteProject, onUpdateStatus }) {
   const navigate = useNavigate();
 
   // If there is an invoice/quote for this client/project, display its latest values
@@ -65,6 +67,36 @@ function ProjectCard({ project, client, latestQuote, index, onViewQuote }) {
         alignItems: 'flex-end',
         padding: '12px',
       }}>
+        {/* Delete Project button */}
+        {onDeleteProject && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (window.confirm(`Are you sure you want to delete project "${project.name}"?`)) {
+                onDeleteProject(project.id);
+              }
+            }}
+            style={{
+              position: 'absolute', top: 10, left: 10,
+              background: 'rgba(0,0,0,0.35)',
+              border: 'none',
+              borderRadius: '50%',
+              width: 28, height: 28,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#fff',
+              cursor: 'pointer',
+              transition: 'background 0.2s',
+              zIndex: 2,
+            }}
+            onMouseOver={e => e.currentTarget.style.background = 'rgba(220, 38, 38, 0.9)'}
+            onMouseOut={e => e.currentTarget.style.background = 'rgba(0,0,0,0.35)'}
+            title="Delete Project"
+          >
+            <Trash2 size={13} />
+          </button>
+        )}
+
         {/* Abstract geometric decoration */}
         <div style={{
           position: 'absolute', top: 10, right: 10,
@@ -76,15 +108,46 @@ function ProjectCard({ project, client, latestQuote, index, onViewQuote }) {
           width: 40, height: 40, borderRadius: '50%',
           background: 'rgba(255,255,255,0.06)',
         }} />
-        <span className={`badge ${STATUS_BADGE[displayStatus] || 'badge-draft'}`} style={{
-          position: 'absolute', top: 10, right: 10,
-          background: 'rgba(255,255,255,0.92)',
-          color: displayStatus === 'APPROVED' || displayStatus === 'IN PROGRESS' ? '#166534' : displayStatus === 'INVOICE CREATED' ? '#1d4ed8' : displayStatus === 'COMMERCIAL' ? '#5b21b6' : '#374151',
-          fontWeight: 700,
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-        }}>
-          {displayStatus}
-        </span>
+
+        {/* Interactive Status Selector on Project Tile */}
+        <select
+          value={displayStatus}
+          onChange={(e) => {
+            const newStat = e.target.value;
+            if (onUpdateStatus) {
+              onUpdateStatus(project.id, newStat, latestQuote?.id);
+            }
+          }}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: 'absolute', top: 10, right: 10,
+            background: 'rgba(255,255,255,0.95)',
+            color: (displayStatus === 'APPROVED' || displayStatus === 'IN PROGRESS' || displayStatus === 'COMPLETED') ? '#166534'
+                 : displayStatus === 'INVOICE CREATED' ? '#1d4ed8'
+                 : (displayStatus === 'REJECTED' || displayStatus === 'REJECT') ? '#b91c1c'
+                 : displayStatus === 'PENDING' ? '#b45309'
+                 : displayStatus === 'COMMERCIAL' ? '#5b21b6'
+                 : '#374151',
+            fontWeight: 700,
+            fontSize: '0.72rem',
+            padding: '3px 7px',
+            borderRadius: 4,
+            border: '1px solid rgba(0,0,0,0.15)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+            cursor: 'pointer',
+            outline: 'none',
+            zIndex: 2,
+          }}
+          title="Project Status: Click to change to Approved, Reject, Pending, etc."
+        >
+          <option value="DRAFT">DRAFT</option>
+          <option value="INVOICE CREATED">INVOICE CREATED</option>
+          <option value="PENDING">PENDING</option>
+          <option value="APPROVED">APPROVED</option>
+          <option value="REJECTED">REJECT</option>
+          <option value="IN PROGRESS">IN PROGRESS</option>
+          <option value="COMPLETED">COMPLETED</option>
+        </select>
       </div>
       <div className="project-card-body">
         <div style={{ fontWeight: 700, fontSize: '0.9375rem', marginBottom: 2 }}>{project.name}</div>
@@ -127,11 +190,22 @@ function ProjectCard({ project, client, latestQuote, index, onViewQuote }) {
 }
 
 export default function Hub() {
-  const { clients, projects, quotations } = useApp();
+  const { clients, projects, quotations, deleteProject, updateProject, updateQuotation } = useApp();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [showNewProject, setShowNewProject] = useState(false);
   const [previewQuotation, setPreviewQuotation] = useState(null);
+
+  const handleUpdateStatus = async (projectId, newStatus, latestQuoteId) => {
+    try {
+      await updateProject(projectId, { status: newStatus });
+      if (latestQuoteId) {
+        await updateQuotation(latestQuoteId, { status: newStatus });
+      }
+    } catch (err) {
+      console.error('Failed to update status', err);
+    }
+  };
 
   const totalRevenue = quotations.filter(q => q.status === 'APPROVED').reduce((s, q) => s + (q.total || 0), 0);
   const pendingQuotes = quotations.filter(q => q.status === 'PENDING');
@@ -280,6 +354,8 @@ export default function Hub() {
             latestQuote={getLatestQuote(p)}
             index={i}
             onViewQuote={(q) => setPreviewQuotation(q)}
+            onDeleteProject={deleteProject}
+            onUpdateStatus={handleUpdateStatus}
           />
         )) : (
           <div className="empty-state" style={{ gridColumn: '1 / -1' }}>

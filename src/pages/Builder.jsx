@@ -569,6 +569,7 @@ export default function Builder() {
   const editId = searchParams.get('edit');
   const reviseId = searchParams.get('revise');
   const preClientId = searchParams.get('clientId');
+  const preProjectTitle = searchParams.get('projectTitle');
 
   const [clientId, setClientId] = useState('');
   const [clientName, setClientName] = useState('');
@@ -652,6 +653,17 @@ export default function Builder() {
       }
     }
   }, [preClientId, clients, editId, reviseId]);
+
+  // Pre-fill project title if passed in query param
+  useEffect(() => {
+    if (preProjectTitle && !editId && !reviseId) {
+      try {
+        setProjectTitle(decodeURIComponent(preProjectTitle));
+      } catch {
+        setProjectTitle(preProjectTitle);
+      }
+    }
+  }, [preProjectTitle, editId, reviseId]);
 
   const handleClientChange = (selectedId) => {
     setClientId(selectedId);
