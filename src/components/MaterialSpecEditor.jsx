@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, RotateCcw, Save, ChevronDown, ChevronUp, Layers } from 'lucide-react';
 
 const POPULAR_BRANDS = [
@@ -77,7 +77,7 @@ export default function MaterialSpecEditor({ spec = [], onChange, onReset, onSav
   const [scrollTargetItem, setScrollTargetItem] = useState(null);
 
   const handleAddItem = (catIdx) => {
-    setCollapsedCats(prev => ({ ...prev, [catIdx]: false }));
+    setCollapsed(prev => ({ ...prev, [catIdx]: false }));
     const targetIdx = (spec[catIdx]?.items || []).length;
     const updated = spec.map((cat, ci) => {
       if (ci !== catIdx) return cat;
@@ -103,7 +103,7 @@ export default function MaterialSpecEditor({ spec = [], onChange, onReset, onSav
       setScrollTargetItem(null);
       return () => clearTimeout(timer);
     }
-  }, [spec, scrollTargetItem]);
+  }, [scrollTargetItem]);
 
   const handleDeleteItem = (catIdx, itemIdx) => {
     const updated = spec.map((cat, ci) => {

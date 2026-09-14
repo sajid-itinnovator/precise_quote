@@ -116,7 +116,7 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
 
 <div class="page">
   <div class="header-container">
-    ${tenantLogo ? `<img src="${tenantLogo}" alt="Logo" style="height: 60px; object-fit: contain;" />` : `<h2 style="margin:0; color: #17365D; font-size: 28px;">${userProfile?.tenantName || 'Company'}</h2>`}
+    ${tenantLogo ? `<img src="${tenantLogo}" alt="Logo" style="height: 60px; object-fit: contain;" />` : `<h2 style="margin:0; color: #17365D; font-size: 28px;">${tenantName || 'Company'}</h2>`}
     <div class="header-text">
       <h1>${tenantName ? tenantName.toUpperCase() : "VISTARA INTERIOR'S"}</h1>
       <p>Designing Dreams Creating Reality......</p>
