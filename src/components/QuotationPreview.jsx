@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Printer, Layers, Pencil, Copy } from 'lucide-react';
+import { X, Printer, Layers, Pencil, Copy, Lock } from 'lucide-react';
 import { formatIndianCurrency, numberToWords, formatDate } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
@@ -311,25 +311,32 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
 
         {/* Edit & Revision Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button
-            type="button"
-            onClick={() => {
-              if (quotation.id) {
-                navigate(`/builder?edit=${quotation.id}`);
-              }
-              onClose();
-            }}
-            style={{
-              background: currentStatus === 'DRAFT' ? '#2563eb' : 'rgba(255,255,255,0.15)',
-              border: currentStatus === 'DRAFT' ? '1px solid #60a5fa' : '1px solid rgba(255,255,255,0.25)',
-              borderRadius: 6, padding: '7px 14px', color: '#fff', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', fontWeight: 700,
-              boxShadow: currentStatus === 'DRAFT' ? '0 2px 8px rgba(37,99,235,0.4)' : undefined,
-            }}
-            title={currentStatus === 'DRAFT' ? "Edit this draft quotation in Builder" : "Edit this invoice in Builder"}
-          >
-            <Pencil size={14} /> {currentStatus === 'DRAFT' ? 'Edit Draft Invoice' : 'Edit Invoice'}
-          </button>
+          {currentStatus !== 'APPROVED' ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (quotation.id) {
+                  navigate(`/builder?edit=${quotation.id}`);
+                }
+                onClose();
+              }}
+              style={{
+                background: currentStatus === 'DRAFT' ? '#2563eb' : 'rgba(255,255,255,0.15)',
+                border: currentStatus === 'DRAFT' ? '1px solid #60a5fa' : '1px solid rgba(255,255,255,0.25)',
+                borderRadius: 6, padding: '7px 14px', color: '#fff', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', fontWeight: 700,
+                boxShadow: currentStatus === 'DRAFT' ? '0 2px 8px rgba(37,99,235,0.4)' : undefined,
+              }}
+              title={currentStatus === 'DRAFT' ? "Edit this draft quotation in Builder" : "Edit this invoice in Builder"}
+            >
+              <Pencil size={14} /> {currentStatus === 'DRAFT' ? 'Edit Draft Invoice' : 'Edit Invoice'}
+            </button>
+          ) : (
+            <span style={{ fontSize: '0.78rem', color: '#93c5fd', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', padding: '6px 12px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 5, fontWeight: 600 }}>
+              <Lock size={13} /> Approved (Locked)
+            </span>
+          )}
+
           {quotation.id && (
             <button
               type="button"
@@ -435,6 +442,46 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
           >
             <Pencil size={12} /> Edit Draft Now
           </button>
+        </div>
+      )}
+
+      {/* Notice Banner for Approved Invoices */}
+      {currentStatus === 'APPROVED' && (
+        <div style={{
+          background: 'linear-gradient(90deg, #065f46, #047857)',
+          borderBottom: '1px solid #10b981',
+          padding: '8px 24px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          color: '#f8fafc',
+          fontSize: '0.82rem',
+          flexShrink: 0,
+          flexWrap: 'wrap',
+          gap: 10
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ background: '#10b981', color: '#fff', fontSize: '0.65rem', fontWeight: 800, padding: '2px 6px', borderRadius: 4 }}>
+              APPROVED
+            </span>
+            <span>This quotation is <strong>APPROVED</strong> by client and locked against direct edits. To make changes, use <strong>Create Revision</strong>.</span>
+          </div>
+          {quotation.id && (
+            <button
+              type="button"
+              onClick={() => {
+                navigate(`/builder?revise=${quotation.id}`);
+                onClose();
+              }}
+              style={{
+                background: '#fff', color: '#047857', border: 'none', borderRadius: 4,
+                padding: '4px 12px', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 4
+              }}
+            >
+              <Copy size={12} /> Create Revision Now
+            </button>
+          )}
         </div>
       )}
 

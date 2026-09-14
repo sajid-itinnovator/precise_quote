@@ -64,16 +64,28 @@ function QuotationCard({ quotation, onDelete, onView }) {
 
             {/* Direct action buttons on card for 1-click access */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <button
-                type="button"
-                className={`btn btn-sm ${quotation.status === 'DRAFT' ? 'btn-primary' : 'btn-secondary'}`}
-                style={{ padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}
-                onClick={() => navigate(`/builder?edit=${quotation.id}`)}
-                title={quotation.status === 'DRAFT' ? 'Edit this draft invoice in Builder' : 'Edit this invoice'}
-              >
-                <Pencil size={12} />
-                {quotation.status === 'DRAFT' ? 'Edit Draft' : 'Edit'}
-              </button>
+              {quotation.status !== 'APPROVED' ? (
+                <button
+                  type="button"
+                  className={`btn btn-sm ${quotation.status === 'DRAFT' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}
+                  onClick={() => navigate(`/builder?edit=${quotation.id}`)}
+                  title={quotation.status === 'DRAFT' ? 'Edit this draft invoice in Builder' : 'Edit this invoice'}
+                >
+                  <Pencil size={12} />
+                  {quotation.status === 'DRAFT' ? 'Edit Draft' : 'Edit Invoice'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  style={{ padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}
+                  onClick={() => navigate(`/builder?revise=${quotation.id}`)}
+                  title="Approved invoice is locked. Click to create a new revision."
+                >
+                  <Copy size={12} /> Revise
+                </button>
+              )}
 
               <button
                 type="button"
@@ -101,16 +113,18 @@ function QuotationCard({ quotation, onDelete, onView }) {
           >
             <Eye size={14} /> View &amp; Print
           </button>
-          <button
-            className="btn-ghost"
-            style={{ width: '100%', padding: '9px 14px', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', justifyContent: 'flex-start', fontWeight: quotation.status === 'DRAFT' ? 700 : 400 }}
-            onClick={() => {
-              setMenuOpen(false);
-              navigate(`/builder?edit=${quotation.id}`);
-            }}
-          >
-            <Pencil size={14} /> {quotation.status === 'DRAFT' ? 'Edit Draft Invoice' : 'Edit Invoice'}
-          </button>
+          {quotation.status !== 'APPROVED' && (
+            <button
+              className="btn-ghost"
+              style={{ width: '100%', padding: '9px 14px', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', justifyContent: 'flex-start', fontWeight: quotation.status === 'DRAFT' ? 700 : 400 }}
+              onClick={() => {
+                setMenuOpen(false);
+                navigate(`/builder?edit=${quotation.id}`);
+              }}
+            >
+              <Pencil size={14} /> {quotation.status === 'DRAFT' ? 'Edit Draft Invoice' : 'Edit Invoice'}
+            </button>
+          )}
           <button
             className="btn-ghost"
             style={{ width: '100%', padding: '9px 14px', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', justifyContent: 'flex-start' }}

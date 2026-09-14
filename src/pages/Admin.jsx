@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { formatIndianCurrency, formatDateTime } from '../utils/helpers';
 import QuotationPreview from '../components/QuotationPreview';
-import { Eye, FileText, Calendar, Search, Pencil } from 'lucide-react';
+import { Eye, FileText, Calendar, Search, Pencil, Copy } from 'lucide-react';
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -430,14 +430,25 @@ export default function Admin() {
                           >
                             <Eye size={13} /> View
                           </button>
-                          <button
-                            className={`btn btn-sm ${q.status === 'DRAFT' ? 'btn-primary' : 'btn-outline-secondary'}`}
-                            onClick={() => navigate(`/builder?edit=${q.id}`)}
-                            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', fontSize: '0.78rem', fontWeight: q.status === 'DRAFT' ? 700 : 500 }}
-                            title={q.status === 'DRAFT' ? 'Edit this draft quotation in Builder' : 'Edit this invoice'}
-                          >
-                            <Pencil size={12} /> {q.status === 'DRAFT' ? 'Edit Draft' : 'Edit'}
-                          </button>
+                          {q.status !== 'APPROVED' ? (
+                            <button
+                              className={`btn btn-sm ${q.status === 'DRAFT' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                              onClick={() => navigate(`/builder?edit=${q.id}`)}
+                              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', fontSize: '0.78rem', fontWeight: q.status === 'DRAFT' ? 700 : 500 }}
+                              title={q.status === 'DRAFT' ? 'Edit this draft quotation in Builder' : 'Edit this invoice'}
+                            >
+                              <Pencil size={12} /> {q.status === 'DRAFT' ? 'Edit Draft' : 'Edit'}
+                            </button>
+                          ) : (
+                            <button
+                              className="btn btn-sm btn-outline-secondary"
+                              onClick={() => navigate(`/builder?revise=${q.id}`)}
+                              style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', fontSize: '0.78rem' }}
+                              title="Approved quotation is locked. Click to create a new revision."
+                            >
+                              <Copy size={12} /> Revise
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

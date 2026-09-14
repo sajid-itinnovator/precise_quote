@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, ChevronDown, ChevronUp, Calculator, Eye, Home, ArrowRight, Building, Layers, FileCheck, Save, Copy, Pencil, RotateCcw, Check } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronUp, Calculator, Eye, Home, ArrowRight, Building, Layers, FileCheck, Save, Copy, Pencil, RotateCcw, Check, Lock } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { formatIndianCurrency, numberToWords } from '../utils/helpers';
 import QuotationPreview from '../components/QuotationPreview';
@@ -472,8 +472,15 @@ export default function Builder() {
 
   const getClient = () => clients.find(c => c.id === clientId);
 
+  const isApproved = existingQuote?.status === 'APPROVED';
+
   const handleSave = async (saveStatus = 'DRAFT') => {
     try {
+      if (editId && isApproved) {
+        alert("This quotation is APPROVED and locked against direct edits. Please use 'Create Revision' to make changes.");
+        return;
+      }
+
       const client = getClient();
       const quoteData = {
         clientId,
@@ -547,21 +554,21 @@ export default function Builder() {
         <Home size={13} />
         <span>Quotation</span>
         <ArrowRight size={13} />
-        <span>{editId ? (existingQuote?.status === 'DRAFT' ? 'Edit Draft Invoice' : 'Edit Invoice') : reviseId ? 'Create Revision' : 'New Quote'}</span>
+        <span>{editId ? (isApproved ? 'Approved Quotation' : existingQuote?.status === 'DRAFT' ? 'Edit Draft Invoice' : 'Edit Invoice') : reviseId ? 'Create Revision' : 'New Quote'}</span>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <div>
           <h1 className="page-title" style={{ margin: 0 }}>
             {editId 
-              ? (existingQuote?.status === 'DRAFT' ? `Edit Draft Invoice #${existingQuote?.quotationNo || ''}` : `Edit Invoice #${existingQuote?.quotationNo || ''}`)
+              ? (isApproved ? `Invoice #${existingQuote?.quotationNo || ''} (Approved)` : existingQuote?.status === 'DRAFT' ? `Edit Draft Invoice #${existingQuote?.quotationNo || ''}` : `Edit Invoice #${existingQuote?.quotationNo || ''}`)
               : reviseId 
                 ? `Revise Invoice #${existingQuote?.quotationNo || ''}` 
                 : 'Quotation Builder'}
           </h1>
           <p className="page-subtitle" style={{ margin: '4px 0 0' }}>
             {editId
-              ? (existingQuote?.status === 'DRAFT' ? 'Update items, dimensions, rates, and brand specs for this draft quotation.' : 'Update items, brands, and values for this existing invoice.')
+              ? (isApproved ? 'This invoice is approved by client and locked against direct edits.' : existingQuote?.status === 'DRAFT' ? 'Update items, dimensions, rates, and brand specs for this draft quotation.' : 'Update items, brands, and values for this existing invoice.')
               : reviseId
                 ? 'Create a revised quotation version while preserving historical records.'
                 : 'Calculate accurate, itemized interior quotation and generate PDF invoices.'}
@@ -579,8 +586,50 @@ export default function Builder() {
         )}
       </div>
 
-      {/* Edit Mode Notification Banner */}
-      {editId && (
+      {/* Approved Lock Banner */}
+      {editId && isApproved && (
+        <div style={{
+          background: '#fef2f2',
+          border: '1px solid #ef4444',
+          borderRadius: 8,
+          padding: '14px 18px',
+          marginBottom: 16,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 12,
+        }}>
+          <div>
+            <div style={{ fontWeight: 800, color: '#b91c1c', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Lock size={17} /> Invoice #{existingQuote?.quotationNo} is APPROVED and Locked
+            </div>
+            <div style={{ fontSize: '0.82rem', color: '#7f1d1d', marginTop: 4 }}>
+              Approved invoices cannot be edited directly. To make updates for this client, please create a new revision.
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => navigate(`/builder?revise=${editId}`, { replace: true })}
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <Copy size={14} /> Create New Revision Instead
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => navigate('/builder', { replace: true })}
+            >
+              Exit
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Mode Notification Banner for non-approved states */}
+      {editId && !isApproved && (
         <div style={{
           background: existingQuote?.status === 'DRAFT' ? '#eff6ff' : 'var(--primary-light)',
           border: existingQuote?.status === 'DRAFT' ? '1px solid #3b82f6' : '1px solid var(--primary)',
@@ -1107,48 +1156,74 @@ function BuilderRight({
       </div>
 
       {/* Save as Invoice & Save as Draft Buttons */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
-        <button
-          type="button"
-          className="btn btn-primary w-full"
-          onClick={onSaveInvoice}
-          disabled={!clientId}
-          style={{
-            padding: '11px 16px',
-            fontWeight: 700,
-            fontSize: '0.9rem',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            gap: 8,
-            boxShadow: '0 2px 6px rgba(26, 86, 255, 0.25)'
-          }}
-        >
-          <FileCheck size={17} />
-          {saved && savedMessage && savedMessage.includes('Invoice')
-            ? savedMessage
-            : isEditing
-              ? (existingQuote?.status === 'DRAFT' ? 'Finalize & Save as Invoice' : 'Update & Finalize Invoice')
-              : isRevising
-                ? 'Save Revision as Invoice'
-                : 'Save as Invoice (Invoice Created)'}
-        </button>
+      {isEditing && existingQuote?.status === 'APPROVED' ? (
+        <div style={{
+          background: '#fef2f2',
+          border: '1px solid #ef4444',
+          borderRadius: 8,
+          padding: '12px 14px',
+          marginBottom: 12,
+          textAlign: 'center'
+        }}>
+          <div style={{ fontWeight: 700, color: '#b91c1c', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <Lock size={15} /> Invoice Approved &amp; Locked
+          </div>
+          <div style={{ fontSize: '0.75rem', color: '#7f1d1d', marginTop: 4, marginBottom: 8 }}>
+            Direct edits are disabled for approved invoices.
+          </div>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm w-full"
+            onClick={() => window.location.href = `#/builder?revise=${existingQuote.id}`}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.8rem' }}
+          >
+            <Copy size={13} /> Create Revision Instead
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+          <button
+            type="button"
+            className="btn btn-primary w-full"
+            onClick={onSaveInvoice}
+            disabled={!clientId}
+            style={{
+              padding: '11px 16px',
+              fontWeight: 700,
+              fontSize: '0.9rem',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              gap: 8,
+              boxShadow: '0 2px 6px rgba(26, 86, 255, 0.25)'
+            }}
+          >
+            <FileCheck size={17} />
+            {saved && savedMessage && savedMessage.includes('Invoice')
+              ? savedMessage
+              : isEditing
+                ? (existingQuote?.status === 'DRAFT' ? 'Finalize & Save as Invoice' : 'Update & Finalize Invoice')
+                : isRevising
+                  ? 'Save Revision as Invoice'
+                  : 'Save as Invoice (Invoice Created)'}
+          </button>
 
-        <button
-          type="button"
-          className="btn btn-secondary w-full"
-          onClick={onSaveDraft}
-          disabled={!clientId}
-          style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '9px 14px' }}
-        >
-          <Save size={15} />
-          {saved && savedMessage && savedMessage.includes('Draft')
-            ? savedMessage
-            : isEditing
-              ? (existingQuote?.status === 'DRAFT' ? 'Save Changes to Draft' : 'Save Changes as Draft')
-              : 'Save as Draft'}
-        </button>
-      </div>
+          <button
+            type="button"
+            className="btn btn-secondary w-full"
+            onClick={onSaveDraft}
+            disabled={!clientId}
+            style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '9px 14px' }}
+          >
+            <Save size={15} />
+            {saved && savedMessage && savedMessage.includes('Draft')
+              ? savedMessage
+              : isEditing
+                ? (existingQuote?.status === 'DRAFT' ? 'Save Changes to Draft' : 'Save Changes as Draft')
+                : 'Save as Draft'}
+          </button>
+        </div>
+      )}
 
       {/* Note */}
       <div style={{ background: 'var(--surface-2)', borderRadius: 8, padding: '10px 12px', fontSize: '0.75rem', color: 'var(--text-muted)', border: '1px solid var(--border-light)' }}>
