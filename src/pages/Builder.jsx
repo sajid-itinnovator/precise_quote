@@ -1293,6 +1293,7 @@ export default function Builder() {
             showRoomPicker={showRoomPicker} setShowRoomPicker={setShowRoomPicker}
             customRoom={customRoom} setCustomRoom={setCustomRoom} addRoom={addRoom}
             PRESET_ROOMS={PRESET_ROOMS}
+            materialCategoriesCount={quoteMaterialSpec.length}
             onOpenMaterials={() => {
               setActiveTab('materials');
               window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1431,6 +1432,38 @@ export default function Builder() {
             </div>
           </div>
         )}
+        {/* Mobile View: Floating button above the Summary section */}
+        {activeTab === 'scope' && (
+          <div style={{ margin: '20px 0 14px' }}>
+            <button
+              type="button"
+              className="btn w-full"
+              onClick={() => {
+                setActiveTab('materials');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              style={{
+                padding: '13px 18px',
+                borderRadius: 14,
+                border: '1.5px solid var(--secondary, #17365d)',
+                background: 'var(--surface)',
+                color: 'var(--secondary, #17365d)',
+                fontWeight: 700,
+                fontSize: '0.9rem',
+                boxShadow: '0 4px 16px rgba(23, 54, 93, 0.12)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 10,
+                cursor: 'pointer'
+              }}
+            >
+              <Layers size={18} style={{ color: 'var(--primary)' }} />
+              <span>Material Brands &amp; Specs ({quoteMaterialSpec.length} Categories)</span>
+              <span style={{ fontSize: '1.1rem', color: 'var(--primary)' }}>→</span>
+            </button>
+          </div>
+        )}
         <BuilderRight
           subtotal={subtotal} gst={gst} total={total} totalItems={totalItems} totalSqft={totalSqft}
           includeGST={includeGST} setIncludeGST={setIncludeGST}
@@ -1503,7 +1536,7 @@ export default function Builder() {
 }
 
 // ─── Builder Left (Scope of Work) ─────────────────────────────────────────
-function BuilderLeft({ rooms, updateRoom, deleteRoom, moveRoom, showRoomPicker, setShowRoomPicker, customRoom, setCustomRoom, addRoom, PRESET_ROOMS, onOpenMaterials }) {
+function BuilderLeft({ rooms, updateRoom, deleteRoom, moveRoom, showRoomPicker, setShowRoomPicker, customRoom, setCustomRoom, addRoom, PRESET_ROOMS, onOpenMaterials, materialCategoriesCount = 8 }) {
   const [activePickerIndex, setActivePickerIndex] = useState(null);
   const [inlineCustomRoom, setInlineCustomRoom] = useState('');
 
@@ -1679,6 +1712,47 @@ function BuilderLeft({ rooms, updateRoom, deleteRoom, moveRoom, showRoomPicker, 
           </div>
         </React.Fragment>
       ))}
+
+      {/* Desktop View: Floating button at the bottom of the Builder */}
+      {onOpenMaterials && (
+        <div className="desktop-only" style={{
+          position: 'sticky',
+          bottom: 20,
+          zIndex: 20,
+          display: 'flex',
+          justifyContent: 'center',
+          marginTop: 28,
+          marginBottom: 10,
+          pointerEvents: 'none'
+        }}>
+          <button
+            type="button"
+            onClick={onOpenMaterials}
+            className="btn"
+            style={{
+              pointerEvents: 'auto',
+              background: 'var(--surface)',
+              border: '1.5px solid var(--secondary, #17365d)',
+              color: 'var(--secondary, #17365d)',
+              fontWeight: 700,
+              fontSize: '0.88rem',
+              padding: '11px 24px',
+              borderRadius: 30,
+              boxShadow: '0 8px 25px rgba(15, 23, 42, 0.18)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              cursor: 'pointer',
+              backdropFilter: 'blur(8px)'
+            }}
+            title="Open Material Brands & Specs"
+          >
+            <Layers size={17} style={{ color: 'var(--primary)' }} />
+            <span>Material Brands &amp; Specs ({materialCategoriesCount} Categories)</span>
+            <span style={{ fontSize: '1.1rem', color: 'var(--primary)' }}>→</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
