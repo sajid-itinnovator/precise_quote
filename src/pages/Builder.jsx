@@ -491,11 +491,11 @@ export default function Builder() {
 
       if (editId) {
         await updateQuotation(editId, quoteData);
-        setSavedMessage(saveStatus === 'INVOICE CREATED' ? '✓ Invoice Updated & Finalized!' : '✓ Changes Saved as Draft!');
+        setSavedMessage(saveStatus === 'INVOICE CREATED' ? '✓ Invoice Updated & Finalized!' : '✓ Draft Updated Successfully!');
         setSaved(true);
         setTimeout(() => setSaved(false), 3500);
       } else {
-        await addQuotation(quoteData);
+        const newId = await addQuotation(quoteData);
         setSavedMessage(saveStatus === 'INVOICE CREATED' ? '✓ Invoice Created Successfully!' : '✓ Saved as Draft!');
         setSaved(true);
         setTimeout(() => setSaved(false), 3500);
@@ -503,6 +503,9 @@ export default function Builder() {
           setTimeout(() => {
             navigate('/history');
           }, 1500);
+        } else if (newId && saveStatus === 'DRAFT') {
+          // Immediately enter edit mode for this draft so subsequent edits update it directly
+          navigate(`/builder?edit=${newId}`, { replace: true });
         }
       }
     } catch (err) {
@@ -544,17 +547,21 @@ export default function Builder() {
         <Home size={13} />
         <span>Quotation</span>
         <ArrowRight size={13} />
-        <span>{editId ? 'Edit Invoice' : reviseId ? 'Create Revision' : 'New Quote'}</span>
+        <span>{editId ? (existingQuote?.status === 'DRAFT' ? 'Edit Draft Invoice' : 'Edit Invoice') : reviseId ? 'Create Revision' : 'New Quote'}</span>
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
         <div>
           <h1 className="page-title" style={{ margin: 0 }}>
-            {editId ? `Edit Invoice #${existingQuote?.quotationNo || ''}` : reviseId ? `Revise Invoice #${existingQuote?.quotationNo || ''}` : 'Quotation Builder'}
+            {editId 
+              ? (existingQuote?.status === 'DRAFT' ? `Edit Draft Invoice #${existingQuote?.quotationNo || ''}` : `Edit Invoice #${existingQuote?.quotationNo || ''}`)
+              : reviseId 
+                ? `Revise Invoice #${existingQuote?.quotationNo || ''}` 
+                : 'Quotation Builder'}
           </h1>
           <p className="page-subtitle" style={{ margin: '4px 0 0' }}>
             {editId
-              ? 'Update items, brands, and values for this existing invoice.'
+              ? (existingQuote?.status === 'DRAFT' ? 'Update items, dimensions, rates, and brand specs for this draft quotation.' : 'Update items, brands, and values for this existing invoice.')
               : reviseId
                 ? 'Create a revised quotation version while preserving historical records.'
                 : 'Calculate accurate, itemized interior quotation and generate PDF invoices.'}
@@ -575,8 +582,8 @@ export default function Builder() {
       {/* Edit Mode Notification Banner */}
       {editId && (
         <div style={{
-          background: 'var(--primary-light)',
-          border: '1px solid var(--primary)',
+          background: existingQuote?.status === 'DRAFT' ? '#eff6ff' : 'var(--primary-light)',
+          border: existingQuote?.status === 'DRAFT' ? '1px solid #3b82f6' : '1px solid var(--primary)',
           borderRadius: 8,
           padding: '12px 16px',
           marginBottom: 16,
@@ -588,13 +595,15 @@ export default function Builder() {
         }}>
           <div>
             <div style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Pencil size={16} /> Currently Editing Invoice #{existingQuote?.quotationNo || editId}
+              <Pencil size={16} /> {existingQuote?.status === 'DRAFT' ? `Currently Editing Draft Invoice #${existingQuote?.quotationNo || editId}` : `Currently Editing Invoice #${existingQuote?.quotationNo || editId}`}
               <span className={`badge ${existingQuote?.status === 'INVOICE CREATED' ? 'badge-primary' : 'badge-draft'}`} style={{ fontSize: '0.65rem' }}>
                 {existingQuote?.status || 'DRAFT'}
               </span>
             </div>
             <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 2 }}>
-              Changes will update this existing quotation record directly.
+              {existingQuote?.status === 'DRAFT'
+                ? 'Modifications will update this existing draft invoice. You can save changes to keep it as a draft or click "Save as Invoice" to finalize it.'
+                : 'Changes will update this existing quotation record directly.'}
             </div>
           </div>
           <button
@@ -727,6 +736,7 @@ export default function Builder() {
           saved={saved} savedMessage={savedMessage} clientId={clientId}
           isEditing={Boolean(editId)}
           isRevising={Boolean(reviseId)}
+          existingQuote={existingQuote}
         />
       </div>
 
@@ -774,6 +784,7 @@ export default function Builder() {
           saved={saved} savedMessage={savedMessage} clientId={clientId}
           isEditing={Boolean(editId)}
           isRevising={Boolean(reviseId)}
+          existingQuote={existingQuote}
         />
       </div>
 
@@ -989,7 +1000,7 @@ function BuilderRight({
   subtotal, gst, total, totalItems, totalSqft = 0,
   includeGST, setIncludeGST, showItemAmount, setShowItemAmount,
   onSaveInvoice, onSaveDraft, onPreview,
-  saved, savedMessage, clientId, isEditing, isRevising
+  saved, savedMessage, clientId, isEditing, isRevising, existingQuote
 }) {
   return (
     <div>
@@ -1117,7 +1128,7 @@ function BuilderRight({
           {saved && savedMessage && savedMessage.includes('Invoice')
             ? savedMessage
             : isEditing
-              ? 'Update & Finalize Invoice'
+              ? (existingQuote?.status === 'DRAFT' ? 'Finalize & Save as Invoice' : 'Update & Finalize Invoice')
               : isRevising
                 ? 'Save Revision as Invoice'
                 : 'Save as Invoice (Invoice Created)'}
@@ -1134,7 +1145,7 @@ function BuilderRight({
           {saved && savedMessage && savedMessage.includes('Draft')
             ? savedMessage
             : isEditing
-              ? 'Save Changes as Draft'
+              ? (existingQuote?.status === 'DRAFT' ? 'Save Changes to Draft' : 'Save Changes as Draft')
               : 'Save as Draft'}
         </button>
       </div>

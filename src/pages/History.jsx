@@ -45,20 +45,45 @@ function QuotationCard({ quotation, onDelete, onView }) {
               </button>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span className={`badge ${STATUS_BADGE[quotation.status] || 'badge-draft'}`} style={{ fontSize: '0.65rem' }}>
-              #{quotation.quotationNo}
-            </span>
-            {quotation.status && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 10, flexWrap: 'wrap', paddingTop: 8, borderTop: '1px dashed var(--border-light)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <span className={`badge ${STATUS_BADGE[quotation.status] || 'badge-draft'}`} style={{ fontSize: '0.65rem' }}>
-                {quotation.status}
+                #{quotation.quotationNo}
               </span>
-            )}
-            {quotation.projectTitle && (
-              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }} className="truncate">
-                {quotation.projectTitle}
-              </span>
-            )}
+              {quotation.status && (
+                <span className={`badge ${STATUS_BADGE[quotation.status] || 'badge-draft'}`} style={{ fontSize: '0.65rem' }}>
+                  {quotation.status}
+                </span>
+              )}
+              {quotation.projectTitle && (
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }} className="truncate">
+                  {quotation.projectTitle}
+                </span>
+              )}
+            </div>
+
+            {/* Direct action buttons on card for 1-click access */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button
+                type="button"
+                className={`btn btn-sm ${quotation.status === 'DRAFT' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}
+                onClick={() => navigate(`/builder?edit=${quotation.id}`)}
+                title={quotation.status === 'DRAFT' ? 'Edit this draft invoice in Builder' : 'Edit this invoice'}
+              >
+                <Pencil size={12} />
+                {quotation.status === 'DRAFT' ? 'Edit Draft' : 'Edit'}
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-sm btn-secondary"
+                style={{ padding: '4px 10px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 4 }}
+                onClick={onView}
+              >
+                <Eye size={12} /> View
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -78,13 +103,13 @@ function QuotationCard({ quotation, onDelete, onView }) {
           </button>
           <button
             className="btn-ghost"
-            style={{ width: '100%', padding: '9px 14px', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', justifyContent: 'flex-start' }}
+            style={{ width: '100%', padding: '9px 14px', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', justifyContent: 'flex-start', fontWeight: quotation.status === 'DRAFT' ? 700 : 400 }}
             onClick={() => {
               setMenuOpen(false);
               navigate(`/builder?edit=${quotation.id}`);
             }}
           >
-            <Pencil size={14} /> Edit Invoice
+            <Pencil size={14} /> {quotation.status === 'DRAFT' ? 'Edit Draft Invoice' : 'Edit Invoice'}
           </button>
           <button
             className="btn-ghost"

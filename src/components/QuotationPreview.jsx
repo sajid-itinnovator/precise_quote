@@ -309,24 +309,28 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
           </span>
         </div>
 
-        {/* Edit & Revision Buttons if quotation already saved */}
-        {quotation.id && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button
-              type="button"
-              onClick={() => {
+        {/* Edit & Revision Buttons */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            type="button"
+            onClick={() => {
+              if (quotation.id) {
                 navigate(`/builder?edit=${quotation.id}`);
-                onClose();
-              }}
-              style={{
-                background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)',
-                borderRadius: 6, padding: '7px 12px', color: '#fff', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', fontWeight: 600,
-              }}
-              title="Edit this invoice in Builder"
-            >
-              <Pencil size={14} /> Edit Invoice
-            </button>
+              }
+              onClose();
+            }}
+            style={{
+              background: currentStatus === 'DRAFT' ? '#2563eb' : 'rgba(255,255,255,0.15)',
+              border: currentStatus === 'DRAFT' ? '1px solid #60a5fa' : '1px solid rgba(255,255,255,0.25)',
+              borderRadius: 6, padding: '7px 14px', color: '#fff', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', fontWeight: 700,
+              boxShadow: currentStatus === 'DRAFT' ? '0 2px 8px rgba(37,99,235,0.4)' : undefined,
+            }}
+            title={currentStatus === 'DRAFT' ? "Edit this draft quotation in Builder" : "Edit this invoice in Builder"}
+          >
+            <Pencil size={14} /> {currentStatus === 'DRAFT' ? 'Edit Draft Invoice' : 'Edit Invoice'}
+          </button>
+          {quotation.id && (
             <button
               type="button"
               onClick={() => {
@@ -342,8 +346,8 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
             >
               <Copy size={14} /> Create Revision
             </button>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Customize Brands button */}
         <button
@@ -368,14 +372,18 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
           background: showItemAmount ? 'rgba(26, 86, 255, 0.3)' : 'rgba(255, 255, 255, 0.12)',
           border: showItemAmount ? '1px solid #3b82f6' : '1px solid rgba(255, 255, 255, 0.2)',
           padding: '7px 14px', borderRadius: 6,
-          color: '#fff', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer',
+          color: '#fff', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600,
           userSelect: 'none', transition: 'all 0.2s'
         }}>
           <input
             type="checkbox"
             checked={showItemAmount}
-            onChange={e => handleToggleAmount(e.target.checked)}
-            style={{ accentColor: '#1a56ff', width: 16, height: 16, cursor: 'pointer' }}
+            onChange={e => {
+              const val = e.target.checked;
+              setShowItemAmount(val);
+              if (onUpdateShowItemAmount) onUpdateShowItemAmount(val);
+            }}
+            style={{ accentColor: '#1a56ff', cursor: 'pointer', width: 15, height: 15 }}
           />
           <span>Show Item Amount</span>
         </label>
@@ -391,6 +399,44 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
           <Printer size={16} /> Print / Save as PDF
         </button>
       </div>
+
+      {/* Notice Banner for Draft Invoices */}
+      {currentStatus === 'DRAFT' && (
+        <div style={{
+          background: 'linear-gradient(90deg, #1e3a8a, #1d4ed8)',
+          borderBottom: '1px solid #3b82f6',
+          padding: '8px 24px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          color: '#f8fafc',
+          fontSize: '0.82rem',
+          flexShrink: 0,
+          flexWrap: 'wrap',
+          gap: 10
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ background: '#f59e0b', color: '#000', fontSize: '0.65rem', fontWeight: 800, padding: '2px 6px', borderRadius: 4 }}>
+              DRAFT
+            </span>
+            <span>This is a saved <strong>Draft Quotation</strong>. You can edit items, dimensions, and rates anytime, or click <strong>Print / Save as PDF</strong> to generate the final invoice.</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (quotation.id) navigate(`/builder?edit=${quotation.id}`);
+              onClose();
+            }}
+            style={{
+              background: '#fff', color: '#1e3a8a', border: 'none', borderRadius: 4,
+              padding: '4px 12px', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 4
+            }}
+          >
+            <Pencil size={12} /> Edit Draft Now
+          </button>
+        </div>
+      )}
 
       <div style={{ flex: 1, overflow: 'auto', padding: '32px 0', display: 'flex', justifyContent: 'center' }}>
         <div style={{ pointerEvents: 'none' }}>

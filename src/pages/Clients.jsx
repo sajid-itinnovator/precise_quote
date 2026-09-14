@@ -151,15 +151,15 @@ function ClientInvoicesModal({ client, onClose }) {
                     </button>
                     <button
                       type="button"
-                      className="btn btn-secondary btn-sm"
+                      className={`btn btn-sm ${q.status === 'DRAFT' ? 'btn-primary' : 'btn-secondary'}`}
                       onClick={() => {
                         onClose();
                         navigate(`/builder?edit=${q.id}`);
                       }}
-                      style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.78rem', padding: '5px 10px' }}
-                      title="Edit this invoice directly in Builder"
+                      style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.78rem', padding: '5px 10px', fontWeight: q.status === 'DRAFT' ? 700 : 500 }}
+                      title={q.status === 'DRAFT' ? "Edit this draft quotation in Builder" : "Edit this invoice directly in Builder"}
                     >
-                      <Pencil size={13} /> Edit Invoice
+                      <Pencil size={13} /> {q.status === 'DRAFT' ? 'Edit Draft' : 'Edit Invoice'}
                     </button>
                     <button
                       type="button"

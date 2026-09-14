@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { collection, getDocs, doc, setDoc, deleteDoc, query, where } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { db, secondaryAuth } from '../firebase';
@@ -6,9 +7,10 @@ import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { formatIndianCurrency, formatDateTime } from '../utils/helpers';
 import QuotationPreview from '../components/QuotationPreview';
-import { Eye, FileText, Calendar, Search } from 'lucide-react';
+import { Eye, FileText, Calendar, Search, Pencil } from 'lucide-react';
 
 export default function Admin() {
+  const navigate = useNavigate();
   const { currentUser, userProfile } = useAuth();
   const { tenantLogo, setTenantLogo, subscription, quotations } = useApp();
   const [usersList, setUsersList] = useState([]);
@@ -420,13 +422,23 @@ export default function Admin() {
                         </span>
                       </td>
                       <td>
-                        <button
-                          className="btn btn-sm btn-outline-primary"
-                          onClick={() => setPreviewQuotation(q)}
-                          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', fontSize: '0.78rem' }}
-                        >
-                          <Eye size={13} /> View / Print
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <button
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={() => setPreviewQuotation(q)}
+                            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', fontSize: '0.78rem' }}
+                          >
+                            <Eye size={13} /> View
+                          </button>
+                          <button
+                            className={`btn btn-sm ${q.status === 'DRAFT' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                            onClick={() => navigate(`/builder?edit=${q.id}`)}
+                            style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 9px', fontSize: '0.78rem', fontWeight: q.status === 'DRAFT' ? 700 : 500 }}
+                            title={q.status === 'DRAFT' ? 'Edit this draft quotation in Builder' : 'Edit this invoice'}
+                          >
+                            <Pencil size={12} /> {q.status === 'DRAFT' ? 'Edit Draft' : 'Edit'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
