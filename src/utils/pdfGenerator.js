@@ -150,13 +150,13 @@ function addScopeOfWork(doc, quotation, startY) {
 
   const head = showAmount ? [[
     { content: 'SR .NO', styles: { halign: 'center', valign: 'middle' } },
-    { content: 'Particular', styles: { halign: 'center', valign: 'middle' } },
-    { content: 'Size', styles: { halign: 'center', valign: 'middle' } },
-    { content: 'Amount', styles: { halign: 'center', valign: 'middle' } },
+    { content: 'PARTICULAR', styles: { halign: 'center', valign: 'middle' } },
+    { content: 'SIZE', styles: { halign: 'center', valign: 'middle' } },
+    { content: 'AMOUNT', styles: { halign: 'center', valign: 'middle' } },
   ]] : [[
     { content: 'SR .NO', styles: { halign: 'center', valign: 'middle' } },
-    { content: 'Particular', styles: { halign: 'center', valign: 'middle' } },
-    { content: 'Size', styles: { halign: 'center', valign: 'middle' } },
+    { content: 'PARTICULAR', styles: { halign: 'center', valign: 'middle' } },
+    { content: 'SIZE', styles: { halign: 'center', valign: 'middle' } },
   ]];
 
   const columnStyles = showAmount ? {

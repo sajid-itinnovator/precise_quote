@@ -157,9 +157,9 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
     <thead>
       <tr>
         <th style="width:50px; text-align:center;">SR .NO</th>
-        <th style="text-align:center;">Particular</th>
-        <th style="width:${showItemAmount ? '120px' : '150px'}; text-align:center;">Size</th>
-        ${showItemAmount ? `<th style="width:100px; text-align:center;">Amount</th>` : ''}
+        <th style="text-align:center;">PARTICULAR</th>
+        <th style="width:${showItemAmount ? '120px' : '150px'}; text-align:center;">SIZE</th>
+        ${showItemAmount ? `<th style="width:100px; text-align:center;">AMOUNT</th>` : ''}
       </tr>
     </thead>
     <tbody>${scopeRows}</tbody>
@@ -701,9 +701,9 @@ function QuotationDocument({ quotation, total, tenantName, tenantLogo, showItemA
           <thead>
             <tr>
               <th style={{ width: 50, ...thStyle }}>SR .NO</th>
-              <th style={thStyle}>Particular</th>
-              <th style={{ width: showItemAmount ? 120 : 150, ...thStyle }}>Size</th>
-              {showItemAmount && <th style={{ width: 100, ...thStyle }}>Amount</th>}
+              <th style={thStyle}>PARTICULAR</th>
+              <th style={{ width: showItemAmount ? 120 : 150, ...thStyle }}>SIZE</th>
+              {showItemAmount && <th style={{ width: 100, ...thStyle }}>AMOUNT</th>}
             </tr>
           </thead>
           <tbody>
