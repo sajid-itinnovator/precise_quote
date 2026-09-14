@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Search, Filter, MoreVertical, Eye, Trash2, FileText } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, Filter, MoreVertical, Eye, Trash2, FileText, Pencil, Copy, Calendar } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { formatIndianCurrency, formatDate } from '../utils/helpers';
+import { formatIndianCurrency, formatDate, formatDateTime } from '../utils/helpers';
 import { ConfirmModal } from '../components/Modals';
 import QuotationPreview from '../components/QuotationPreview';
 
 const STATUS_BADGE = {
+  'INVOICE CREATED': 'badge-primary',
   APPROVED: 'badge-success',
   PENDING: 'badge-warning',
   DRAFT: 'badge-draft',
@@ -14,6 +16,7 @@ const STATUS_BADGE = {
 const PAGE_SIZE = 5;
 
 function QuotationCard({ quotation, onDelete, onView }) {
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const initials = (quotation.clientName || 'UN').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
@@ -25,7 +28,9 @@ function QuotationCard({ quotation, onDelete, onView }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
               <div style={{ fontWeight: 700, fontSize: '0.9rem' }} className="truncate">{quotation.clientName}</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>{formatDate(quotation.date)}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Calendar size={11} /> {formatDateTime(quotation.createdAt || quotation.date)}
+              </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
@@ -40,12 +45,12 @@ function QuotationCard({ quotation, onDelete, onView }) {
               </button>
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <span className={`badge ${STATUS_BADGE[quotation.status] || 'badge-draft'}`} style={{ fontSize: '0.65rem' }}>
-              {quotation.quotationNo}
+              #{quotation.quotationNo}
             </span>
             {quotation.status && (
-              <span className={`badge ${STATUS_BADGE[quotation.status]}`} style={{ fontSize: '0.65rem' }}>
+              <span className={`badge ${STATUS_BADGE[quotation.status] || 'badge-draft'}`} style={{ fontSize: '0.65rem' }}>
                 {quotation.status}
               </span>
             )}
@@ -62,7 +67,7 @@ function QuotationCard({ quotation, onDelete, onView }) {
         <div style={{
           position: 'absolute', top: 36, right: 12, zIndex: 10,
           background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
-          boxShadow: 'var(--shadow-md)', minWidth: 140, overflow: 'hidden',
+          boxShadow: 'var(--shadow-md)', minWidth: 160, overflow: 'hidden',
         }}>
           <button
             className="btn-ghost"
@@ -70,6 +75,26 @@ function QuotationCard({ quotation, onDelete, onView }) {
             onClick={() => { onView(); setMenuOpen(false); }}
           >
             <Eye size={14} /> View &amp; Print
+          </button>
+          <button
+            className="btn-ghost"
+            style={{ width: '100%', padding: '9px 14px', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', justifyContent: 'flex-start' }}
+            onClick={() => {
+              setMenuOpen(false);
+              navigate(`/builder?edit=${quotation.id}`);
+            }}
+          >
+            <Pencil size={14} /> Edit Invoice
+          </button>
+          <button
+            className="btn-ghost"
+            style={{ width: '100%', padding: '9px 14px', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', justifyContent: 'flex-start' }}
+            onClick={() => {
+              setMenuOpen(false);
+              navigate(`/builder?revise=${quotation.id}`);
+            }}
+          >
+            <Copy size={14} /> Create Revision
           </button>
           <button
             className="btn-ghost"
@@ -125,7 +150,7 @@ export default function History() {
 
       {showFilters && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16, padding: '12px 14px', background: 'var(--surface)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
-          {['ALL', 'APPROVED', 'PENDING', 'DRAFT'].map(s => (
+          {['ALL', 'INVOICE CREATED', 'APPROVED', 'PENDING', 'DRAFT'].map(s => (
             <button
               key={s}
               className={`btn btn-sm ${filterStatus === s ? 'btn-primary' : 'btn-secondary'}`}

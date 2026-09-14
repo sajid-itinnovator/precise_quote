@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, ChevronDown, ChevronUp, Calculator, Eye, Home, ArrowRight, Building, Layers } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Plus, Trash2, ChevronDown, ChevronUp, Calculator, Eye, Home, ArrowRight, Building, Layers, FileCheck, Save, Copy, Pencil, RotateCcw, Check } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { formatIndianCurrency, numberToWords } from '../utils/helpers';
 import QuotationPreview from '../components/QuotationPreview';
@@ -335,9 +336,27 @@ function RoomSection({ room, index, onUpdate, onDelete, onMoveUp, onMoveDown, is
   );
 }
 
+// ─── Next revision title helper ──────────────────────────────────────────
+export function getNextRevisionTitle(originalTitle) {
+  if (!originalTitle) return '2 BHK INTERIOR DESIGN (Rev 1)';
+  const match = originalTitle.match(/\(Rev\s*(\d+)\)$/i);
+  if (match) {
+    const revNum = parseInt(match[1], 10) + 1;
+    return originalTitle.replace(/\(Rev\s*(\d+)\)$/i, `(Rev ${revNum})`);
+  }
+  return `${originalTitle.trim()} (Rev 1)`;
+}
+
 // ─── Main Builder Page ────────────────────────────────────────────────────
 export default function Builder() {
-  const { clients, addQuotation, materialSpec, updateMaterialSpec, ROOMS_DEFAULT } = useApp();
+  const { clients, quotations, addQuotation, updateQuotation, materialSpec, updateMaterialSpec, ROOMS_DEFAULT } = useApp();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  const editId = searchParams.get('edit');
+  const reviseId = searchParams.get('revise');
+  const preClientId = searchParams.get('clientId');
+
   const [clientId, setClientId] = useState('');
   const [projectTitle, setProjectTitle] = useState('2 BHK INTERIOR DESIGN');
   const [rooms, setRooms] = useState([]);
@@ -346,6 +365,7 @@ export default function Builder() {
   const [includeGST, setIncludeGST] = useState(true);
   const [showItemAmount, setShowItemAmount] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [savedMessage, setSavedMessage] = useState('');
   const [showPreview, setShowPreview] = useState(false);
 
   // Material & Brand customization state for this quotation
@@ -354,11 +374,46 @@ export default function Builder() {
   );
   const [activeTab, setActiveTab] = useState('scope'); // 'scope' | 'materials'
 
+  const loadedQuoteRef = useRef(null);
+
   useEffect(() => {
     if (materialSpec && materialSpec.length > 0 && quoteMaterialSpec.length === 0) {
       setQuoteMaterialSpec(JSON.parse(JSON.stringify(materialSpec)));
     }
   }, [materialSpec]);
+
+  // Load quote for edit or revision
+  useEffect(() => {
+    const targetId = editId || reviseId;
+    if (!targetId || !quotations || quotations.length === 0) return;
+    if (loadedQuoteRef.current === targetId) return;
+
+    const targetQuote = quotations.find(q => q.id === targetId);
+    if (targetQuote) {
+      loadedQuoteRef.current = targetId;
+      if (targetQuote.clientId) setClientId(targetQuote.clientId);
+      if (reviseId) {
+        setProjectTitle(getNextRevisionTitle(targetQuote.projectTitle));
+      } else {
+        setProjectTitle(targetQuote.projectTitle || '2 BHK INTERIOR DESIGN');
+      }
+      setRooms(targetQuote.rooms ? JSON.parse(JSON.stringify(targetQuote.rooms)) : []);
+      if (targetQuote.showItemAmount !== undefined) {
+        setShowItemAmount(targetQuote.showItemAmount);
+      }
+      if (targetQuote.materialSpec && targetQuote.materialSpec.length > 0) {
+        setQuoteMaterialSpec(JSON.parse(JSON.stringify(targetQuote.materialSpec)));
+      }
+    }
+  }, [editId, reviseId, quotations]);
+
+  useEffect(() => {
+    if (preClientId && !editId && !reviseId) {
+      setClientId(preClientId);
+    }
+  }, [preClientId, editId, reviseId]);
+
+  const existingQuote = (editId || reviseId) ? quotations.find(q => q.id === (editId || reviseId)) : null;
 
   const subtotal = rooms.reduce((s, r) => s + (r.items || []).reduce((ss, item) => ss + (Number(item.amount) || 0), 0), 0);
   const gst = includeGST ? Math.round(subtotal * GST_RATE) : 0;
@@ -417,10 +472,10 @@ export default function Builder() {
 
   const getClient = () => clients.find(c => c.id === clientId);
 
-  const handleSave = async () => {
+  const handleSave = async (saveStatus = 'DRAFT') => {
     try {
       const client = getClient();
-      await addQuotation({
+      const quoteData = {
         clientId,
         clientName: client?.name || 'Client',
         clientContact: client?.contact || '',
@@ -431,10 +486,25 @@ export default function Builder() {
         totalSqft,
         materialSpec: quoteMaterialSpec,
         showItemAmount,
-        status: 'DRAFT',
-      });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+        status: saveStatus,
+      };
+
+      if (editId) {
+        await updateQuotation(editId, quoteData);
+        setSavedMessage(saveStatus === 'INVOICE CREATED' ? '✓ Invoice Updated & Finalized!' : '✓ Changes Saved as Draft!');
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3500);
+      } else {
+        await addQuotation(quoteData);
+        setSavedMessage(saveStatus === 'INVOICE CREATED' ? '✓ Invoice Created Successfully!' : '✓ Saved as Draft!');
+        setSaved(true);
+        setTimeout(() => setSaved(false), 3500);
+        if (reviseId) {
+          setTimeout(() => {
+            navigate('/history');
+          }, 1500);
+        }
+      }
     } catch (err) {
       if (err.message === 'SUBSCRIPTION_LIMIT_REACHED') {
         alert("Subscription Limit Reached! You have reached the maximum number of quotes allowed on your current plan. Please upgrade your plan to generate more.");
@@ -449,8 +519,10 @@ export default function Builder() {
   const buildQuotation = () => {
     const client = getClient();
     return {
-      quotationNo: `1290`,
-      date: new Date().toISOString().slice(0, 10),
+      id: editId || undefined,
+      quotationNo: existingQuote?.quotationNo || `1290`,
+      date: existingQuote?.date || new Date().toISOString().slice(0, 10),
+      createdAt: existingQuote?.createdAt || new Date().toISOString(),
       clientName: client?.name || 'Client',
       clientContact: client?.contact || '',
       clientAddress: client?.address || '',
@@ -459,6 +531,7 @@ export default function Builder() {
       total,
       materialSpec: quoteMaterialSpec,
       showItemAmount,
+      status: editId ? (existingQuote?.status || 'INVOICE CREATED') : 'DRAFT',
     };
   };
 
@@ -471,9 +544,100 @@ export default function Builder() {
         <Home size={13} />
         <span>Quotation</span>
         <ArrowRight size={13} />
-        <span>New Quote</span>
+        <span>{editId ? 'Edit Invoice' : reviseId ? 'Create Revision' : 'New Quote'}</span>
       </div>
-      <h1 className="page-title">Quotation Builder</h1>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+        <div>
+          <h1 className="page-title" style={{ margin: 0 }}>
+            {editId ? `Edit Invoice #${existingQuote?.quotationNo || ''}` : reviseId ? `Revise Invoice #${existingQuote?.quotationNo || ''}` : 'Quotation Builder'}
+          </h1>
+          <p className="page-subtitle" style={{ margin: '4px 0 0' }}>
+            {editId
+              ? 'Update items, brands, and values for this existing invoice.'
+              : reviseId
+                ? 'Create a revised quotation version while preserving historical records.'
+                : 'Calculate accurate, itemized interior quotation and generate PDF invoices.'}
+          </p>
+        </div>
+        {(editId || reviseId) && (
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => navigate('/builder', { replace: true })}
+            style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            <RotateCcw size={14} /> Start New Blank Quote
+          </button>
+        )}
+      </div>
+
+      {/* Edit Mode Notification Banner */}
+      {editId && (
+        <div style={{
+          background: 'var(--primary-light)',
+          border: '1px solid var(--primary)',
+          borderRadius: 8,
+          padding: '12px 16px',
+          marginBottom: 16,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 10,
+        }}>
+          <div>
+            <div style={{ fontWeight: 700, color: 'var(--primary)', fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Pencil size={16} /> Currently Editing Invoice #{existingQuote?.quotationNo || editId}
+              <span className={`badge ${existingQuote?.status === 'INVOICE CREATED' ? 'badge-primary' : 'badge-draft'}`} style={{ fontSize: '0.65rem' }}>
+                {existingQuote?.status || 'DRAFT'}
+              </span>
+            </div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+              Changes will update this existing quotation record directly.
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => navigate('/builder', { replace: true })}
+          >
+            Exit Edit Mode
+          </button>
+        </div>
+      )}
+
+      {/* Revision Mode Notification Banner */}
+      {reviseId && (
+        <div style={{
+          background: '#ecfdf5',
+          border: '1px solid #10b981',
+          borderRadius: 8,
+          padding: '12px 16px',
+          marginBottom: 16,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 10,
+        }}>
+          <div>
+            <div style={{ fontWeight: 700, color: '#047857', fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Copy size={16} /> Creating New Revision of Invoice #{existingQuote?.quotationNo || reviseId}
+            </div>
+            <div style={{ fontSize: '0.78rem', color: '#065f46', marginTop: 2 }}>
+              Original invoice <strong>#{existingQuote?.quotationNo}</strong> remains safely preserved in history. Saving will issue a new quotation with revised project title <strong>"{projectTitle}"</strong>.
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => navigate('/builder', { replace: true })}
+          >
+            Cancel Revision
+          </button>
+        </div>
+      )}
 
       {/* Client + Project */}
       <div className="card" style={{ padding: 16, marginBottom: 16 }}>
@@ -557,8 +721,12 @@ export default function Builder() {
           subtotal={subtotal} gst={gst} total={total} totalItems={totalItems} totalSqft={totalSqft}
           includeGST={includeGST} setIncludeGST={setIncludeGST}
           showItemAmount={showItemAmount} setShowItemAmount={setShowItemAmount}
-          onSave={handleSave} onPreview={() => setShowPreview(true)}
-          saved={saved} clientId={clientId}
+          onSaveInvoice={() => handleSave('INVOICE CREATED')}
+          onSaveDraft={() => handleSave('DRAFT')}
+          onPreview={() => setShowPreview(true)}
+          saved={saved} savedMessage={savedMessage} clientId={clientId}
+          isEditing={Boolean(editId)}
+          isRevising={Boolean(reviseId)}
         />
       </div>
 
@@ -600,8 +768,12 @@ export default function Builder() {
           subtotal={subtotal} gst={gst} total={total} totalItems={totalItems} totalSqft={totalSqft}
           includeGST={includeGST} setIncludeGST={setIncludeGST}
           showItemAmount={showItemAmount} setShowItemAmount={setShowItemAmount}
-          onSave={handleSave} onPreview={() => setShowPreview(true)}
-          saved={saved} clientId={clientId}
+          onSaveInvoice={() => handleSave('INVOICE CREATED')}
+          onSaveDraft={() => handleSave('DRAFT')}
+          onPreview={() => setShowPreview(true)}
+          saved={saved} savedMessage={savedMessage} clientId={clientId}
+          isEditing={Boolean(editId)}
+          isRevising={Boolean(reviseId)}
         />
       </div>
 
@@ -813,7 +985,12 @@ function BuilderLeft({ rooms, updateRoom, deleteRoom, moveRoom, showRoomPicker, 
 }
 
 // ─── Builder Right (Summary Panel) ───────────────────────────────────────
-function BuilderRight({ subtotal, gst, total, totalItems, totalSqft = 0, includeGST, setIncludeGST, showItemAmount, setShowItemAmount, onSave, onPreview, saved, clientId }) {
+function BuilderRight({
+  subtotal, gst, total, totalItems, totalSqft = 0,
+  includeGST, setIncludeGST, showItemAmount, setShowItemAmount,
+  onSaveInvoice, onSaveDraft, onPreview,
+  saved, savedMessage, clientId, isEditing, isRevising
+}) {
   return (
     <div>
       {/* Summary */}
@@ -918,15 +1095,49 @@ function BuilderRight({ subtotal, gst, total, totalItems, totalSqft = 0, include
         </div>
       </div>
 
-      {/* Save draft */}
-      <button
-        className="btn btn-secondary w-full"
-        onClick={onSave}
-        disabled={!clientId}
-        style={{ marginBottom: 8 }}
-      >
-        {saved ? '✓ Saved to History' : 'Save as Draft'}
-      </button>
+      {/* Save as Invoice & Save as Draft Buttons */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+        <button
+          type="button"
+          className="btn btn-primary w-full"
+          onClick={onSaveInvoice}
+          disabled={!clientId}
+          style={{
+            padding: '11px 16px',
+            fontWeight: 700,
+            fontSize: '0.9rem',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: 8,
+            boxShadow: '0 2px 6px rgba(26, 86, 255, 0.25)'
+          }}
+        >
+          <FileCheck size={17} />
+          {saved && savedMessage && savedMessage.includes('Invoice')
+            ? savedMessage
+            : isEditing
+              ? 'Update & Finalize Invoice'
+              : isRevising
+                ? 'Save Revision as Invoice'
+                : 'Save as Invoice (Invoice Created)'}
+        </button>
+
+        <button
+          type="button"
+          className="btn btn-secondary w-full"
+          onClick={onSaveDraft}
+          disabled={!clientId}
+          style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '9px 14px' }}
+        >
+          <Save size={15} />
+          {saved && savedMessage && savedMessage.includes('Draft')
+            ? savedMessage
+            : isEditing
+              ? 'Save Changes as Draft'
+              : 'Save as Draft'}
+        </button>
+      </div>
 
       {/* Note */}
       <div style={{ background: 'var(--surface-2)', borderRadius: 8, padding: '10px 12px', fontSize: '0.75rem', color: 'var(--text-muted)', border: '1px solid var(--border-light)' }}>

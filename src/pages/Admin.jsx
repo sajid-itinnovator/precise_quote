@@ -4,12 +4,17 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { db, secondaryAuth } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
+import { formatIndianCurrency, formatDateTime } from '../utils/helpers';
+import QuotationPreview from '../components/QuotationPreview';
+import { Eye, FileText, Calendar, Search } from 'lucide-react';
 
 export default function Admin() {
   const { currentUser, userProfile } = useAuth();
   const { tenantLogo, setTenantLogo, subscription, quotations } = useApp();
   const [usersList, setUsersList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [previewQuotation, setPreviewQuotation] = useState(null);
+  const [invoiceSearch, setInvoiceSearch] = useState('');
 
   // Form State
   const [name, setName] = useState('');
@@ -312,6 +317,139 @@ export default function Admin() {
           </div>
         </div>
       </div>
+
+      {/* ALL INVOICES & CREATION ACTIVITY LOG */}
+      <div className="card" style={{ padding: 20, marginTop: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+          <div>
+            <h4 style={{ margin: 0, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FileText size={20} color="var(--primary)" /> Company Invoices &amp; Activity Log
+            </h4>
+            <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              Complete audit trail of all quotations and invoices generated across the studio with exact creation dates and timestamps.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ position: 'relative', minWidth: 240 }}>
+              <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Search invoices, clients..."
+                value={invoiceSearch}
+                onChange={e => setInvoiceSearch(e.target.value)}
+                style={{ paddingLeft: 30, fontSize: '0.82rem' }}
+              />
+            </div>
+            <span className="badge badge-info" style={{ padding: '6px 12px', fontSize: '0.78rem' }}>
+              {(quotations || []).length} Total
+            </span>
+          </div>
+        </div>
+
+        <div className="table-responsive">
+          <table className="table table-hover">
+            <thead>
+              <tr>
+                <th>Invoice #</th>
+                <th>Client</th>
+                <th>Project</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Created Date &amp; Time</th>
+                <th>Created By</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(quotations || [])
+                .filter(q => {
+                  const s = invoiceSearch.toLowerCase();
+                  return (
+                    (q.clientName || '').toLowerCase().includes(s) ||
+                    (q.quotationNo || '').toLowerCase().includes(s) ||
+                    (q.projectTitle || '').toLowerCase().includes(s) ||
+                    (q.createdByName || '').toLowerCase().includes(s)
+                  );
+                })
+                .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))
+                .map(q => {
+                  const statusBadge = q.status === 'INVOICE CREATED'
+                    ? 'badge-primary'
+                    : q.status === 'APPROVED'
+                      ? 'badge-success'
+                      : q.status === 'PENDING'
+                        ? 'badge-warning'
+                        : 'badge-draft';
+
+                  return (
+                    <tr key={q.id}>
+                      <td>
+                        <strong style={{ color: 'var(--primary)', fontSize: '0.88rem' }}>
+                          #{q.quotationNo || 'QT'}
+                        </strong>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 600, fontSize: '0.88rem' }}>{q.clientName}</div>
+                        {q.clientContact && <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{q.clientContact}</div>}
+                      </td>
+                      <td>
+                        <div style={{ fontSize: '0.85rem' }}>{q.projectTitle || 'Interior Project'}</div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          {(q.rooms || []).length} Rooms • {q.totalSqft ? `${q.totalSqft} SQFT` : `${(q.rooms || []).reduce((s, r) => s + (r.items || []).length, 0)} Items`}
+                        </div>
+                      </td>
+                      <td>
+                        <strong style={{ fontSize: '0.92rem' }}>₹{formatIndianCurrency(q.total || 0)}</strong>
+                      </td>
+                      <td>
+                        <span className={`badge ${statusBadge}`} style={{ fontSize: '0.68rem', fontWeight: 700 }}>
+                          {q.status || 'DRAFT'}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.82rem', color: 'var(--text-primary)', fontWeight: 500 }}>
+                          <Calendar size={13} color="var(--primary)" />
+                          {formatDateTime(q.createdAt || q.date)}
+                        </div>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                          {q.createdByName || 'Staff Member'}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          className="btn btn-sm btn-outline-primary"
+                          onClick={() => setPreviewQuotation(q)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '4px 10px', fontSize: '0.78rem' }}
+                        >
+                          <Eye size={13} /> View / Print
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              {(!quotations || quotations.length === 0) && (
+                <tr>
+                  <td colSpan="8" className="text-center" style={{ padding: 24, color: 'var(--text-muted)' }}>
+                    No invoices or quotations found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Preview Modal if opened from Admin */}
+      {previewQuotation && (
+        <QuotationPreview
+          quotation={previewQuotation}
+          onClose={() => setPreviewQuotation(null)}
+        />
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { X, Printer, Layers } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { X, Printer, Layers, Pencil, Copy } from 'lucide-react';
 import { formatIndianCurrency, numberToWords, formatDate } from '../utils/helpers';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
@@ -212,9 +213,10 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
 /* ──────────────────────────────────────────────────────────────
    QuotationPreview — In-app preview modal & triggers new window print
    ────────────────────────────────────────────────────────────── */
-export default function QuotationPreview({ quotation, onClose, onUpdateShowItemAmount, onUpdateMaterialSpec }) {
+export default function QuotationPreview({ quotation, onClose, onUpdateShowItemAmount, onUpdateMaterialSpec, onInvoiceCreated }) {
+  const navigate = useNavigate();
   const { userProfile } = useAuth();
-  const { tenantLogo } = useApp();
+  const { tenantLogo, updateQuotation } = useApp();
   const tenantName = userProfile?.tenantName || 'Workspace';
 
   const [showItemAmount, setShowItemAmount] = useState(
@@ -222,6 +224,7 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
   );
   const [currentSpec, setCurrentSpec] = useState(quotation.materialSpec || []);
   const [showBrandEditor, setShowBrandEditor] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState(quotation.status || 'DRAFT');
 
   const total = quotation.total ||
     (quotation.rooms || []).reduce((s, r) =>
@@ -241,8 +244,21 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
     }
   };
 
-  const handlePrint = () => {
-    const qWithSpec = { ...quotation, materialSpec: currentSpec };
+  const handlePrint = async () => {
+    // Automatically transition quotation to 'INVOICE CREATED' on printing
+    if (quotation.id && updateQuotation) {
+      try {
+        await updateQuotation(quotation.id, { status: 'INVOICE CREATED' });
+        setCurrentStatus('INVOICE CREATED');
+      } catch (err) {
+        console.error('Failed to update status to INVOICE CREATED', err);
+      }
+    }
+    if (onInvoiceCreated) {
+      onInvoiceCreated();
+    }
+
+    const qWithSpec = { ...quotation, materialSpec: currentSpec, status: 'INVOICE CREATED' };
     const html = buildPrintHTML(qWithSpec, total, tenantName, tenantLogo, showItemAmount);
     const win = window.open('', '_blank', 'width=900,height=1000,scrollbars=yes');
     if (!win) { alert('Please allow popups for this site to print.'); return; }
@@ -258,7 +274,7 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
     };
   };
 
-  const currentQuotation = { ...quotation, materialSpec: currentSpec };
+  const currentQuotation = { ...quotation, materialSpec: currentSpec, status: currentStatus };
 
   return (
     <div style={{
@@ -268,7 +284,7 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
     }}>
       <div style={{
         background: '#0d1b4b', borderBottom: '1px solid rgba(255,255,255,0.1)',
-        padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0,
+        padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0,
         flexWrap: 'wrap'
       }}>
         <button onClick={onClose} style={{
@@ -281,9 +297,53 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
           <X size={16} /> Close Preview
         </button>
 
-        <div style={{ flex: 1, textAlign: 'center', color: '#fff', fontWeight: 600, fontSize: '0.95rem', letterSpacing: '0.5px', minWidth: 200 }}>
-          Quotation: {quotation.clientName} (QT-{quotation.quotationNo})
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, minWidth: 220, justifyContent: 'center' }}>
+          <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem', letterSpacing: '0.3px' }}>
+            {quotation.clientName} (QT-{quotation.quotationNo})
+          </span>
+          <span
+            className={`badge ${currentStatus === 'INVOICE CREATED' ? 'badge-primary' : currentStatus === 'APPROVED' ? 'badge-success' : 'badge-draft'}`}
+            style={{ fontSize: '0.65rem' }}
+          >
+            {currentStatus}
+          </span>
         </div>
+
+        {/* Edit & Revision Buttons if quotation already saved */}
+        {quotation.id && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => {
+                navigate(`/builder?edit=${quotation.id}`);
+                onClose();
+              }}
+              style={{
+                background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)',
+                borderRadius: 6, padding: '7px 12px', color: '#fff', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', fontWeight: 600,
+              }}
+              title="Edit this invoice in Builder"
+            >
+              <Pencil size={14} /> Edit Invoice
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                navigate(`/builder?revise=${quotation.id}`);
+                onClose();
+              }}
+              style={{
+                background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)',
+                borderRadius: 6, padding: '7px 12px', color: '#fff', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', fontWeight: 600,
+              }}
+              title="Create a new revised version of this invoice"
+            >
+              <Copy size={14} /> Create Revision
+            </button>
+          </div>
+        )}
 
         {/* Customize Brands button */}
         <button

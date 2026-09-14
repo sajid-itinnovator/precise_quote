@@ -620,10 +620,15 @@ export function AppProvider({ children }) {
       }
     }
 
+    const nowIso = new Date().toISOString();
     const qWithDetails = { 
       ...quotation, 
-      quotationNo: String(nextQuoteNo),
+      quotationNo: quotation.quotationNo || String(nextQuoteNo),
+      status: quotation.status || 'DRAFT',
+      date: quotation.date || nowIso.slice(0, 10),
+      createdAt: quotation.createdAt || nowIso,
       createdBy: currentUser?.uid,
+      createdByName: userProfile?.name || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Staff',
       tenantId: userProfile?.tenantId
     };
     const docRef = await addDoc(collection(db, 'quotations'), qWithDetails);
@@ -636,8 +641,9 @@ export function AppProvider({ children }) {
     return docRef.id;
   };
   const updateQuotation = async (id, data) => {
-    await updateDoc(doc(db, 'quotations', id), data);
-    setQuotations(p => p.map(q => q.id === id ? { ...q, ...data } : q));
+    const updateData = { ...data, updatedAt: new Date().toISOString() };
+    await updateDoc(doc(db, 'quotations', id), updateData);
+    setQuotations(p => p.map(q => q.id === id ? { ...q, ...updateData } : q));
   };
   const deleteQuotation = async (id) => {
     await deleteDoc(doc(db, 'quotations', id));

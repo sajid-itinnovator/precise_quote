@@ -180,6 +180,8 @@ input, textarea, select { font-family: inherit; }
 .badge-info    { background: #dbeafe; color: #1e40af; }
 .badge-draft   { background: #f3f4f6; color: #374151; }
 .badge-commercial { background: #ede9fe; color: #5b21b6; }
+.badge-primary { background: #e0e7ff; color: #3730a3; font-weight: 700; }
+.badge-invoice { background: #e0e7ff; color: #3730a3; font-weight: 700; }
 
 /* Layout */
 .layout-root {
