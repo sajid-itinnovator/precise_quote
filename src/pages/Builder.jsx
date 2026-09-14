@@ -1158,10 +1158,14 @@ export default function Builder() {
             showRoomPicker={showRoomPicker} setShowRoomPicker={setShowRoomPicker}
             customRoom={customRoom} setCustomRoom={setCustomRoom} addRoom={addRoom}
             PRESET_ROOMS={PRESET_ROOMS}
+            onOpenMaterials={() => {
+              setActiveTab('materials');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
           />
         ) : (
           <div className="card" style={{ padding: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
               <div>
                 <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--secondary)' }}>
                   Material Specifications &amp; Brands
@@ -1170,6 +1174,17 @@ export default function Builder() {
                   These brands will appear in the "2. MATERIAL SPECIFICATION" table on Page 2 of this invoice.
                 </p>
               </div>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => {
+                  setActiveTab('scope');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                style={{ gap: 6, fontSize: '0.8rem' }}
+              >
+                <Building size={14} /> Back to Scope of Work
+              </button>
             </div>
             <MaterialSpecEditor
               spec={quoteMaterialSpec}
@@ -1186,6 +1201,19 @@ export default function Builder() {
                 }
               }}
             />
+            <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  setActiveTab('scope');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                style={{ gap: 8 }}
+              >
+                <Building size={16} /> Done / Back to Scope of Work
+              </button>
+            </div>
           </div>
         )}
         <BuilderRight
@@ -1210,15 +1238,34 @@ export default function Builder() {
             showRoomPicker={showRoomPicker} setShowRoomPicker={setShowRoomPicker}
             customRoom={customRoom} setCustomRoom={setCustomRoom} addRoom={addRoom}
             PRESET_ROOMS={PRESET_ROOMS}
+            onOpenMaterials={() => {
+              setActiveTab('materials');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
           />
         ) : (
           <div className="card" style={{ padding: 16, marginBottom: 16 }}>
-            <h2 style={{ margin: '0 0 4px', fontSize: '1.1rem', fontWeight: 700 }}>
-              Material Specifications &amp; Brands
-            </h2>
-            <p style={{ margin: '0 0 14px', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-              Brands for Page 2 of this invoice.
-            </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+              <div>
+                <h2 style={{ margin: '0 0 4px', fontSize: '1.1rem', fontWeight: 700 }}>
+                  Material Specifications &amp; Brands
+                </h2>
+                <p style={{ margin: '0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  Brands for Page 2 of this invoice.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => {
+                  setActiveTab('scope');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                style={{ gap: 6, fontSize: '0.75rem' }}
+              >
+                <Building size={13} /> Back
+              </button>
+            </div>
             <MaterialSpecEditor
               spec={quoteMaterialSpec}
               onChange={setQuoteMaterialSpec}
@@ -1234,6 +1281,19 @@ export default function Builder() {
                 }
               }}
             />
+            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm w-full"
+                onClick={() => {
+                  setActiveTab('scope');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                style={{ gap: 8 }}
+              >
+                <Building size={15} /> Done / Back to Scope of Work
+              </button>
+            </div>
           </div>
         )}
         <BuilderRight
@@ -1279,7 +1339,7 @@ export default function Builder() {
 }
 
 // ─── Builder Left (Scope of Work) ─────────────────────────────────────────
-function BuilderLeft({ rooms, updateRoom, deleteRoom, moveRoom, showRoomPicker, setShowRoomPicker, customRoom, setCustomRoom, addRoom, PRESET_ROOMS }) {
+function BuilderLeft({ rooms, updateRoom, deleteRoom, moveRoom, showRoomPicker, setShowRoomPicker, customRoom, setCustomRoom, addRoom, PRESET_ROOMS, onOpenMaterials }) {
   const [activePickerIndex, setActivePickerIndex] = useState(null);
   const [inlineCustomRoom, setInlineCustomRoom] = useState('');
 
@@ -1287,16 +1347,36 @@ function BuilderLeft({ rooms, updateRoom, deleteRoom, moveRoom, showRoomPicker, 
     <div>
       <div className="section-header" style={{ marginBottom: 12 }}>
         <div className="section-title">Scope of Work</div>
-        <button 
-          type="button" 
-          className="btn btn-secondary btn-sm" 
-          onClick={() => {
-            setShowRoomPicker(p => !p);
-            setActivePickerIndex(null);
-          }}
-        >
-          <Plus size={14} /> Add Room
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button 
+            type="button" 
+            className="btn btn-secondary btn-sm" 
+            onClick={() => {
+              setShowRoomPicker(p => !p);
+              setActivePickerIndex(null);
+            }}
+          >
+            <Plus size={14} /> Add Room
+          </button>
+          {onOpenMaterials && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={onOpenMaterials}
+              style={{
+                borderColor: 'var(--secondary, #17365d)',
+                color: 'var(--secondary, #17365d)',
+                background: 'var(--surface)',
+                fontWeight: 600,
+                fontSize: '0.8rem',
+                gap: 6
+              }}
+              title="Open Material Brands & Specs"
+            >
+              <Layers size={14} /> 2. Material Brands &amp; Specs
+            </button>
+          )}
+        </div>
       </div>
 
       {showRoomPicker && (
@@ -1353,7 +1433,7 @@ function BuilderLeft({ rooms, updateRoom, deleteRoom, moveRoom, showRoomPicker, 
             isLast={i === rooms.length - 1}
           />
 
-          {/* Add Room button after each room */}
+          {/* Add Room and Material Brands & Specs buttons after each room */}
           <div style={{ margin: '14px 0 20px' }}>
             {activePickerIndex === i ? (
               <div className="card" style={{ padding: 14, border: '1.5px solid var(--primary)', background: 'var(--surface)' }}>
@@ -1424,8 +1504,8 @@ function BuilderLeft({ rooms, updateRoom, deleteRoom, moveRoom, showRoomPicker, 
                 </div>
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '8px 0 16px' }}>
-                <div style={{ flex: 1, height: 1, background: 'var(--border-light)' }} />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, margin: '8px 0 16px', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 20, height: 1, background: 'var(--border-light)' }} />
                 <button
                   type="button"
                   className="btn btn-secondary btn-sm"
@@ -1447,7 +1527,28 @@ function BuilderLeft({ rooms, updateRoom, deleteRoom, moveRoom, showRoomPicker, 
                 >
                   <Plus size={14} /> Add Room
                 </button>
-                <div style={{ flex: 1, height: 1, background: 'var(--border-light)' }} />
+                {onOpenMaterials && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{
+                      borderColor: 'var(--secondary, #17365d)',
+                      color: 'var(--secondary, #17365d)',
+                      background: 'var(--surface)',
+                      fontWeight: 600,
+                      fontSize: '0.8rem',
+                      padding: '6px 16px',
+                      borderRadius: 20,
+                      boxShadow: 'var(--shadow-xs)',
+                      gap: 6
+                    }}
+                    onClick={onOpenMaterials}
+                    title="Open Material Brands & Specs for this quotation"
+                  >
+                    <Layers size={14} /> 2. Material Brands &amp; Specs
+                  </button>
+                )}
+                <div style={{ flex: 1, minWidth: 20, height: 1, background: 'var(--border-light)' }} />
               </div>
             )}
           </div>
