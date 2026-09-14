@@ -5,6 +5,7 @@ import { useApp } from '../context/AppContext';
 import { formatIndianCurrency, numberToWords } from '../utils/helpers';
 import QuotationPreview from '../components/QuotationPreview';
 import MaterialSpecEditor from '../components/MaterialSpecEditor';
+import ClientPicker from '../components/ClientPicker';
 
 const GST_RATE = 0.18;
 
@@ -1183,19 +1184,12 @@ export default function Builder() {
                 <span style={{ color: 'var(--primary)', fontSize: '0.7rem', fontWeight: 600 }}>Linked to Client DB</span>
               )}
             </label>
-            <select
-              className="form-select"
-              value={clientId}
-              onChange={e => handleClientChange(e.target.value)}
-            >
-              <option value="">-- Choose Existing Client --</option>
-              {clients.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.name} {c.contact ? `(${c.contact})` : ''}
-                </option>
-              ))}
-              <option value="__new__">➕ + Add New Client / Customer</option>
-            </select>
+            <ClientPicker
+              value={clientId === '__new__' ? '' : clientId}
+              onChange={(selectedId) => handleClientChange(selectedId)}
+              onAddNew={() => handleClientChange('__new__')}
+              placeholder="-- Choose or Search Existing Client --"
+            />
           </div>
 
           {/* Client Name Input */}

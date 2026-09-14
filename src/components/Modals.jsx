@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, User, Building } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
+import ClientPicker from './ClientPicker';
 
 function ModalOverlay({ children, onClose }) {
   return (
@@ -97,10 +98,13 @@ export function NewProjectModal({ onClose }) {
             </button>
           </div>
           {mode === 'existing' ? (
-            <select className="form-select" value={form.clientId} onChange={e => setForm(p => ({ ...p, clientId: e.target.value }))} required>
-              <option value="">Select a client...</option>
-              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            <ClientPicker
+              value={form.clientId}
+              onChange={(selectedId) => setForm(p => ({ ...p, clientId: selectedId }))}
+              onAddNew={() => setMode('new')}
+              placeholder="Select a client..."
+              required
+            />
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <input className="form-input" placeholder="Client Name" value={newClient.name} onChange={e => setNewClient(p => ({ ...p, name: e.target.value }))} required />
