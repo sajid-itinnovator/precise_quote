@@ -74,7 +74,7 @@ function addClientDetails(doc, quotation, startY) {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(...DARK_NAVY);
-  doc.text('CLIENT DETAILS', w / 2, startY + 5, { align: 'center' });
+  doc.text('CLIENT DETAILS', 16, startY + 5);
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');

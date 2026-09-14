@@ -128,10 +128,10 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
   
   <hr class="divider"/>
 
-  <div class="text-center text-bold" style="font-size:10.5pt; margin: 12px 0 6px;">
+  <div class="text-bold" style="font-size:10.5pt; margin: 12px 0 6px; text-align: left;">
     CLIENT DETAILS
   </div>
-  <div class="text-center" style="font-size:10pt; line-height: 1.6;">
+  <div style="font-size:10pt; line-height: 1.6; text-align: left;">
     <div>Client Name: ${quotation.clientName || ''}</div>
     <div>Contact: ${quotation.clientContact || ''}</div>
     <div>Billing Address: ${quotation.clientAddress || ''}</div>
@@ -446,10 +446,10 @@ function QuotationDocument({ quotation, total, tenantName, tenantLogo, showItemA
 
         <hr style={{ border: 'none', borderTop: '1px solid #666', margin: '8px 0' }} />
 
-        <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 10.5, margin: '12px 0 6px' }}>
+        <div style={{ textAlign: 'left', fontWeight: 'bold', fontSize: 10.5, margin: '12px 0 6px' }}>
           CLIENT DETAILS
         </div>
-        <div style={{ textAlign: 'center', fontSize: 10, lineHeight: 1.6 }}>
+        <div style={{ textAlign: 'left', fontSize: 10, lineHeight: 1.6 }}>
           <div>Client Name: {quotation.clientName}</div>
           <div>Contact: {quotation.clientContact}</div>
           <div>Billing Address: {quotation.clientAddress}</div>
