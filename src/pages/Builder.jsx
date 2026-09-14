@@ -349,7 +349,7 @@ export function getNextRevisionTitle(originalTitle) {
 
 // ─── Main Builder Page ────────────────────────────────────────────────────
 export default function Builder() {
-  const { clients, quotations, addQuotation, updateQuotation, materialSpec, updateMaterialSpec, ROOMS_DEFAULT } = useApp();
+  const { clients, projects, updateProject, quotations, addQuotation, updateQuotation, materialSpec, updateMaterialSpec, ROOMS_DEFAULT } = useApp();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -513,6 +513,18 @@ export default function Builder() {
         } else if (newId && saveStatus === 'DRAFT') {
           // Immediately enter edit mode for this draft so subsequent edits update it directly
           navigate(`/builder?edit=${newId}`, { replace: true });
+        }
+      }
+
+      // Keep project.amount in sync with the latest invoice total if a matching project exists
+      if (clientId && projects && projects.length > 0 && updateProject) {
+        const matchingProj = projects.find(p => p.clientId === clientId);
+        if (matchingProj) {
+          try {
+            await updateProject(matchingProj.id, { amount: total, status: saveStatus });
+          } catch (projErr) {
+            console.warn("Could not sync project amount:", projErr);
+          }
         }
       }
     } catch (err) {

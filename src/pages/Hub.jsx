@@ -6,8 +6,13 @@ import { formatIndianCurrency } from '../utils/helpers';
 import { NewProjectModal } from '../components/Modals';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
+import QuotationPreview from '../components/QuotationPreview';
+
 const STATUS_BADGE = {
+  'INVOICE CREATED': 'badge-primary',
+  'APPROVED': 'badge-success',
   'IN PROGRESS': 'badge-success',
+  'PENDING': 'badge-warning',
   'DRAFT': 'badge-draft',
   'COMMERCIAL': 'badge-commercial',
   'COMPLETED': 'badge-info',
@@ -21,8 +26,34 @@ const PROJECT_COLORS = [
   'linear-gradient(135deg, #0c4a6e, #0284c7)',
 ];
 
-function ProjectCard({ project, client, index }) {
+function ProjectCard({ project, client, latestQuote, index, onViewQuote }) {
   const navigate = useNavigate();
+
+  // If there is an invoice/quote for this client/project, display its latest values
+  const displayAmount = latestQuote?.total !== undefined ? (Number(latestQuote.total) || 0) : (project.amount || 0);
+  const displayStatus = latestQuote?.status || project.status || 'DRAFT';
+
+  const handleEdit = () => {
+    if (latestQuote?.id) {
+      if (latestQuote.status === 'APPROVED') {
+        navigate(`/builder?revise=${latestQuote.id}`);
+      } else {
+        navigate(`/builder?edit=${latestQuote.id}`);
+      }
+    } else if (project.clientId) {
+      navigate(`/builder?clientId=${project.clientId}`);
+    } else {
+      navigate('/builder');
+    }
+  };
+
+  const handleView = () => {
+    if (latestQuote && onViewQuote) {
+      onViewQuote(latestQuote);
+    } else {
+      navigate('/history');
+    }
+  };
 
   return (
     <div className="project-card" style={{ position: 'relative' }}>
@@ -45,12 +76,14 @@ function ProjectCard({ project, client, index }) {
           width: 40, height: 40, borderRadius: '50%',
           background: 'rgba(255,255,255,0.06)',
         }} />
-        <span className={`badge ${STATUS_BADGE[project.status] || 'badge-draft'}`} style={{
+        <span className={`badge ${STATUS_BADGE[displayStatus] || 'badge-draft'}`} style={{
           position: 'absolute', top: 10, right: 10,
-          background: 'rgba(255,255,255,0.9)',
-          color: project.status === 'IN PROGRESS' ? '#166534' : project.status === 'COMMERCIAL' ? '#5b21b6' : '#374151',
+          background: 'rgba(255,255,255,0.92)',
+          color: displayStatus === 'APPROVED' || displayStatus === 'IN PROGRESS' ? '#166534' : displayStatus === 'INVOICE CREATED' ? '#1d4ed8' : displayStatus === 'COMMERCIAL' ? '#5b21b6' : '#374151',
+          fontWeight: 700,
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
         }}>
-          {project.status}
+          {displayStatus}
         </span>
       </div>
       <div className="project-card-body">
@@ -58,18 +91,25 @@ function ProjectCard({ project, client, index }) {
         <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 6 }}>
           Client: {client?.name || 'Unknown'}
         </div>
-        <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--primary)', marginBottom: 10 }}>
-          ₹{formatIndianCurrency(project.amount || 0)}
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--primary)' }}>
+            ₹{formatIndianCurrency(displayAmount)}
+          </div>
+          {latestQuote && (
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: 1 }}>
+              Latest Invoice #{latestQuote.quotationNo}
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
           {(project.tags || []).map(tag => <span key={tag} className="tag">{tag}</span>)}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => navigate('/history')}>
+          <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={handleView}>
             <Eye size={14} /> View
           </button>
-          <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => navigate('/builder')}>
-            <Pencil size={14} /> Edit
+          <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={handleEdit}>
+            <Pencil size={14} /> {latestQuote?.status === 'APPROVED' ? 'Revise' : 'Edit'}
           </button>
         </div>
       </div>
@@ -82,12 +122,43 @@ export default function Hub() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [showNewProject, setShowNewProject] = useState(false);
+  const [previewQuotation, setPreviewQuotation] = useState(null);
 
   const totalRevenue = quotations.filter(q => q.status === 'APPROVED').reduce((s, q) => s + (q.total || 0), 0);
   const pendingQuotes = quotations.filter(q => q.status === 'PENDING');
   const pendingValue = pendingQuotes.reduce((s, q) => s + (q.total || 0), 0);
 
   const getClient = (clientId) => clients.find(c => c.id === clientId);
+
+  // Helper to find the latest invoice/quotation for a given project or client
+  const getLatestQuote = (project) => {
+    if (!quotations || quotations.length === 0) return null;
+    const client = getClient(project.clientId);
+    const clientNameNorm = (client?.name || '').trim().toLowerCase();
+    const projNameNorm = (project.name || '').trim().toLowerCase();
+
+    // Find all matching quotations for this project/client
+    const matches = quotations.filter(q => {
+      // Direct clientId match
+      if (project.clientId && q.clientId === project.clientId) return true;
+      // Client name match
+      if (clientNameNorm && (q.clientName || '').trim().toLowerCase() === clientNameNorm) return true;
+      // Project title match with project name
+      if (projNameNorm && (q.projectTitle || '').trim().toLowerCase().includes(projNameNorm)) return true;
+      return false;
+    });
+
+    if (matches.length === 0) return null;
+
+    // Sort by createdAt or date descending to get the latest invoice
+    matches.sort((a, b) => {
+      const timeA = new Date(a.createdAt || a.date || 0).getTime();
+      const timeB = new Date(b.createdAt || b.date || 0).getTime();
+      return timeB - timeA;
+    });
+
+    return matches[0];
+  };
 
   const filtered = projects.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -278,7 +349,14 @@ export default function Hub() {
       {/* Project grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 16 }}>
         {filtered.length > 0 ? filtered.map((p, i) => (
-          <ProjectCard key={p.id} project={p} client={getClient(p.clientId)} index={i} />
+          <ProjectCard
+            key={p.id}
+            project={p}
+            client={getClient(p.clientId)}
+            latestQuote={getLatestQuote(p)}
+            index={i}
+            onViewQuote={(q) => setPreviewQuotation(q)}
+          />
         )) : (
           <div className="empty-state" style={{ gridColumn: '1 / -1' }}>
             <div className="empty-state-icon">📋</div>
@@ -303,6 +381,10 @@ export default function Hub() {
       </div>
 
       {showNewProject && <NewProjectModal onClose={() => setShowNewProject(false)} />}
+
+      {previewQuotation && (
+        <QuotationPreview quotation={previewQuotation} onClose={() => setPreviewQuotation(null)} />
+      )}
     </div>
   );
 }
