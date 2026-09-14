@@ -498,20 +498,18 @@ export default function Builder() {
       </div>
 
       {/* Builder Navigation Tabs */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+      <div className="builder-tabs">
         <button
           type="button"
           onClick={() => setActiveTab('scope')}
-          className={`btn ${activeTab === 'scope' ? 'btn-primary' : 'btn-secondary'}`}
-          style={{ gap: 8, padding: '9px 18px', fontWeight: 600, fontSize: '0.875rem' }}
+          className={`btn builder-tab-btn ${activeTab === 'scope' ? 'btn-primary' : 'btn-secondary'}`}
         >
           <Building size={16} /> 1. Scope of Work ({rooms.length} Rooms, {totalItems} Items{totalSqft > 0 ? `, ${totalSqft.toLocaleString('en-IN')} SQFT` : ''})
         </button>
         <button
           type="button"
           onClick={() => setActiveTab('materials')}
-          className={`btn ${activeTab === 'materials' ? 'btn-primary' : 'btn-secondary'}`}
-          style={{ gap: 8, padding: '9px 18px', fontWeight: 600, fontSize: '0.875rem' }}
+          className={`btn builder-tab-btn ${activeTab === 'materials' ? 'btn-primary' : 'btn-secondary'}`}
         >
           <Layers size={16} /> 2. Material Brands &amp; Specs ({quoteMaterialSpec.length} Categories)
         </button>
