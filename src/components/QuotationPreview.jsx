@@ -73,13 +73,20 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
     }
     @media print {
       body { margin: 0; }
-      .page { margin: 0; border: none; page-break-after: always; }
-      .page:last-child { page-break-after: avoid; }
-      @page { size: A4; margin: 10mm; }
+      .page { 
+        width: 100%; min-height: auto; margin: 0; padding: 0; border: none; 
+        box-shadow: none;
+      }
+      @page { size: A4; margin: 12mm; }
       ::-webkit-scrollbar { display: none; }
+      tr, .terms-bullet { page-break-inside: avoid; break-inside: avoid; }
+      thead { display: table-header-group; }
+      .section-title { page-break-after: avoid; break-after: avoid; }
+      .total-box { page-break-inside: avoid; break-inside: avoid; }
     }
     
     table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+    tr { page-break-inside: avoid; break-inside: avoid; }
     th { 
       padding: 5px 6px; border: 1px solid #000; font-size: 9.5pt; font-weight: bold; 
       background: #000; color: #fff; text-align: center;
@@ -92,9 +99,9 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
     
     .total-box { 
       border-top: 1px solid #000; border-bottom: 1px solid #000; 
-      padding: 12px 0; margin: 20px 0; text-align: center; 
+      padding: 10px 0; margin: 16px 0; text-align: center; 
     }
-    .section-title { font-weight: bold; font-size: 11pt; color: #000; margin-bottom: 8px; margin-top:15px; }
+    .section-title { font-weight: bold; font-size: 11pt; color: #000; margin-bottom: 8px; margin-top:16px; }
     .terms-bullet { margin-left: 20px; font-size: 9.5pt; line-height: 1.6; }
     
     .header-container { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 10px; }
@@ -165,10 +172,8 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
       AMOUNT IN WORDS – ${numberToWords(total).replace('Rupees ', '').replace(' Rupees', '')} Only
     </div>
   </div>
-</div>
 
-<div class="page">
-  <div class="section-title">2. MATERIAL SPECIFICATION</div>
+  <div class="section-title" style="margin-top:20px;">2. MATERIAL SPECIFICATION</div>
   <table>
     <thead>
       <tr>
@@ -655,11 +660,9 @@ function QuotationDocument({ quotation, total, tenantName, tenantLogo, showItemA
             AMOUNT IN WORDS – {numberToWords(total).replace('Rupees ', '').replace(' Rupees', '')} Only
           </div>
         </div>
-      </Page>
 
-      {/* PAGE 2 */}
-      <Page>
-        <div style={{ fontWeight: 'bold', fontSize: 11, margin: '15px 0 8px' }}>2. MATERIAL SPECIFICATION</div>
+        {/* 2. MATERIAL SPECIFICATION appears immediately after total amount */}
+        <div style={{ fontWeight: 'bold', fontSize: 11, margin: '20px 0 8px' }}>2. MATERIAL SPECIFICATION</div>
         <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 15 }}>
           <thead>
             <tr>
