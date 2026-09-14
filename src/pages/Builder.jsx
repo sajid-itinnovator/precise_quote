@@ -102,9 +102,130 @@ function parseLW(sizeStr) {
   return parseDimensions(sizeStr);
 }
 
+// ─── Parse Item Quantity & Unit (Sq Ft, Per Point, Running Feet, Inches, Meters) ────────
+export function parseItemQuantity(item) {
+  if (!item || !item.size) return null;
+  const sizeStr = String(item.size).trim();
+  const unit = item.unit || (() => {
+    const s = sizeStr.toLowerCase();
+    if (s.includes('point') || s.includes(' pt')) return 'point';
+    if (s.includes('rft') || s.includes('running')) return 'rft';
+    if (s.includes('inch') || s.includes('in"') || s.includes('"')) return 'inch';
+    if (s.includes('meter') || s.includes('mtr') || s.includes(' m')) return 'meter';
+    return 'sqft';
+  })();
+
+  // 1. 3 dimensions: e.g. "1.5 X 2 X 2"
+  const cleaned = sizeStr.replace(/['"“”]/g, '').replace(/\b(?:ft|feet)\b/gi, '').trim();
+  const match3 = cleaned.match(/^([\d.]+)\s*[xX×*]\s*([\d.]+)\s*[xX×*]\s*([\d.]+)$/);
+  if (match3) {
+    const d1 = parseFloat(match3[1]) || 0;
+    const d2 = parseFloat(match3[2]) || 0;
+    const d3 = parseFloat(match3[3]) || 0;
+    if (d1 > 0 && d2 > 0 && d3 > 0) {
+      const total = Math.round(d1 * d2 * d3 * 100) / 100;
+      return {
+        qty: total,
+        unit: 'cft',
+        unitShort: 'cft',
+        unitLabel: 'CFT',
+        formatted: `${d1} × ${d2} × ${d3}`,
+        is2D: false,
+        is3D: true
+      };
+    }
+  }
+
+  // 2. 2 dimensions: e.g. "7 X 4.5"
+  const match2 = cleaned.match(/^([\d.]+)\s*[xX×*]\s*([\d.]+)$/);
+  if (match2) {
+    const d1 = parseFloat(match2[1]) || 0;
+    const d2 = parseFloat(match2[2]) || 0;
+    if (d1 > 0 && d2 > 0) {
+      const total = Math.round(d1 * d2 * 100) / 100;
+      return {
+        qty: total,
+        unit: unit === 'meter' ? 'meter' : unit === 'inch' ? 'inch' : 'sqft',
+        unitShort: unit === 'meter' ? 'mtr' : unit === 'inch' ? 'inch' : 'sqft',
+        unitLabel: unit === 'meter' ? 'Meters' : unit === 'inch' ? 'Inches' : 'Sq Ft',
+        formatted: `${d1} × ${d2}`,
+        is2D: true
+      };
+    }
+  }
+
+  // 3. Single numeric quantity: e.g. "12", "12 Points", "25 Rft", "36 Inch", "3.5 Meter", "120 Sq Ft"
+  const numMatch = sizeStr.match(/^([\d.]+)/);
+  if (numMatch) {
+    const qty = parseFloat(numMatch[1]) || 0;
+    if (qty > 0) {
+      if (unit === 'point') {
+        return {
+          qty,
+          unit: 'point',
+          unitShort: 'point',
+          unitLabel: 'Per Point',
+          formatted: `${qty} Points`,
+          is2D: false
+        };
+      } else if (unit === 'rft') {
+        return {
+          qty,
+          unit: 'rft',
+          unitShort: 'rft',
+          unitLabel: 'Running Feet',
+          formatted: `${qty} Rft`,
+          is2D: false
+        };
+      } else if (unit === 'inch') {
+        return {
+          qty,
+          unit: 'inch',
+          unitShort: 'inch',
+          unitLabel: 'Inches',
+          formatted: `${qty} Inch`,
+          is2D: false
+        };
+      } else if (unit === 'meter') {
+        return {
+          qty,
+          unit: 'meter',
+          unitShort: 'meter',
+          unitLabel: 'Meters',
+          formatted: `${qty} Meter`,
+          is2D: false
+        };
+      } else {
+        return {
+          qty,
+          unit: 'sqft',
+          unitShort: 'sqft',
+          unitLabel: 'Sq Ft',
+          formatted: `${qty} Sq Ft`,
+          is2D: false
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
 // ─── Calculate SQFT / Units for an Item (Interior Designer Only) ────────
 export function calculateItemSqft(item) {
   if (!item) return 0;
+  const unit = item.unit || (() => {
+    const s = (item.size || '').toLowerCase();
+    if (s.includes('point') || s.includes(' pt')) return 'point';
+    if (s.includes('rft') || s.includes('running')) return 'rft';
+    if (s.includes('inch') || s.includes('in"') || s.includes('"')) return 'inch';
+    if (s.includes('meter') || s.includes('mtr') || s.includes(' m')) return 'meter';
+    return 'sqft';
+  })();
+  if (unit === 'point' || unit === 'rft' || unit === 'inch' || unit === 'meter') {
+    return 0;
+  }
+
   if (item.sqft && !isNaN(Number(item.sqft))) return Number(item.sqft);
   
   const dims = parseDimensions(item.size);
@@ -113,7 +234,7 @@ export function calculateItemSqft(item) {
   }
 
   const sizeStr = (item.size || '').trim();
-  const directMatch = sizeStr.match(/^([\d.]+)\s*(?:sq\.?\s*ft|sft|cft)$/i);
+  const directMatch = sizeStr.match(/^([\d.]+)\s*(?:sq\.?\s*ft|sft)$/i);
   if (directMatch) {
     return parseFloat(directMatch[1]) || 0;
   }
@@ -131,11 +252,21 @@ export function calculateItemSqft(item) {
 function ItemRow({ item, index = 0, roomName, onUpdate, onDelete }) {
   const [showRadioPicker, setShowRadioPicker] = useState(false);
   const rate = item._rate ?? '';
-  const dims = parseDimensions(item.size);
+
+  const currentUnit = item.unit || (() => {
+    const s = (item.size || '').toLowerCase();
+    if (s.includes('point') || s.includes(' pt')) return 'point';
+    if (s.includes('rft') || s.includes('running')) return 'rft';
+    if (s.includes('inch') || s.includes('in"') || s.includes('"')) return 'inch';
+    if (s.includes('meter') || s.includes('mtr') || s.includes(' m')) return 'meter';
+    return 'sqft';
+  })();
+
+  const parsedQty = parseItemQuantity({ ...item, unit: currentUnit });
   const rateNum = parseFloat(rate) || 0;
-  const isAutoCalc = dims !== null && rateNum > 0;
-  const autoAmount = isAutoCalc ? Math.round(dims.total * rateNum) : null;
-  const itemSqft = calculateItemSqft(item);
+  const isAutoCalc = parsedQty !== null && rateNum > 0;
+  const autoAmount = isAutoCalc ? Math.round(parsedQty.qty * rateNum) : null;
+  const itemSqft = calculateItemSqft({ ...item, unit: currentUnit });
 
   const normalizedRoom = (roomName || '').trim().toUpperCase();
   const roomKey = Object.keys(ROOM_PRESET_ITEMS).find(k => 
@@ -150,21 +281,64 @@ function ItemRow({ item, index = 0, roomName, onUpdate, onDelete }) {
   });
 
   const updateSize = (val) => {
-    const parsed = parseDimensions(val);
+    const updatedItem = { ...item, size: val, unit: currentUnit };
+    const parsed = parseItemQuantity(updatedItem);
     const r = parseFloat(rate) || 0;
-    const newAmount = parsed && r > 0 ? Math.round(parsed.total * r) : item.amount;
-    onUpdate({ ...item, size: val, amount: newAmount });
+    const newAmount = parsed && r > 0 ? Math.round(parsed.qty * r) : item.amount;
+    onUpdate({ ...updatedItem, amount: newAmount });
   };
 
   const updateRate = (val) => {
-    const parsed = parseDimensions(item.size);
+    const updatedItem = { ...item, _rate: val, unit: currentUnit };
+    const parsed = parseItemQuantity(updatedItem);
     const r = parseFloat(val) || 0;
-    const newAmount = parsed && r > 0 ? Math.round(parsed.total * r) : item.amount;
-    onUpdate({ ...item, _rate: val, amount: newAmount });
+    const newAmount = parsed && r > 0 ? Math.round(parsed.qty * r) : item.amount;
+    onUpdate({ ...updatedItem, amount: newAmount });
   };
 
   const updateAmount = (val) => {
     onUpdate({ ...item, amount: parseFloat(val) || 0 });
+  };
+
+  const handleUnitChange = (newUnit) => {
+    let newSize = (item.size || '').trim();
+    if (newSize) {
+      const numOnly = newSize.match(/^([\d.]+)\s*(?:sq\.?\s*ft|sft|points?|pts?|rft|running\s*feet|r\.?\s*ft|inch(?:es)?|in|meters?|mtrs?|m)?$/i);
+      if (numOnly) {
+        const num = numOnly[1];
+        if (newUnit === 'point') newSize = `${num} Points`;
+        else if (newUnit === 'rft') newSize = `${num} Rft`;
+        else if (newUnit === 'inch') newSize = `${num} Inch`;
+        else if (newUnit === 'meter') newSize = `${num} Meter`;
+        else if (newUnit === 'sqft') {
+          if (!newSize.includes('X') && !newSize.includes('x') && !newSize.includes('*')) {
+            newSize = `${num} Sq Ft`;
+          }
+        }
+      }
+    }
+    const updatedItem = { ...item, unit: newUnit, size: newSize };
+    const parsed = parseItemQuantity(updatedItem);
+    const r = parseFloat(rate) || 0;
+    const newAmount = parsed && r > 0 ? Math.round(parsed.qty * r) : item.amount;
+    onUpdate({ ...updatedItem, amount: newAmount });
+  };
+
+  const handleSizeBlur = () => {
+    const val = (item.size || '').trim();
+    if (!val) return;
+    const numOnly = val.match(/^([\d.]+)$/);
+    if (numOnly) {
+      const num = numOnly[1];
+      let formattedSize = val;
+      if (currentUnit === 'point') formattedSize = `${num} Points`;
+      else if (currentUnit === 'rft') formattedSize = `${num} Rft`;
+      else if (currentUnit === 'inch') formattedSize = `${num} Inch`;
+      else if (currentUnit === 'meter') formattedSize = `${num} Meter`;
+      if (formattedSize !== val) {
+        updateSize(formattedSize);
+      }
+    }
   };
 
   return (
@@ -389,26 +563,89 @@ function ItemRow({ item, index = 0, roomName, onUpdate, onDelete }) {
       <div className="item-row-grid">
 
         <div>
-          <label className="form-label" style={{ fontSize: '0.6rem', marginBottom: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>SIZE / DESCRIPTION</span>
-            {itemSqft > 0 && (
-              <span style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '0.62rem' }}>
-                📐 {itemSqft} {dims?.unit || 'sqft'}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 4 }}>
+              <span className="form-label" style={{ fontSize: '0.62rem', margin: 0, fontWeight: 700, color: 'var(--text-secondary)' }}>
+                SIZE / DESCRIPTION
               </span>
-            )}
-          </label>
+              {parsedQty && (
+                <span style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '0.62rem' }}>
+                  📐 {parsedQty.formatted}
+                </span>
+              )}
+            </div>
+
+            {/* Units Radio Buttons: Sq Ft | Per Point | Running Feet | Inches | Meters */}
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: 'var(--surface-2, #f8fafc)',
+              padding: '3px 8px',
+              borderRadius: 6,
+              border: '1px solid var(--border)',
+              flexWrap: 'wrap'
+            }}>
+              <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 600 }}>Unit:</span>
+              
+              {[
+                { id: 'sqft', label: 'Sq Ft' },
+                { id: 'point', label: 'Per Point' },
+                { id: 'rft', label: 'Running Feet' },
+                { id: 'inch', label: 'Inches' },
+                { id: 'meter', label: 'Meters' }
+              ].map(u => (
+                <label
+                  key={u.id}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 3,
+                    fontSize: '0.68rem',
+                    fontWeight: currentUnit === u.id ? 700 : 500,
+                    color: currentUnit === u.id ? 'var(--primary)' : 'var(--text-secondary)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name={`item-unit-${roomName}-${index}`}
+                    value={u.id}
+                    checked={currentUnit === u.id}
+                    onChange={() => handleUnitChange(u.id)}
+                    style={{ accentColor: 'var(--primary)', cursor: 'pointer', margin: 0 }}
+                  />
+                  <span>{u.label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
           <input
             className="form-input"
             style={{ padding: '6px 8px', fontSize: '0.82rem' }}
-            placeholder="e.g. 7 X 4.5 or 1.5 X 2 X 2"
+            placeholder={
+              currentUnit === 'point' ? 'e.g. 12 Points or 8' :
+              currentUnit === 'rft' ? 'e.g. 25 Rft or 15' :
+              currentUnit === 'inch' ? 'e.g. 36 Inch or 48' :
+              currentUnit === 'meter' ? 'e.g. 3.5 Meter or 10' :
+              'e.g. 7 X 4.5 or 120 Sq Ft'
+            }
             value={item.size || ''}
             onChange={e => updateSize(e.target.value)}
+            onBlur={handleSizeBlur}
           />
         </div>
 
         <div>
           <label className="form-label" style={{ fontSize: '0.6rem', marginBottom: 3, display: 'block' }}>
-            RATE (₹/{dims?.unit || 'sqft'})&nbsp;
+            RATE (₹/{
+              currentUnit === 'point' ? 'point' :
+              currentUnit === 'rft' ? 'rft' :
+              currentUnit === 'inch' ? 'inch' :
+              currentUnit === 'meter' ? 'meter' :
+              'sqft'
+            })&nbsp;
             <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.55rem' }}>optional</span>
           </label>
           <input
@@ -458,7 +695,7 @@ function ItemRow({ item, index = 0, roomName, onUpdate, onDelete }) {
         }}>
           <Calculator size={12} style={{ color: 'var(--primary)', flexShrink: 0 }} />
           <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600 }}>
-            {dims.formatted} = {dims.total} {dims.unit} × ₹{rate}/{dims.unit} = ₹{formatIndianCurrency(autoAmount)}
+            {parsedQty.formatted} × ₹{rate}/{parsedQty.unitShort} = ₹{formatIndianCurrency(autoAmount)}
           </span>
         </div>
       )}
