@@ -128,13 +128,26 @@ export function calculateItemSqft(item) {
 }
 
 // ─── Item Row ─────────────────────────────────────────────────────────────
-function ItemRow({ item, roomName, onUpdate, onDelete }) {
+function ItemRow({ item, index = 0, roomName, onUpdate, onDelete }) {
+  const [showRadioPicker, setShowRadioPicker] = useState(false);
   const rate = item._rate ?? '';
   const dims = parseDimensions(item.size);
   const rateNum = parseFloat(rate) || 0;
   const isAutoCalc = dims !== null && rateNum > 0;
   const autoAmount = isAutoCalc ? Math.round(dims.total * rateNum) : null;
   const itemSqft = calculateItemSqft(item);
+
+  const normalizedRoom = (roomName || '').trim().toUpperCase();
+  const roomKey = Object.keys(ROOM_PRESET_ITEMS).find(k => 
+    k === normalizedRoom || normalizedRoom.includes(k) || k.includes(normalizedRoom)
+  );
+  const roomPresets = roomKey ? ROOM_PRESET_ITEMS[roomKey] : [];
+  const otherPresets = ALL_PRESET_ITEMS.filter(p => !roomPresets.includes(p));
+
+  // Determine if item is custom text (not matching standard room/preset list)
+  const [isCustom, setIsCustom] = useState(() => {
+    return Boolean(item.particular && !ALL_PRESET_ITEMS.includes(item.particular));
+  });
 
   const updateSize = (val) => {
     const parsed = parseDimensions(val);
@@ -154,79 +167,222 @@ function ItemRow({ item, roomName, onUpdate, onDelete }) {
     onUpdate({ ...item, amount: parseFloat(val) || 0 });
   };
 
-  const normalizedRoom = (roomName || '').trim().toUpperCase();
-  const roomKey = Object.keys(ROOM_PRESET_ITEMS).find(k => 
-    k === normalizedRoom || normalizedRoom.includes(k) || k.includes(normalizedRoom)
-  );
-  const roomPresets = roomKey ? ROOM_PRESET_ITEMS[roomKey] : [];
-  const otherPresets = ALL_PRESET_ITEMS.filter(p => !roomPresets.includes(p));
-  const isCustomOption = item.particular && !ALL_PRESET_ITEMS.includes(item.particular);
-
   return (
     <div className="room-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
 
-      {/* Row 1: Item Dropdown Menu + Particular Input + Delete */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <select
-          className="form-select"
-          style={{
-            flex: '0 0 auto',
-            minWidth: 170,
-            maxWidth: 240,
-            fontSize: '0.82rem',
-            padding: '7px 8px',
-            background: 'var(--surface-2, #f8fafc)',
-            borderColor: 'var(--border, #cbd5e1)',
-            cursor: 'pointer',
-            fontWeight: 500,
-            borderRadius: 6
-          }}
-          value={
-            item.particular && ALL_PRESET_ITEMS.includes(item.particular)
-              ? item.particular
-              : (item.particular ? '__custom__' : '')
-          }
-          onChange={e => {
-            const val = e.target.value;
-            if (val && val !== '__custom__') {
-              onUpdate({ ...item, particular: val });
-            }
-          }}
-          title="Change item by picking an option from the dropdown menu"
-        >
-          <option value="">▼ Select Preset Item...</option>
-          {roomPresets.length > 0 && (
-            <optgroup label={`${roomKey} OPTIONS`}>
-              {roomPresets.map((opt, idx) => (
-                <option key={`rp-${idx}`} value={opt}>{opt}</option>
-              ))}
-            </optgroup>
-          )}
-          {otherPresets.length > 0 && (
-            <optgroup label="OTHER ROOM OPTIONS">
-              {otherPresets.map((opt, idx) => (
-                <option key={`op-${idx}`} value={opt}>{opt}</option>
-              ))}
-            </optgroup>
-          )}
-          {isCustomOption && (
-            <option value="__custom__">
-              ✏️ Custom: {item.particular.length > 24 ? item.particular.slice(0, 22) + '...' : item.particular}
-            </option>
-          )}
-        </select>
+      {/* Row 1: Single Option for Item with Radio Button Selector and Delete Button */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {/* Radio buttons mode toggle + Change button */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <label style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer',
+              color: !isCustom ? 'var(--primary)' : 'var(--text-muted)'
+            }}>
+              <input
+                type="radio"
+                name={`item-mode-${roomName}-${index}`}
+                checked={!isCustom}
+                onChange={() => {
+                  setIsCustom(false);
+                  if (!item.particular && roomPresets.length > 0) {
+                    onUpdate({ ...item, particular: roomPresets[0] });
+                  }
+                }}
+                style={{ accentColor: 'var(--primary)', cursor: 'pointer' }}
+              />
+              <span>Preset Item</span>
+            </label>
+            <label style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer',
+              color: isCustom ? 'var(--primary)' : 'var(--text-muted)'
+            }}>
+              <input
+                type="radio"
+                name={`item-mode-${roomName}-${index}`}
+                checked={isCustom}
+                onChange={() => setIsCustom(true)}
+                style={{ accentColor: 'var(--primary)', cursor: 'pointer' }}
+              />
+              <span>Custom Text</span>
+            </label>
+          </div>
 
-        <input
-          className="form-input"
-          style={{ flex: 1, minWidth: 180, fontSize: '0.85rem', padding: '7px 10px' }}
-          placeholder="Particular (e.g. Safety Door With CNC Jali)"
-          value={item.particular || ''}
-          onChange={e => onUpdate({ ...item, particular: e.target.value })}
-          list={roomName ? `datalist-${roomName.replace(/\s+/g, '-')}` : "particulars-list"}
-        />
-        <button className="btn btn-sm btn-danger" onClick={onDelete} style={{ padding: '7px 10px', flexShrink: 0 }} title="Delete item">
-          <Trash2 size={14} />
-        </button>
+          <button
+            type="button"
+            onClick={() => setShowRadioPicker(p => !p)}
+            className="btn btn-ghost btn-xs"
+            style={{
+              fontSize: '0.74rem',
+              color: 'var(--primary)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              padding: '2px 8px',
+              background: showRadioPicker ? 'var(--primary-light)' : 'transparent',
+              borderRadius: 4,
+              border: '1px solid var(--border)'
+            }}
+            title="Open radio button list to change this item"
+          >
+            🔘 {showRadioPicker ? 'Close Radio List' : 'Change Item (Radio)'}
+          </button>
+        </div>
+
+        {/* Single Item Input/Dropdown + Delete Option */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {!isCustom ? (
+            <select
+              className="form-select"
+              style={{
+                flex: 1,
+                fontSize: '0.88rem',
+                padding: '8px 12px',
+                fontWeight: 600,
+                background: 'var(--surface-2, #f8fafc)',
+                borderColor: 'var(--border, #cbd5e1)',
+                cursor: 'pointer',
+                borderRadius: 6
+              }}
+              value={item.particular || ''}
+              onChange={e => {
+                const val = e.target.value;
+                if (val === '__custom__') {
+                  setIsCustom(true);
+                } else if (val) {
+                  onUpdate({ ...item, particular: val });
+                }
+              }}
+              title="Select or change preset item"
+            >
+              <option value="">-- Select Preset Item --</option>
+              {roomPresets.length > 0 && (
+                <optgroup label={`${roomKey} PRESETS`}>
+                  {roomPresets.map((opt, idx) => (
+                    <option key={`rp-${idx}`} value={opt}>{opt}</option>
+                  ))}
+                </optgroup>
+              )}
+              {otherPresets.length > 0 && (
+                <optgroup label="OTHER ROOM ITEMS">
+                  {otherPresets.map((opt, idx) => (
+                    <option key={`op-${idx}`} value={opt}>{opt}</option>
+                  ))}
+                </optgroup>
+              )}
+              <option value="__custom__">✏️ Custom / Edit text...</option>
+            </select>
+          ) : (
+            <input
+              className="form-input"
+              style={{ flex: 1, fontSize: '0.88rem', padding: '8px 12px' }}
+              placeholder="Type custom item particular..."
+              value={item.particular || ''}
+              onChange={e => onUpdate({ ...item, particular: e.target.value })}
+              autoFocus
+            />
+          )}
+
+          {/* Delete Option */}
+          <button
+            type="button"
+            className="btn btn-sm btn-danger"
+            onClick={onDelete}
+            style={{ padding: '8px 12px', flexShrink: 0 }}
+            title="Delete this item"
+          >
+            <Trash2 size={15} />
+          </button>
+        </div>
+
+        {/* Collapsible Radio Buttons Drawer for Changing Item */}
+        {showRadioPicker && (
+          <div style={{
+            background: 'var(--surface-2, #f8fafc)',
+            border: '1px solid var(--primary)',
+            borderRadius: 8,
+            padding: '10px 14px',
+            marginTop: 4
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--primary)' }}>
+                🔘 Select Item for {roomKey || 'Room'}:
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowRadioPicker(false)}
+                className="btn-icon btn-ghost"
+                style={{ padding: 2, fontSize: '0.75rem', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8 }}>
+              {roomPresets.map((opt, idx) => (
+                <label
+                  key={`rdo-${idx}`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    fontSize: '0.8rem',
+                    padding: '7px 10px',
+                    borderRadius: 6,
+                    background: item.particular === opt ? 'var(--primary-light)' : 'var(--bg-card, #fff)',
+                    border: item.particular === opt ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+                    cursor: 'pointer',
+                    fontWeight: item.particular === opt ? 700 : 400,
+                    color: item.particular === opt ? 'var(--primary)' : 'inherit'
+                  }}
+                >
+                  <input
+                    type="radio"
+                    name={`radio-item-select-${roomName}-${index}`}
+                    checked={item.particular === opt}
+                    onChange={() => {
+                      onUpdate({ ...item, particular: opt });
+                      setIsCustom(false);
+                      setShowRadioPicker(false);
+                    }}
+                    style={{ accentColor: 'var(--primary)', cursor: 'pointer' }}
+                  />
+                  <span style={{ lineHeight: 1.3 }}>{opt}</span>
+                </label>
+              ))}
+
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  fontSize: '0.8rem',
+                  padding: '7px 10px',
+                  borderRadius: 6,
+                  background: isCustom ? 'var(--primary-light)' : 'var(--bg-card, #fff)',
+                  border: isCustom ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+                  cursor: 'pointer',
+                  fontWeight: isCustom ? 700 : 400,
+                  color: isCustom ? 'var(--primary)' : 'inherit'
+                }}
+              >
+                <input
+                  type="radio"
+                  name={`radio-item-select-${roomName}-${index}`}
+                  checked={isCustom}
+                  onChange={() => {
+                    setIsCustom(true);
+                    setShowRadioPicker(false);
+                  }}
+                  style={{ accentColor: 'var(--primary)', cursor: 'pointer' }}
+                />
+                <span>✏️ Custom / Other Name...</span>
+              </label>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Row 2: Size | Rate | Amount */}
@@ -380,7 +536,7 @@ function RoomSection({ room, index, onUpdate, onDelete, onMoveUp, onMoveDown, is
       {!collapsed && (
         <>
           {(room.items || []).map((item, i) => (
-            <ItemRow key={i} item={item} roomName={room.name} onUpdate={data => updateItem(i, data)} onDelete={() => deleteItem(i)} />
+            <ItemRow key={i} item={item} index={i} roomName={room.name} onUpdate={data => updateItem(i, data)} onDelete={() => deleteItem(i)} />
           ))}
           <div style={{ padding: '8px 16px' }}>
             <button type="button" className="btn btn-ghost btn-sm" onClick={addItem}>
