@@ -293,7 +293,6 @@ input, textarea, select { font-family: inherit; }
 
 /* Main content area (desktop) */
 .main-content {
-  margin-left: var(--sidebar-width);
   margin-top: var(--topbar-height);
   padding: 24px;
   min-height: calc(100vh - var(--topbar-height));
@@ -602,8 +601,8 @@ input, textarea, select { font-family: inherit; }
 /* Builder Item Row Grid */
 .item-row-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 6px;
+  grid-template-columns: 1.25fr 1fr 1fr;
+  gap: 8px;
 }
 @media (max-width: 768px) {
   .item-row-grid {

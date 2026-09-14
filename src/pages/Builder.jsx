@@ -1374,7 +1374,7 @@ export default function Builder() {
       </div>
 
       {/* Desktop layout: 2 columns */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20 }} className="desktop-only">
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 350px', gap: 24 }} className="desktop-only">
         {activeTab === 'scope' ? (
           <BuilderLeft
             rooms={rooms} updateRoom={updateRoom} deleteRoom={deleteRoom} moveRoom={moveRoom}
