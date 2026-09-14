@@ -13,7 +13,8 @@ export function Sidebar({ onNewProject }) {
 
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-    { icon: FileText, label: 'Quotations', path: '/builder' },
+    { icon: FileText, label: 'Quotation Builder', path: '/builder' },
+    { icon: Clock, label: 'Quotation History', path: '/history' },
     { icon: Package, label: 'Products', path: '/products' },
     { icon: Users, label: 'Clients', path: '/clients' },
   ];

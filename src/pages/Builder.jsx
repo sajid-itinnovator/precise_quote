@@ -254,7 +254,7 @@ export function calculateItemSqft(item) {
 
 // ─── Item Row ─────────────────────────────────────────────────────────────
 function ItemRow({ item, index = 0, roomName, onUpdate, onDelete }) {
-  const [showRadioPicker, setShowRadioPicker] = useState(false);
+  const [manualOverride, setManualOverride] = useState(false);
   const rate = item._rate ?? '';
 
   const currentUnit = item.unit || (() => {
@@ -288,7 +288,7 @@ function ItemRow({ item, index = 0, roomName, onUpdate, onDelete }) {
     const updatedItem = { ...item, size: val, unit: currentUnit };
     const parsed = parseItemQuantity(updatedItem);
     const r = parseFloat(rate) || 0;
-    const newAmount = parsed && r > 0 ? Math.round(parsed.qty * r) : item.amount;
+    const newAmount = (!manualOverride && parsed && r > 0) ? Math.round(parsed.qty * r) : item.amount;
     onUpdate({ ...updatedItem, amount: newAmount });
   };
 
@@ -296,11 +296,12 @@ function ItemRow({ item, index = 0, roomName, onUpdate, onDelete }) {
     const updatedItem = { ...item, _rate: val, unit: currentUnit };
     const parsed = parseItemQuantity(updatedItem);
     const r = parseFloat(val) || 0;
-    const newAmount = parsed && r > 0 ? Math.round(parsed.qty * r) : item.amount;
+    const newAmount = (!manualOverride && parsed && r > 0) ? Math.round(parsed.qty * r) : item.amount;
     onUpdate({ ...updatedItem, amount: newAmount });
   };
 
   const updateAmount = (val) => {
+    setManualOverride(true);
     onUpdate({ ...item, amount: parseFloat(val) || 0 });
   };
 
@@ -324,7 +325,7 @@ function ItemRow({ item, index = 0, roomName, onUpdate, onDelete }) {
     const updatedItem = { ...item, unit: newUnit, size: newSize };
     const parsed = parseItemQuantity(updatedItem);
     const r = parseFloat(rate) || 0;
-    const newAmount = parsed && r > 0 ? Math.round(parsed.qty * r) : item.amount;
+    const newAmount = (!manualOverride && parsed && r > 0) ? Math.round(parsed.qty * r) : item.amount;
     onUpdate({ ...updatedItem, amount: newAmount });
   };
 
@@ -346,12 +347,11 @@ function ItemRow({ item, index = 0, roomName, onUpdate, onDelete }) {
   };
 
   return (
-    <div className="room-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+    <div className="room-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10, padding: '12px 14px' }}>
 
-      {/* Row 1: Single Option for Item with Radio Button Selector and Delete Button */}
+      {/* Row 1: Item Selection Header & Presets Toggle */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {/* Radio buttons mode toggle + Change button */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <label style={{
               display: 'inline-flex', alignItems: 'center', gap: 5,
@@ -390,26 +390,16 @@ function ItemRow({ item, index = 0, roomName, onUpdate, onDelete }) {
 
           <button
             type="button"
-            onClick={() => setShowRadioPicker(p => !p)}
-            className="btn btn-ghost btn-xs"
-            style={{
-              fontSize: '0.74rem',
-              color: 'var(--primary)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '2px 8px',
-              background: showRadioPicker ? 'var(--primary-light)' : 'transparent',
-              borderRadius: 4,
-              border: '1px solid var(--border)'
-            }}
-            title="Open radio button list to change this item"
+            className="btn btn-sm btn-danger"
+            onClick={onDelete}
+            style={{ padding: '4px 8px', fontSize: '0.75rem', gap: 4 }}
+            title="Delete this item"
           >
-            🔘 {showRadioPicker ? 'Close Radio List' : 'Change Item (Radio)'}
+            <Trash2 size={13} /> Delete
           </button>
         </div>
 
-        {/* Single Item Input/Dropdown + Delete Option */}
+        {/* Item Particular Input / Dropdown */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {!isCustom ? (
             <select
@@ -433,7 +423,7 @@ function ItemRow({ item, index = 0, roomName, onUpdate, onDelete }) {
                   onUpdate({ ...item, particular: val });
                 }
               }}
-              title="Select or change preset item"
+              title="Select preset item"
             >
               <option value="">-- Select Preset Item --</option>
               {roomPresets.length > 0 && (
@@ -456,170 +446,38 @@ function ItemRow({ item, index = 0, roomName, onUpdate, onDelete }) {
             <input
               className="form-input"
               style={{ flex: 1, fontSize: '0.88rem', padding: '8px 12px' }}
-              placeholder="Type custom item particular..."
+              placeholder="Type custom item particular (e.g. Designer Crockery Unit)..."
               value={item.particular || ''}
               onChange={e => onUpdate({ ...item, particular: e.target.value })}
               autoFocus
             />
           )}
-
-          {/* Delete Option */}
-          <button
-            type="button"
-            className="btn btn-sm btn-danger"
-            onClick={onDelete}
-            style={{ padding: '8px 12px', flexShrink: 0 }}
-            title="Delete this item"
-          >
-            <Trash2 size={15} />
-          </button>
         </div>
-
-        {/* Collapsible Radio Buttons Drawer for Changing Item */}
-        {showRadioPicker && (
-          <div style={{
-            background: 'var(--surface-2, #f8fafc)',
-            border: '1px solid var(--primary)',
-            borderRadius: 8,
-            padding: '10px 14px',
-            marginTop: 4
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--primary)' }}>
-                🔘 Select Item for {roomKey || 'Room'}:
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowRadioPicker(false)}
-                className="btn-icon btn-ghost"
-                style={{ padding: 2, fontSize: '0.75rem', cursor: 'pointer' }}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 8 }}>
-              {roomPresets.map((opt, idx) => (
-                <label
-                  key={`rdo-${idx}`}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    fontSize: '0.8rem',
-                    padding: '7px 10px',
-                    borderRadius: 6,
-                    background: item.particular === opt ? 'var(--primary-light)' : 'var(--bg-card, #fff)',
-                    border: item.particular === opt ? '1.5px solid var(--primary)' : '1px solid var(--border)',
-                    cursor: 'pointer',
-                    fontWeight: item.particular === opt ? 700 : 400,
-                    color: item.particular === opt ? 'var(--primary)' : 'inherit'
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name={`radio-item-select-${roomName}-${index}`}
-                    checked={item.particular === opt}
-                    onChange={() => {
-                      onUpdate({ ...item, particular: opt });
-                      setIsCustom(false);
-                      setShowRadioPicker(false);
-                    }}
-                    style={{ accentColor: 'var(--primary)', cursor: 'pointer' }}
-                  />
-                  <span style={{ lineHeight: 1.3 }}>{opt}</span>
-                </label>
-              ))}
-
-              <label
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  fontSize: '0.8rem',
-                  padding: '7px 10px',
-                  borderRadius: 6,
-                  background: isCustom ? 'var(--primary-light)' : 'var(--bg-card, #fff)',
-                  border: isCustom ? '1.5px solid var(--primary)' : '1px solid var(--border)',
-                  cursor: 'pointer',
-                  fontWeight: isCustom ? 700 : 400,
-                  color: isCustom ? 'var(--primary)' : 'inherit'
-                }}
-              >
-                <input
-                  type="radio"
-                  name={`radio-item-select-${roomName}-${index}`}
-                  checked={isCustom}
-                  onChange={() => {
-                    setIsCustom(true);
-                    setShowRadioPicker(false);
-                  }}
-                  style={{ accentColor: 'var(--primary)', cursor: 'pointer' }}
-                />
-                <span>✏️ Custom / Other Name...</span>
-              </label>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Row 2: Size | Rate | Amount */}
+      {/* Row 2: Ergonomic 4-Column Baseline: Size | Unit | Rate | Amount */}
       <div className="item-row-grid">
-
+        {/* Col 1: Size / Dimensions */}
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span className="form-label" style={{ fontSize: '0.62rem', margin: 0, fontWeight: 700, color: 'var(--text-secondary)' }}>
-                SIZE / DESCRIPTION
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+            <label className="form-label" style={{ fontSize: '0.62rem', margin: 0, fontWeight: 700, color: 'var(--text-secondary)' }}>
+              SIZE / DIMENSIONS
+            </label>
+            {parsedQty && (
+              <span style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '0.62rem' }}>
+                📐 {parsedQty.formatted}
               </span>
-              {parsedQty && (
-                <span style={{ color: 'var(--primary)', fontWeight: 700, fontSize: '0.62rem' }}>
-                  📐 {parsedQty.formatted}
-                </span>
-              )}
-            </div>
-
-            {/* Units Dropdown Menu */}
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <label style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 600, margin: 0 }}>
-                Unit:
-              </label>
-              <select
-                className="form-select"
-                value={currentUnit}
-                onChange={e => handleUnitChange(e.target.value)}
-                style={{
-                  fontSize: '0.72rem',
-                  padding: '2px 20px 2px 6px',
-                  height: '24px',
-                  fontWeight: 600,
-                  color: 'var(--primary)',
-                  background: 'var(--surface-2, #f8fafc)',
-                  borderColor: 'var(--border, #cbd5e1)',
-                  borderRadius: 4,
-                  cursor: 'pointer',
-                  lineHeight: 1
-                }}
-                title="Select measurement unit for size"
-              >
-                <option value="sqft">Sq Ft</option>
-                <option value="point">Per Point</option>
-                <option value="rft">Running Feet</option>
-                <option value="inch">Inches</option>
-                <option value="meter">Meters</option>
-              </select>
-            </div>
+            )}
           </div>
-
           <input
             className="form-input"
-            style={{ padding: '6px 8px', fontSize: '0.82rem' }}
+            style={{ padding: '7px 10px', fontSize: '0.84rem' }}
             placeholder={
               currentUnit === 'point' ? 'e.g. 12 Points or 8' :
               currentUnit === 'rft' ? 'e.g. 25 Rft or 15' :
               currentUnit === 'inch' ? 'e.g. 36 Inch or 48' :
               currentUnit === 'meter' ? 'e.g. 3.5 Meter or 10' :
-              'e.g. 7 X 4.5 or 120 Sq Ft'
+              'e.g. 7 X 4.5 or 120'
             }
             value={item.size || ''}
             onChange={e => updateSize(e.target.value)}
@@ -627,65 +485,115 @@ function ItemRow({ item, index = 0, roomName, onUpdate, onDelete }) {
           />
         </div>
 
+        {/* Col 2: Unit Dropdown */}
         <div>
-          <label className="form-label" style={{ fontSize: '0.6rem', marginBottom: 3, display: 'block' }}>
-            RATE (₹/{
-              currentUnit === 'point' ? 'point' :
-              currentUnit === 'rft' ? 'rft' :
-              currentUnit === 'inch' ? 'inch' :
-              currentUnit === 'meter' ? 'meter' :
-              'sqft'
-            })&nbsp;
-            <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.55rem' }}>optional</span>
+          <label className="form-label" style={{ fontSize: '0.62rem', marginBottom: 3, display: 'block', fontWeight: 700, color: 'var(--text-secondary)' }}>
+            UNIT
+          </label>
+          <select
+            className="form-select"
+            value={currentUnit}
+            onChange={e => handleUnitChange(e.target.value)}
+            style={{
+              fontSize: '0.82rem',
+              padding: '7px 10px',
+              fontWeight: 600,
+              color: 'var(--primary)',
+              background: 'var(--surface-2, #f8fafc)',
+              borderColor: 'var(--border, #cbd5e1)',
+              borderRadius: 6,
+              cursor: 'pointer',
+              width: '100%'
+            }}
+            title="Select measurement unit"
+          >
+            <option value="sqft">Sq Ft</option>
+            <option value="point">Per Point</option>
+            <option value="rft">Running Feet</option>
+            <option value="inch">Inches</option>
+            <option value="meter">Meters</option>
+          </select>
+        </div>
+
+        {/* Col 3: Rate */}
+        <div>
+          <label className="form-label" style={{ fontSize: '0.62rem', marginBottom: 3, display: 'block', fontWeight: 700, color: 'var(--text-secondary)' }}>
+            RATE (₹/{parsedQty?.unitShort || currentUnit})&nbsp;
+            <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>opt</span>
           </label>
           <input
             className="form-input"
             type="number"
             min="0"
-            style={{ padding: '6px 8px', fontSize: '0.82rem' }}
+            style={{ padding: '7px 10px', fontSize: '0.84rem' }}
             placeholder="0"
             value={rate}
             onChange={e => updateRate(e.target.value)}
           />
         </div>
 
+        {/* Col 4: Amount */}
         <div>
-          <label className="form-label" style={{ fontSize: '0.6rem', marginBottom: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
-            AMOUNT (₹)
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+            <label className="form-label" style={{ fontSize: '0.62rem', margin: 0, display: 'flex', alignItems: 'center', gap: 4, fontWeight: 700, color: 'var(--text-secondary)' }}>
+              AMOUNT (₹)
+              {isAutoCalc && !manualOverride && (
+                <span style={{
+                  fontSize: '0.5rem', background: 'var(--primary)', color: '#fff',
+                  padding: '1px 5px', borderRadius: 99, fontWeight: 700,
+                }}>AUTO</span>
+              )}
+            </label>
             {isAutoCalc && (
-              <span style={{
-                fontSize: '0.5rem', background: 'var(--primary)', color: '#fff',
-                padding: '1px 5px', borderRadius: 99, fontWeight: 700,
-              }}>AUTO</span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (manualOverride) {
+                    setManualOverride(false);
+                    onUpdate({ ...item, amount: autoAmount });
+                  } else {
+                    setManualOverride(true);
+                  }
+                }}
+                className="btn-ghost"
+                style={{ fontSize: '0.62rem', color: 'var(--primary)', cursor: 'pointer', padding: '0 2px', border: 'none', background: 'none' }}
+                title={manualOverride ? 'Re-sync to auto calculation' : 'Override amount manually'}
+              >
+                {manualOverride ? '🔄 Sync Auto' : '✏️ Custom'}
+              </button>
             )}
-          </label>
+          </div>
           <input
             className="form-input"
             type="number"
             min="0"
             style={{
-              padding: '6px 8px', fontSize: '0.82rem',
-              background: isAutoCalc ? 'var(--primary-light)' : undefined,
-              color: isAutoCalc ? 'var(--primary)' : undefined,
-              fontWeight: isAutoCalc ? 700 : undefined,
+              padding: '7px 10px', fontSize: '0.84rem',
+              background: isAutoCalc && !manualOverride ? 'var(--primary-light)' : undefined,
+              color: isAutoCalc && !manualOverride ? 'var(--primary)' : undefined,
+              fontWeight: isAutoCalc && !manualOverride ? 700 : undefined,
             }}
             placeholder="0"
             value={item.amount || ''}
             onChange={e => updateAmount(e.target.value)}
-            readOnly={isAutoCalc}
+            readOnly={isAutoCalc && !manualOverride}
           />
         </div>
       </div>
 
-      {/* Auto-calc breakdown */}
+      {/* Auto-calc subtle breakdown helper */}
       {isAutoCalc && (
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          background: 'var(--primary-light)', borderRadius: 6, padding: '5px 10px',
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          background: 'var(--surface-2, #f1f5f9)',
+          border: '1px solid var(--border-light, #e2e8f0)',
+          borderRadius: 6, padding: '3px 10px', alignSelf: 'flex-start',
+          fontSize: '0.72rem', color: 'var(--text-secondary, #475569)', fontWeight: 600
         }}>
           <Calculator size={12} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-          <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 600 }}>
-            {parsedQty.formula || parsedQty.formatted} × ₹{rate}/{parsedQty.unitShort} = ₹{formatIndianCurrency(autoAmount)}
+          <span>
+            {parsedQty.formula || parsedQty.formatted} × ₹{rate}/{parsedQty.unitShort} = <strong style={{ color: 'var(--primary)' }}>₹{formatIndianCurrency(autoAmount)}</strong>
+            {manualOverride && <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>(Manual override: ₹{formatIndianCurrency(item.amount || 0)})</span>}
           </span>
         </div>
       )}
@@ -1552,6 +1460,35 @@ export default function Builder() {
         </datalist>
       ))}
 
+      {/* Mobile Sticky Summary Bar */}
+      <div className="mobile-sticky-summary">
+        <div>
+          <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600 }}>Total ({totalItems} items)</div>
+          <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--primary)' }}>
+            ₹{formatIndianCurrency(total)}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => setShowPreview(true)}
+            style={{ padding: '6px 10px', fontSize: '0.78rem', gap: 4 }}
+          >
+            <Eye size={13} /> Preview
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={() => handleSave('INVOICE CREATED')}
+            disabled={!clientId}
+            style={{ padding: '6px 12px', fontSize: '0.78rem', gap: 4 }}
+          >
+            <FileCheck size={13} /> Finalize
+          </button>
+        </div>
+      </div>
+
       {/* Quotation Preview Modal */}
       {showPreview && (
         <QuotationPreview
@@ -1585,24 +1522,6 @@ function BuilderLeft({ rooms, updateRoom, deleteRoom, moveRoom, showRoomPicker, 
           >
             <Plus size={14} /> Add Room
           </button>
-          {onOpenMaterials && (
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={onOpenMaterials}
-              style={{
-                borderColor: 'var(--secondary, #17365d)',
-                color: 'var(--secondary, #17365d)',
-                background: 'var(--surface)',
-                fontWeight: 600,
-                fontSize: '0.8rem',
-                gap: 6
-              }}
-              title="Open Material Brands & Specs"
-            >
-              <Layers size={14} /> 2. Material Brands &amp; Specs
-            </button>
-          )}
         </div>
       </div>
 
@@ -1754,27 +1673,6 @@ function BuilderLeft({ rooms, updateRoom, deleteRoom, moveRoom, showRoomPicker, 
                 >
                   <Plus size={14} /> Add Room
                 </button>
-                {onOpenMaterials && (
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    style={{
-                      borderColor: 'var(--secondary, #17365d)',
-                      color: 'var(--secondary, #17365d)',
-                      background: 'var(--surface)',
-                      fontWeight: 600,
-                      fontSize: '0.8rem',
-                      padding: '6px 16px',
-                      borderRadius: 20,
-                      boxShadow: 'var(--shadow-xs)',
-                      gap: 6
-                    }}
-                    onClick={onOpenMaterials}
-                    title="Open Material Brands & Specs for this quotation"
-                  >
-                    <Layers size={14} /> 2. Material Brands &amp; Specs
-                  </button>
-                )}
                 <div style={{ flex: 1, minWidth: 20, height: 1, background: 'var(--border-light)' }} />
               </div>
             )}
@@ -1800,39 +1698,42 @@ function BuilderRight({
           <div className="section-title">Summary</div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             {totalSqft > 0 && (
-              <span className="badge" style={{ background: '#dbeafe', color: '#1d4ed8', fontWeight: 700 }}>
+              <span className="badge" style={{ background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 700 }}>
                 {totalSqft.toLocaleString('en-IN')} SQFT
               </span>
             )}
             <span className="badge badge-info">{totalItems} Items</span>
           </div>
         </div>
-        <div className="summary-panel">
+        <div className="summary-panel-light">
           {/* Total SQFT Card for Interior Designers */}
           <div style={{
-            background: 'rgba(255,255,255,0.1)',
-            backdropFilter: 'blur(4px)',
+            background: 'var(--surface-2, #f8fafc)',
             borderRadius: 8,
             padding: '10px 12px',
-            marginBottom: 12,
-            border: '1px solid rgba(255,255,255,0.15)'
+            marginBottom: 14,
+            border: '1px solid var(--border-light, #e2e8f0)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.9 }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>
                   📐 Total Interior Area
                 </div>
-                <div style={{ fontSize: '0.65rem', opacity: 0.7, marginTop: 2 }}>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: 2 }}>
                   Designer metric (hidden in invoice)
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '1.2rem', fontWeight: 800 }}>
-                  {totalSqft.toLocaleString('en-IN')} <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>SQFT</span>
+                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--secondary)' }}>
+                  {totalSqft.toLocaleString('en-IN')} <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>SQFT</span>
                 </div>
-                {totalSqft > 0 && subtotal > 0 && (
-                  <div style={{ fontSize: '0.68rem', opacity: 0.8, marginTop: 2 }}>
+                {totalSqft > 0 && subtotal > 0 ? (
+                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: 2 }}>
                     avg ₹{Math.round(subtotal / totalSqft).toLocaleString('en-IN')}/sqft
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                    from Sq Ft items
                   </div>
                 )}
               </div>
@@ -1840,131 +1741,154 @@ function BuilderRight({
           </div>
 
           <div className="summary-row">
-            <span style={{ opacity: 0.8 }}>Subtotal</span>
-            <span style={{ fontWeight: 600 }}>₹{formatIndianCurrency(subtotal)}</span>
+            <span>Subtotal</span>
+            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>₹{formatIndianCurrency(subtotal)}</span>
           </div>
           <div className="summary-row" style={{ alignItems: 'flex-start' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ opacity: 0.8 }}>GST (18%)</span>
+              <span>GST (18%)</span>
               <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
-                <input type="checkbox" checked={includeGST} onChange={e => setIncludeGST(e.target.checked)} style={{ accentColor: '#1a56ff' }} />
-                <span style={{ fontSize: '0.7rem', opacity: 0.6 }}>Include</span>
+                <input type="checkbox" checked={includeGST} onChange={e => setIncludeGST(e.target.checked)} style={{ accentColor: 'var(--primary)' }} />
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Include</span>
               </label>
             </div>
-            <span style={{ fontWeight: 600 }}>₹{formatIndianCurrency(gst)}</span>
+            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>₹{formatIndianCurrency(gst)}</span>
           </div>
 
           {/* Option to show or hide item-level amounts */}
-          <div className="summary-row" style={{ alignItems: 'center', padding: '6px 0', borderTop: '1px dashed rgba(255,255,255,0.1)' }}>
+          <div className="summary-row" style={{ alignItems: 'center', padding: '6px 0', borderTop: '1px dashed var(--border-light)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ opacity: 0.85, fontSize: '0.85rem' }}>Item Amounts</span>
+              <span style={{ fontSize: '0.85rem' }}>Item Amounts</span>
               <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={showItemAmount}
                   onChange={e => setShowItemAmount(e.target.checked)}
-                  style={{ accentColor: '#1a56ff' }}
+                  style={{ accentColor: 'var(--primary)' }}
                 />
-                <span style={{ fontSize: '0.7rem', opacity: 0.75 }}>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                   {showItemAmount ? 'Show in PDF' : 'Hide in PDF'}
                 </span>
               </label>
             </div>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: showItemAmount ? '#60a5fa' : '#94a3b8' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: showItemAmount ? 'var(--primary)' : 'var(--text-muted)' }}>
               {showItemAmount ? 'Detailed' : 'Lump Sum'}
             </span>
           </div>
           <hr className="summary-divider" />
-          <div className="summary-total-label">Final Total Amount</div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+          
+          <div className="summary-total-box">
+            <div className="summary-total-label">Final Total Amount</div>
             <div className="summary-total-value">₹{formatIndianCurrency(total)}</div>
+            {total > 0 && (
+              <div style={{ marginTop: 4, fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                {numberToWords(total)} Only
+              </div>
+            )}
           </div>
-          {total > 0 && (
-            <div style={{ marginTop: 8, fontSize: '0.72rem', opacity: 0.65, fontStyle: 'italic' }}>
-              {numberToWords(total)} Only
+
+          {/* Action Button Hierarchy inside Summary Card */}
+          {isEditing && existingQuote?.status === 'APPROVED' ? (
+            <div style={{
+              background: '#fef2f2',
+              border: '1px solid #ef4444',
+              borderRadius: 8,
+              padding: '12px 14px',
+              marginTop: 14,
+              textAlign: 'center'
+            }}>
+              <div style={{ fontWeight: 700, color: '#b91c1c', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <Lock size={15} /> Invoice Approved &amp; Locked
+              </div>
+              <div style={{ fontSize: '0.75rem', color: '#7f1d1d', marginTop: 4, marginBottom: 8 }}>
+                Direct edits are disabled for approved invoices.
+              </div>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm w-full"
+                onClick={() => window.location.href = `#/builder?revise=${existingQuote.id}`}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.8rem' }}
+              >
+                <Copy size={13} /> Create Revision Instead
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
+              {/* Primary CTA */}
+              <button
+                type="button"
+                className="btn btn-primary w-full"
+                onClick={onSaveInvoice}
+                disabled={!clientId}
+                style={{
+                  padding: '11px 16px',
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: 8,
+                  boxShadow: '0 2px 6px rgba(26, 86, 255, 0.25)'
+                }}
+              >
+                <FileCheck size={17} />
+                {saved && savedMessage && savedMessage.includes('Invoice')
+                  ? savedMessage
+                  : isEditing
+                    ? (existingQuote?.status === 'DRAFT' ? 'Finalize & Save as Invoice' : 'Update & Finalize Invoice')
+                    : isRevising
+                      ? 'Save Revision as Invoice'
+                      : 'Save as Invoice (Invoice Created)'}
+              </button>
+
+              {/* Secondary CTA */}
+              <button
+                type="button"
+                className="btn btn-secondary w-full"
+                style={{
+                  borderColor: 'var(--primary)',
+                  color: 'var(--primary)',
+                  background: 'var(--surface)',
+                  fontWeight: 600,
+                  fontSize: '0.86rem',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '9px 14px'
+                }}
+                onClick={onPreview}
+              >
+                <Eye size={16} /> Preview &amp; Print Quotation
+              </button>
+
+              {/* Tertiary CTA */}
+              <button
+                type="button"
+                className="btn btn-ghost w-full"
+                onClick={onSaveDraft}
+                disabled={!clientId}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 14px',
+                  color: 'var(--text-secondary)',
+                  fontSize: '0.82rem'
+                }}
+              >
+                <Save size={14} />
+                {saved && savedMessage && savedMessage.includes('Draft')
+                  ? savedMessage
+                  : isEditing
+                    ? (existingQuote?.status === 'DRAFT' ? 'Save Changes to Draft' : 'Save Changes as Draft')
+                    : 'Save as Draft'}
+              </button>
             </div>
           )}
-
-          {/* Preview button */}
-          <button
-            className="btn"
-            style={{ background: '#fff', color: 'var(--primary)', fontWeight: 700, width: '100%', marginTop: 14, gap: 8 }}
-            onClick={onPreview}
-          >
-            <Eye size={16} /> Preview &amp; Print Quotation
-          </button>
         </div>
       </div>
-
-      {/* Save as Invoice & Save as Draft Buttons */}
-      {isEditing && existingQuote?.status === 'APPROVED' ? (
-        <div style={{
-          background: '#fef2f2',
-          border: '1px solid #ef4444',
-          borderRadius: 8,
-          padding: '12px 14px',
-          marginBottom: 12,
-          textAlign: 'center'
-        }}>
-          <div style={{ fontWeight: 700, color: '#b91c1c', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            <Lock size={15} /> Invoice Approved &amp; Locked
-          </div>
-          <div style={{ fontSize: '0.75rem', color: '#7f1d1d', marginTop: 4, marginBottom: 8 }}>
-            Direct edits are disabled for approved invoices.
-          </div>
-          <button
-            type="button"
-            className="btn btn-primary btn-sm w-full"
-            onClick={() => window.location.href = `#/builder?revise=${existingQuote.id}`}
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.8rem' }}
-          >
-            <Copy size={13} /> Create Revision Instead
-          </button>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
-          <button
-            type="button"
-            className="btn btn-primary w-full"
-            onClick={onSaveInvoice}
-            disabled={!clientId}
-            style={{
-              padding: '11px 16px',
-              fontWeight: 700,
-              fontSize: '0.9rem',
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: 8,
-              boxShadow: '0 2px 6px rgba(26, 86, 255, 0.25)'
-            }}
-          >
-            <FileCheck size={17} />
-            {saved && savedMessage && savedMessage.includes('Invoice')
-              ? savedMessage
-              : isEditing
-                ? (existingQuote?.status === 'DRAFT' ? 'Finalize & Save as Invoice' : 'Update & Finalize Invoice')
-                : isRevising
-                  ? 'Save Revision as Invoice'
-                  : 'Save as Invoice (Invoice Created)'}
-          </button>
-
-          <button
-            type="button"
-            className="btn btn-secondary w-full"
-            onClick={onSaveDraft}
-            disabled={!clientId}
-            style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, padding: '9px 14px' }}
-          >
-            <Save size={15} />
-            {saved && savedMessage && savedMessage.includes('Draft')
-              ? savedMessage
-              : isEditing
-                ? (existingQuote?.status === 'DRAFT' ? 'Save Changes to Draft' : 'Save Changes as Draft')
-                : 'Save as Draft'}
-          </button>
-        </div>
-      )}
 
       {/* Note */}
       <div style={{ background: 'var(--surface-2)', borderRadius: 8, padding: '10px 12px', fontSize: '0.75rem', color: 'var(--text-muted)', border: '1px solid var(--border-light)' }}>
