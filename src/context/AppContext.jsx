@@ -444,6 +444,24 @@ function loadFromStorage(key, fallback) {
   } catch { return fallback; }
 }
 
+export const calculateNextQuoteNo = (quotesList, currentSettingNo = 1290) => {
+  let maxNo = 1289;
+  (quotesList || []).forEach(q => {
+    const raw = String(q.quotationNo || '');
+    const matches = raw.match(/\d+/g);
+    if (matches && matches.length > 0) {
+      matches.forEach(m => {
+        const num = parseInt(m, 10);
+        if (!isNaN(num) && num > maxNo && num < 1000000) {
+          maxNo = num;
+        }
+      });
+    }
+  });
+  const fallback = Number(currentSettingNo) || 1290;
+  return Math.max(fallback, maxNo + 1);
+};
+
 export function AppProvider({ children }) {
   const { currentUser, userProfile, loading: authLoading } = useAuth();
   const [clients, setClients] = useState([]);
@@ -527,10 +545,11 @@ export function AppProvider({ children }) {
           const productsSnap = await getDocs(productsQ);
           setProducts(productsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
           
+          let savedNextNo = null;
           const specSnap = await getDocs(query(collection(db, 'config'), where('tenantId', '==', tenantId)));
           specSnap.docs.forEach(doc => {
             if (doc.id.includes('materialSpec')) setMaterialSpec(doc.data().data);
-            if (doc.id.includes('nextQuoteNo')) setNextQuoteNo(doc.data().value);
+            if (doc.id.includes('nextQuoteNo')) savedNextNo = doc.data().value;
             if (doc.id.includes('tenantLogo')) setTenantLogo(doc.data().data);
             if (doc.id.includes('subscription')) {
               setSubscription({ 
@@ -540,6 +559,9 @@ export function AppProvider({ children }) {
               });
             }
           });
+
+          const effectiveNextNo = calculateNextQuoteNo(loadedQuotes, savedNextNo || 1290);
+          setNextQuoteNo(effectiveNextNo);
         }
       } catch (error) {
         console.error("Failed to load Firebase data", error);
@@ -620,10 +642,15 @@ export function AppProvider({ children }) {
       }
     }
 
+    const calculatedNext = calculateNextQuoteNo(quotations, nextQuoteNo);
+    const assignedNo = (quotation.quotationNo && quotation.quotationNo !== '1290' && quotation.quotationNo.trim() !== '')
+      ? quotation.quotationNo.trim()
+      : String(calculatedNext);
+
     const nowIso = new Date().toISOString();
     const qWithDetails = { 
       ...quotation, 
-      quotationNo: quotation.quotationNo || String(nextQuoteNo),
+      quotationNo: assignedNo,
       status: quotation.status || 'DRAFT',
       date: quotation.date || nowIso.slice(0, 10),
       createdAt: quotation.createdAt || nowIso,
@@ -633,7 +660,9 @@ export function AppProvider({ children }) {
     };
     const docRef = await addDoc(collection(db, 'quotations'), qWithDetails);
     
-    const newNextNo = nextQuoteNo + 1;
+    const assignedDigits = assignedNo.match(/\d+/g);
+    const assignedVal = assignedDigits ? parseInt(assignedDigits[assignedDigits.length - 1], 10) : calculatedNext;
+    const newNextNo = Math.max(calculatedNext, (isNaN(assignedVal) ? calculatedNext : assignedVal)) + 1;
     await setDoc(doc(db, 'config', `${userProfile.tenantId}_nextQuoteNo`), { value: newNextNo, tenantId: userProfile.tenantId });
     
     setQuotations(prev => [...prev, { ...qWithDetails, id: docRef.id }]);
@@ -677,6 +706,7 @@ export function AppProvider({ children }) {
     addQuotation, updateQuotation, deleteQuotation,
     addProduct, updateProduct, deleteProduct,
     updateMaterialSpec,
+    calculateNextQuoteNo,
     ROOMS_DEFAULT,
   };
 

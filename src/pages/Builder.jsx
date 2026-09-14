@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Plus, Trash2, ChevronDown, ChevronUp, Calculator, Eye, Home, ArrowRight, Building, Layers, FileCheck, Save, Copy, Pencil, RotateCcw, Check, Lock } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronUp, Calculator, Eye, Home, ArrowRight, Building, Layers, FileCheck, Save, Copy, Pencil, RotateCcw, Check, Lock, Users, Phone, MapPin, Hash } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { formatIndianCurrency, numberToWords } from '../utils/helpers';
 import QuotationPreview from '../components/QuotationPreview';
@@ -154,20 +154,77 @@ function ItemRow({ item, roomName, onUpdate, onDelete }) {
     onUpdate({ ...item, amount: parseFloat(val) || 0 });
   };
 
+  const normalizedRoom = (roomName || '').trim().toUpperCase();
+  const roomKey = Object.keys(ROOM_PRESET_ITEMS).find(k => 
+    k === normalizedRoom || normalizedRoom.includes(k) || k.includes(normalizedRoom)
+  );
+  const roomPresets = roomKey ? ROOM_PRESET_ITEMS[roomKey] : [];
+  const otherPresets = ALL_PRESET_ITEMS.filter(p => !roomPresets.includes(p));
+  const isCustomOption = item.particular && !ALL_PRESET_ITEMS.includes(item.particular);
+
   return (
     <div className="room-item" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
 
-      {/* Row 1: Particular + Delete */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      {/* Row 1: Item Dropdown Menu + Particular Input + Delete */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <select
+          className="form-select"
+          style={{
+            flex: '0 0 auto',
+            minWidth: 170,
+            maxWidth: 240,
+            fontSize: '0.82rem',
+            padding: '7px 8px',
+            background: 'var(--surface-2, #f8fafc)',
+            borderColor: 'var(--border, #cbd5e1)',
+            cursor: 'pointer',
+            fontWeight: 500,
+            borderRadius: 6
+          }}
+          value={
+            item.particular && ALL_PRESET_ITEMS.includes(item.particular)
+              ? item.particular
+              : (item.particular ? '__custom__' : '')
+          }
+          onChange={e => {
+            const val = e.target.value;
+            if (val && val !== '__custom__') {
+              onUpdate({ ...item, particular: val });
+            }
+          }}
+          title="Change item by picking an option from the dropdown menu"
+        >
+          <option value="">▼ Select Preset Item...</option>
+          {roomPresets.length > 0 && (
+            <optgroup label={`${roomKey} OPTIONS`}>
+              {roomPresets.map((opt, idx) => (
+                <option key={`rp-${idx}`} value={opt}>{opt}</option>
+              ))}
+            </optgroup>
+          )}
+          {otherPresets.length > 0 && (
+            <optgroup label="OTHER ROOM OPTIONS">
+              {otherPresets.map((opt, idx) => (
+                <option key={`op-${idx}`} value={opt}>{opt}</option>
+              ))}
+            </optgroup>
+          )}
+          {isCustomOption && (
+            <option value="__custom__">
+              ✏️ Custom: {item.particular.length > 24 ? item.particular.slice(0, 22) + '...' : item.particular}
+            </option>
+          )}
+        </select>
+
         <input
           className="form-input"
-          style={{ flex: 1, fontSize: '0.85rem', padding: '7px 10px' }}
+          style={{ flex: 1, minWidth: 180, fontSize: '0.85rem', padding: '7px 10px' }}
           placeholder="Particular (e.g. Safety Door With CNC Jali)"
           value={item.particular || ''}
           onChange={e => onUpdate({ ...item, particular: e.target.value })}
           list={roomName ? `datalist-${roomName.replace(/\s+/g, '-')}` : "particulars-list"}
         />
-        <button className="btn btn-sm btn-danger" onClick={onDelete} style={{ padding: '7px 10px', flexShrink: 0 }}>
+        <button className="btn btn-sm btn-danger" onClick={onDelete} style={{ padding: '7px 10px', flexShrink: 0 }} title="Delete item">
           <Trash2 size={14} />
         </button>
       </div>
@@ -349,7 +406,7 @@ export function getNextRevisionTitle(originalTitle) {
 
 // ─── Main Builder Page ────────────────────────────────────────────────────
 export default function Builder() {
-  const { clients, projects, updateProject, quotations, addQuotation, updateQuotation, materialSpec, updateMaterialSpec, ROOMS_DEFAULT } = useApp();
+  const { clients, projects, updateProject, updateClient, addClient, quotations, addQuotation, updateQuotation, materialSpec, updateMaterialSpec, ROOMS_DEFAULT, nextQuoteNo, calculateNextQuoteNo } = useApp();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -358,6 +415,11 @@ export default function Builder() {
   const preClientId = searchParams.get('clientId');
 
   const [clientId, setClientId] = useState('');
+  const [clientName, setClientName] = useState('');
+  const [clientContact, setClientContact] = useState('');
+  const [clientAddress, setClientAddress] = useState('');
+  const [quotationNo, setQuotationNo] = useState('');
+
   const [projectTitle, setProjectTitle] = useState('2 BHK INTERIOR DESIGN');
   const [rooms, setRooms] = useState([]);
   const [customRoom, setCustomRoom] = useState('');
@@ -392,10 +454,17 @@ export default function Builder() {
     if (targetQuote) {
       loadedQuoteRef.current = targetId;
       if (targetQuote.clientId) setClientId(targetQuote.clientId);
+      if (targetQuote.clientName) setClientName(targetQuote.clientName);
+      if (targetQuote.clientContact) setClientContact(targetQuote.clientContact);
+      if (targetQuote.clientAddress) setClientAddress(targetQuote.clientAddress);
+
       if (reviseId) {
         setProjectTitle(getNextRevisionTitle(targetQuote.projectTitle));
+        const nextNum = calculateNextQuoteNo ? calculateNextQuoteNo(quotations, nextQuoteNo) : (nextQuoteNo || 1290);
+        setQuotationNo(String(nextNum));
       } else {
         setProjectTitle(targetQuote.projectTitle || '2 BHK INTERIOR DESIGN');
+        if (targetQuote.quotationNo) setQuotationNo(targetQuote.quotationNo);
       }
       setRooms(targetQuote.rooms ? JSON.parse(JSON.stringify(targetQuote.rooms)) : []);
       if (targetQuote.showItemAmount !== undefined) {
@@ -405,13 +474,44 @@ export default function Builder() {
         setQuoteMaterialSpec(JSON.parse(JSON.stringify(targetQuote.materialSpec)));
       }
     }
-  }, [editId, reviseId, quotations]);
+  }, [editId, reviseId, quotations, nextQuoteNo, calculateNextQuoteNo]);
 
+  // Auto-assign next quotation number for new quotations
   useEffect(() => {
-    if (preClientId && !editId && !reviseId) {
-      setClientId(preClientId);
+    if (!editId && !reviseId) {
+      const computed = calculateNextQuoteNo ? calculateNextQuoteNo(quotations, nextQuoteNo) : (nextQuoteNo || 1290);
+      setQuotationNo(prev => prev ? prev : String(computed));
     }
-  }, [preClientId, editId, reviseId]);
+  }, [nextQuoteNo, quotations, editId, reviseId, calculateNextQuoteNo]);
+
+  // Pre-fill client if passed in query param
+  useEffect(() => {
+    if (preClientId && !editId && !reviseId && clients && clients.length > 0) {
+      setClientId(preClientId);
+      const found = clients.find(c => c.id === preClientId);
+      if (found) {
+        setClientName(found.name || '');
+        setClientContact(found.contact || '');
+        setClientAddress(found.address || '');
+      }
+    }
+  }, [preClientId, clients, editId, reviseId]);
+
+  const handleClientChange = (selectedId) => {
+    setClientId(selectedId);
+    if (selectedId && selectedId !== '__new__') {
+      const found = clients.find(c => c.id === selectedId);
+      if (found) {
+        setClientName(found.name || '');
+        setClientContact(found.contact || '');
+        setClientAddress(found.address || '');
+      }
+    } else if (selectedId === '__new__') {
+      setClientName('');
+      setClientContact('');
+      setClientAddress('');
+    }
+  };
 
   const existingQuote = (editId || reviseId) ? quotations.find(q => q.id === (editId || reviseId)) : null;
 
@@ -482,11 +582,53 @@ export default function Builder() {
       }
 
       const client = getClient();
+      const resolvedName = clientName.trim() || client?.name || 'Client';
+      const resolvedContact = clientContact.trim() || client?.contact || '';
+      const resolvedAddress = clientAddress.trim() || client?.address || '';
+      const fallbackNo = calculateNextQuoteNo ? calculateNextQuoteNo(quotations, nextQuoteNo) : (nextQuoteNo || 1290);
+      const resolvedQuoteNo = editId 
+        ? (existingQuote?.quotationNo || quotationNo || String(fallbackNo))
+        : (quotationNo.trim() || String(fallbackNo));
+
+      let effectiveClientId = clientId === '__new__' ? '' : clientId;
+
+      // Auto-create client record if user entered a custom client name and no client was selected
+      if (!effectiveClientId && resolvedName && resolvedName !== 'Client' && addClient) {
+        try {
+          const newCId = await addClient({
+            name: resolvedName,
+            contact: resolvedContact,
+            address: resolvedAddress,
+            email: ''
+          });
+          if (newCId) {
+            effectiveClientId = newCId;
+            setClientId(newCId);
+          }
+        } catch (cErr) {
+          console.warn("Could not auto-create client record:", cErr);
+        }
+      } else if (effectiveClientId && updateClient) {
+        // If client already exists, sync back any updated contact or address
+        try {
+          const currentC = getClient();
+          if (currentC && ((resolvedContact && currentC.contact !== resolvedContact) || (resolvedAddress && currentC.address !== resolvedAddress))) {
+            await updateClient(effectiveClientId, {
+              contact: resolvedContact || currentC.contact || '',
+              address: resolvedAddress || currentC.address || ''
+            });
+          }
+        } catch (syncErr) {
+          console.warn("Could not sync client details:", syncErr);
+        }
+      }
+
       const quoteData = {
-        clientId,
-        clientName: client?.name || 'Client',
-        clientContact: client?.contact || '',
-        clientAddress: client?.address || '',
+        quotationNo: resolvedQuoteNo,
+        clientId: effectiveClientId || '',
+        clientName: resolvedName,
+        clientContact: resolvedContact,
+        clientAddress: resolvedAddress,
         projectTitle,
         rooms,
         total,
@@ -517,8 +659,8 @@ export default function Builder() {
       }
 
       // Keep project.amount in sync with the latest invoice total if a matching project exists
-      if (clientId && projects && projects.length > 0 && updateProject) {
-        const matchingProj = projects.find(p => p.clientId === clientId);
+      if (effectiveClientId && projects && projects.length > 0 && updateProject) {
+        const matchingProj = projects.find(p => p.clientId === effectiveClientId);
         if (matchingProj) {
           try {
             await updateProject(matchingProj.id, { amount: total, status: saveStatus });
@@ -540,17 +682,25 @@ export default function Builder() {
   // Build the quotation object for preview
   const buildQuotation = () => {
     const client = getClient();
+    const resolvedName = clientName.trim() || client?.name || 'Client';
+    const resolvedContact = clientContact.trim() || client?.contact || '';
+    const resolvedAddress = clientAddress.trim() || client?.address || '';
+    const fallbackNo = calculateNextQuoteNo ? calculateNextQuoteNo(quotations, nextQuoteNo) : (nextQuoteNo || 1290);
+    const resolvedQuoteNo = quotationNo.trim() || existingQuote?.quotationNo || String(fallbackNo);
+
     return {
       id: editId || undefined,
-      quotationNo: existingQuote?.quotationNo || `1290`,
+      quotationNo: resolvedQuoteNo,
       date: existingQuote?.date || new Date().toISOString().slice(0, 10),
       createdAt: existingQuote?.createdAt || new Date().toISOString(),
-      clientName: client?.name || 'Client',
-      clientContact: client?.contact || '',
-      clientAddress: client?.address || '',
+      clientId: clientId === '__new__' ? undefined : (clientId || undefined),
+      clientName: resolvedName,
+      clientContact: resolvedContact,
+      clientAddress: resolvedAddress,
       projectTitle,
       rooms,
       total,
+      totalSqft,
       materialSpec: quoteMaterialSpec,
       showItemAmount,
       status: editId ? (existingQuote?.status || 'INVOICE CREATED') : 'DRAFT',
@@ -709,24 +859,107 @@ export default function Builder() {
         </div>
       )}
 
-      {/* Client + Project */}
-      <div className="card" style={{ padding: 16, marginBottom: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      {/* Client & Invoice Details Card */}
+      <div className="card" style={{ padding: '18px 20px', marginBottom: 16, border: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, borderBottom: '1px solid var(--border-light, #e2e8f0)', paddingBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Users size={18} style={{ color: 'var(--primary)' }} />
+            <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>Client &amp; Invoice Information</span>
+          </div>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            These details appear directly on Page 1 of the Quotation &amp; Invoice
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 14 }}>
+          {/* Client Selection */}
           <div className="form-group">
-            <label className="form-label">Client</label>
-            <select className="form-select" value={clientId} onChange={e => setClientId(e.target.value)}>
-              <option value="">Select client...</option>
-              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Select Existing Client</span>
+              {clientId && clientId !== '__new__' && (
+                <span style={{ color: 'var(--primary)', fontSize: '0.7rem', fontWeight: 600 }}>Linked to Client DB</span>
+              )}
+            </label>
+            <select
+              className="form-select"
+              value={clientId}
+              onChange={e => handleClientChange(e.target.value)}
+            >
+              <option value="">-- Choose Existing Client --</option>
+              {clients.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.name} {c.contact ? `(${c.contact})` : ''}
+                </option>
+              ))}
+              <option value="__new__">➕ + Add New Client / Customer</option>
             </select>
           </div>
+
+          {/* Client Name Input */}
+          <div className="form-group">
+            <label className="form-label">Client Name *</label>
+            <input
+              className="form-input"
+              value={clientName}
+              onChange={e => setClientName(e.target.value)}
+              placeholder="e.g. Mr. Himakshi Vyas Sir"
+              required
+            />
+          </div>
+
+          {/* Client Contact Phone */}
+          <div className="form-group">
+            <label className="form-label">Client Contact / Phone</label>
+            <input
+              className="form-input"
+              value={clientContact}
+              onChange={e => setClientContact(e.target.value)}
+              placeholder="e.g. +91 8619465377"
+            />
+          </div>
+
+          {/* Quotation / Invoice No */}
+          <div className="form-group">
+            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>Quotation / Invoice No</span>
+              <span style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: 600 }}>Auto-Assigned</span>
+            </label>
+            <input
+              className="form-input"
+              value={quotationNo}
+              onChange={e => setQuotationNo(e.target.value)}
+              placeholder="e.g. 1294"
+            />
+          </div>
+
+          {/* Project Title */}
           <div className="form-group">
             <label className="form-label">Project Title</label>
-            <input className="form-input" value={projectTitle} onChange={e => setProjectTitle(e.target.value)} placeholder="e.g. 2 BHK INTERIOR DESIGN" />
+            <input
+              className="form-input"
+              value={projectTitle}
+              onChange={e => setProjectTitle(e.target.value)}
+              placeholder="e.g. 2 BHK INTERIOR DESIGN"
+            />
+          </div>
+
+          {/* Billing / Site Address */}
+          <div className="form-group">
+            <label className="form-label">Billing / Site Address</label>
+            <input
+              className="form-input"
+              value={clientAddress}
+              onChange={e => setClientAddress(e.target.value)}
+              placeholder="e.g. Hinjewadi Phase 1, Pune 411057"
+            />
           </div>
         </div>
-        {clientId && (
-          <div style={{ marginTop: 10, padding: '8px 12px', background: 'var(--primary-light)', borderRadius: 6, fontSize: '0.8125rem', color: 'var(--primary)', fontWeight: 600 }}>
-            ● Client: {getClient()?.name} — {getClient()?.contact}
+
+        {clientId && clientId !== '__new__' && (
+          <div style={{ marginTop: 12, padding: '8px 12px', background: 'var(--primary-light)', borderRadius: 6, fontSize: '0.8rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 700 }}>● Active Client:</span> {clientName || getClient()?.name}
+            {clientContact && <span>&bull; Contact: {clientContact}</span>}
+            {clientAddress && <span>&bull; Address: {clientAddress}</span>}
           </div>
         )}
       </div>
