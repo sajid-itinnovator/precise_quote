@@ -5,10 +5,14 @@ import { formatIndianCurrency, formatDate, cleanCustomerProjectTitle } from '../
 import { useApp } from '../context/AppContext';
 
 export default function WhatsAppShareModal({ quotation, onClose, onInvoiceSent }) {
-  const { updateQuotation } = useApp();
+  const { updateQuotation, companyProfile } = useApp();
 
-  // Generate a clean default filename: Vistara_Invoice_<No>_<ClientName>
-  const defaultBaseName = `Vistara_Invoice_${quotation.quotationNo || 'Quote'}_${(quotation.clientName || 'Client').trim().replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+  const compName = companyProfile?.companyName || quotation?.tenantName || "Interior Studio";
+  const compPhone = companyProfile?.phone || "";
+  const companyPrefix = compName.replace(/[^a-zA-Z0-9]/g, '');
+
+  // Generate a clean default filename: <Company>_Invoice_<No>_<ClientName>
+  const defaultBaseName = `${companyPrefix}_Invoice_${quotation.quotationNo || 'Quote'}_${(quotation.clientName || 'Client').trim().replace(/[^a-zA-Z0-9_-]/g, '_')}`;
   
   const [fileName, setFileName] = useState(defaultBaseName);
   
@@ -27,7 +31,7 @@ export default function WhatsAppShareModal({ quotation, onClose, onInvoiceSent }
   const defaultMsg = 
 `Dear ${quotation.clientName || 'Client'},
 
-Greetings from *Vistara Interior's*! ✨
+Greetings from *${compName}*! ✨
 
 Please find attached your detailed interior quotation/invoice for *${displayProjectTitle}*.
 
@@ -38,8 +42,8 @@ Please find attached your detailed interior quotation/invoice for *${displayProj
 Kindly review the attached PDF document. Please feel free to reach out if you have any questions or require modifications.
 
 Warm regards,
-*Vistara Interior's*
-📞 +91 7720097476 / +91 8482946451`;
+*${compName}*
+📞 ${compPhone}`;
 
   const [message, setMessage] = useState(defaultMsg);
   const [isSharing, setIsSharing] = useState(false);
@@ -66,8 +70,9 @@ Warm regards,
     }
 
     try {
-      // 2. Generate PDF Blob
-      const doc = buildQuotationPDFDoc(quotation);
+      // 2. Generate PDF Blob (with companyProfile so the shared PDF carries
+      // the studio's white-label branding, matching the download path)
+      const doc = buildQuotationPDFDoc(quotation, companyProfile);
       const pdfBlob = doc.output('blob');
       const pdfFile = new File([pdfBlob], finalFileName, { type: 'application/pdf' });
 
@@ -121,7 +126,7 @@ Warm regards,
 
   const handleDownloadOnly = () => {
     const finalFileName = getFullFileName();
-    generateQuotationPDF(quotation, finalFileName);
+    generateQuotationPDF(quotation, finalFileName, companyProfile);
   };
 
   return (
@@ -161,7 +166,7 @@ Warm regards,
                 style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}
                 value={fileName}
                 onChange={e => setFileName(e.target.value)}
-                placeholder="e.g. Vistara_Invoice_QT1287_Sharma"
+                placeholder="e.g. Invoice_QT1287_Sharma"
               />
               <span style={{ marginLeft: 6, color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600 }}>.pdf</span>
             </div>

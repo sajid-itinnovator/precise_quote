@@ -1,6 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, collection, getDocs, query, limit } from 'firebase/firestore';
+import { 
+  onAuthStateChanged, 
+  signInWithEmailAndPassword, 
+  signOut,
+  GoogleAuthProvider,
+  signInWithPopup,
+  sendPasswordResetEmail
+} from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
 const AuthContext = createContext();
@@ -11,7 +18,7 @@ export function useAuth() {
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
-  const [userProfile, setUserProfile] = useState(null); // { role, dataAccess, name }
+  const [userProfile, setUserProfile] = useState(null); // { role, dataAccess, name, tenantId, tenantName }
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,16 +26,28 @@ export function AuthProvider({ children }) {
       setCurrentUser(user);
       if (user) {
         try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          const userDocRef = doc(db, 'users', user.uid);
+          const userDoc = await getDoc(userDocRef);
           if (userDoc.exists()) {
             setUserProfile(userDoc.data());
           } else {
-            console.error("User profile not found in database.");
-            setUserProfile(null);
-            // We don't automatically sign out here in case it's the first setup in progress
+            // Auto-provision basic profile if missing (e.g. from Google sign-in)
+            const newTenantId = `tenant_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            const defaultTenantName = user.displayName ? `${user.displayName}'s Studio` : 'My Workspace';
+            const initialData = {
+              email: user.email,
+              name: user.displayName || user.email?.split('@')[0] || 'User',
+              tenantId: newTenantId,
+              tenantName: defaultTenantName,
+              role: 'admin',
+              dataAccess: 'shared',
+              createdAt: new Date().toISOString()
+            };
+            await setDoc(userDocRef, initialData);
+            setUserProfile(initialData);
           }
         } catch (error) {
-          console.error("Error fetching user profile:", error);
+          console.error("Error fetching or initializing user profile:", error);
         }
       } else {
         setUserProfile(null);
@@ -43,6 +62,36 @@ export function AuthProvider({ children }) {
     return signInWithEmailAndPassword(auth, email, password);
   };
 
+  const loginWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+
+    const userDocRef = doc(db, 'users', user.uid);
+    const userDoc = await getDoc(userDocRef);
+    if (!userDoc.exists()) {
+      const newTenantId = `tenant_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const defaultTenantName = user.displayName ? `${user.displayName}'s Studio` : 'My Workspace';
+      const initialData = {
+        email: user.email,
+        name: user.displayName || 'Designer',
+        tenantId: newTenantId,
+        tenantName: defaultTenantName,
+        role: 'admin',
+        dataAccess: 'shared',
+        createdAt: new Date().toISOString()
+      };
+      await setDoc(userDocRef, initialData);
+      setUserProfile(initialData);
+    }
+    return result;
+  };
+
+  const resetPassword = (email) => {
+    return sendPasswordResetEmail(auth, email);
+  };
+
   const logout = () => {
     return signOut(auth);
   };
@@ -52,6 +101,8 @@ export function AuthProvider({ children }) {
     userProfile,
     loading,
     login,
+    loginWithGoogle,
+    resetPassword,
     logout
   };
 

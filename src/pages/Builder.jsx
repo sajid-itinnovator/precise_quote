@@ -1199,7 +1199,7 @@ export default function Builder() {
               className="form-input"
               value={clientName}
               onChange={e => setClientName(e.target.value)}
-              placeholder="e.g. Mr. Himakshi Vyas Sir"
+              placeholder="e.g. Mr. Rahul Sharma"
               required
             />
           </div>
@@ -1211,7 +1211,7 @@ export default function Builder() {
               className="form-input"
               value={clientContact}
               onChange={e => setClientContact(e.target.value)}
-              placeholder="e.g. +91 8619465377"
+              placeholder="e.g. +91 9876543210"
             />
           </div>
 
@@ -1960,7 +1960,7 @@ function BuilderRight({
 
       {/* Note */}
       <div style={{ background: 'var(--surface-2)', borderRadius: 8, padding: '10px 12px', fontSize: '0.75rem', color: 'var(--text-muted)', border: '1px solid var(--border-light)' }}>
-        <strong>NOTE:</strong> Prices are subject to final material verification. This quotation is valid for 15 days from the date of generation. Final measurements will be conducted on-site by a Vistara specialist.
+        <strong>NOTE:</strong> Prices are subject to final material verification. This quotation is valid for 15 days from the date of generation. Final measurements will be conducted on-site by our specialist.
       </div>
     </div>
   );

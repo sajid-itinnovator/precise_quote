@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, doc, setDoc, deleteDoc, updateDoc, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from './AuthContext';
+import { getDomainContext } from '../utils/domainRouting';
 
 const AppContext = createContext(null);
 
@@ -39,35 +40,38 @@ const MATERIAL_SPEC_DEFAULT = [
   ]},
 ];
 
-// ─── Real clients from actual PDF quotations ───────────────────────────────
+// ─── Fictional demo records ────────────────────────────────────────────
+// SECURITY: deliberately fake placeholder clients so new-tenant demo seeding
+// works without shipping any real person's contact data in the client bundle
+// or writing it to production Firestore.
 const SAMPLE_CLIENTS = [
-  { id: 'c1', name: 'Almas Shaikh Mam', contact: '+91 9552527376', email: '', address: 'Alina Living NIBM Pune 411048' },
-  { id: 'c2', name: 'Mr. Chandan Dhamale', contact: '+91 9850872330', email: '', address: '57 Midtown Wakad Pune' },
-  { id: 'c3', name: 'Mr. Himakshi Vyas', contact: '+91 8619465377', email: '', address: 'Hinjewadi Pune' },
-  { id: 'c4', name: 'Mr. Kiran', contact: '+91 9421687675', email: '', address: 'Manjari Pune' },
-  { id: 'c5', name: 'Mr. Shaharuk Shaikh', contact: '+91 8805594497', email: '', address: 'Wagholi Pune' },
+  { id: 'c1', name: 'Demo Client One', contact: '+91 9000000001', email: '', address: 'Sample Residency, Pune (Demo Data)' },
+  { id: 'c2', name: 'Demo Client Two', contact: '+91 9000000002', email: '', address: 'Sample Heights, Wakad Pune (Demo Data)' },
+  { id: 'c3', name: 'Demo Client Three', contact: '+91 9000000003', email: '', address: 'Sample Enclave, Hinjewadi Pune (Demo Data)' },
+  { id: 'c4', name: 'Demo Client Four', contact: '+91 9000000004', email: '', address: 'Sample County, Manjari Pune (Demo Data)' },
+  { id: 'c5', name: 'Demo Client Five', contact: '+91 9000000005', email: '', address: 'Sample Suites, Wagholi Pune (Demo Data)' },
 ];
 
-// ─── Real projects derived from PDF data ──────────────────────────────────
+// ─── Demo projects paired with the fictional clients above ──────────────
 const SAMPLE_PROJECTS = [
-  { id: 'p1', name: 'Almas Shaikh – 2 BHK', clientId: 'c1', amount: 1873960, status: 'APPROVED', tags: ['2BHK', 'NIBM'], image: null },
-  { id: 'p2', name: 'Chandan Dhamale – 3 BHK', clientId: 'c2', amount: 1075000, status: 'APPROVED', tags: ['3BHK', 'Wakad'], image: null },
-  { id: 'p3', name: 'Himakshi Vyas – 2 BHK', clientId: 'c3', amount: 958380, status: 'IN PROGRESS', tags: ['2BHK', 'Hinjewadi'], image: null },
-  { id: 'p4', name: 'Kiran – 2 BHK', clientId: 'c4', amount: 728960, status: 'IN PROGRESS', tags: ['2BHK', 'Manjari'], image: null },
-  { id: 'p5', name: 'Shaharuk Shaikh – Revised', clientId: 'c5', amount: 157530, status: 'DRAFT', tags: ['Revision', 'Wagholi'], image: null },
+  { id: 'p1', name: 'Demo Client One – 2 BHK', clientId: 'c1', amount: 1873960, status: 'APPROVED', tags: ['2BHK', 'Demo'], image: null },
+  { id: 'p2', name: 'Demo Client Two – 3 BHK', clientId: 'c2', amount: 1075000, status: 'APPROVED', tags: ['3BHK', 'Demo'], image: null },
+  { id: 'p3', name: 'Demo Client Three – 2 BHK', clientId: 'c3', amount: 958380, status: 'IN PROGRESS', tags: ['2BHK', 'Demo'], image: null },
+  { id: 'p4', name: 'Demo Client Four – 2 BHK', clientId: 'c4', amount: 728960, status: 'IN PROGRESS', tags: ['2BHK', 'Demo'], image: null },
+  { id: 'p5', name: 'Demo Client Five – Revised', clientId: 'c5', amount: 157530, status: 'DRAFT', tags: ['Revision', 'Demo'], image: null },
 ];
 
-// ─── Real quotation data extracted from the 5 PDF files ───────────────────
+// ─── Demo quotation data (structure from reference PDFs, fictional clients) ─
 const SAMPLE_QUOTATIONS = [
-  // ── 1. Mr. Himakshi Vyas Sir – QT 1287 (complete data from reference images) ──
+  // ── 1. Demo Client Three – QT 1287 (complete data from reference images) ──
   {
     id: 'q1',
     quotationNo: '1287',
     date: '2026-04-13',
     clientId: 'c3',
-    clientName: 'Mr. Himakshi Vyas Sir',
-    clientContact: '+91 8619465377',
-    clientAddress: 'Hinjewadi Pune',
+    clientName: 'Demo Client Three',
+    clientContact: '+91 9000000003',
+    clientAddress: 'Sample Enclave, Hinjewadi Pune (Demo Data)',
     projectTitle: '2 BHK INTERIOR DESIGN',
     status: 'IN PROGRESS',
     total: 958380,
@@ -143,15 +147,15 @@ const SAMPLE_QUOTATIONS = [
     ],
   },
 
-  // ── 2. Mr. Kiran Sir – QT 1286 ──────────────────────────────────────────
+  // ── 2. Demo Client Four – QT 1286 ───────────────────────────────────────
   {
     id: 'q2',
     quotationNo: '1286',
     date: '2026-04-13',
     clientId: 'c4',
-    clientName: 'Mr. Kiran Sir',
-    clientContact: '+91 9421687675',
-    clientAddress: 'Manjari Pune',
+    clientName: 'Demo Client Four',
+    clientContact: '+91 9000000004',
+    clientAddress: 'Sample County, Manjari Pune (Demo Data)',
     projectTitle: '2 BHK INTERIOR DESIGN',
     status: 'IN PROGRESS',
     total: 728960,
@@ -203,15 +207,15 @@ const SAMPLE_QUOTATIONS = [
     ],
   },
 
-  // ── 3. Mr. Shaharuk Shaikh Sir – QT 1056 (Revised) ──────────────────────
+  // ── 3. Demo Client Five – QT 1056 (Revised) ─────────────────────────────
   {
     id: 'q3',
     quotationNo: '1056',
     date: '2026-03-04',
     clientId: 'c5',
-    clientName: 'Mr. Shaharuk Shaikh Sir',
-    clientContact: '+91 8805594497',
-    clientAddress: 'Wagholi Pune',
+    clientName: 'Demo Client Five',
+    clientContact: '+91 9000000005',
+    clientAddress: 'Sample Suites, Wagholi Pune (Demo Data)',
     projectTitle: 'REVISED QUOTATION',
     status: 'DRAFT',
     total: 157530,
@@ -243,15 +247,15 @@ const SAMPLE_QUOTATIONS = [
     ],
   },
 
-  // ── 4. Almas Shaikh Mam – QT 1125 ───────────────────────────────────────
+  // ── 4. Demo Client One – QT 1125 ────────────────────────────────────────
   {
     id: 'q4',
     quotationNo: '1125',
     date: '2026-03-17',
     clientId: 'c1',
-    clientName: 'Almas Shaikh Mam',
-    clientContact: '+91 9552527376',
-    clientAddress: 'Alina Living NIBM Pune 411048',
+    clientName: 'Demo Client One',
+    clientContact: '+91 9000000001',
+    clientAddress: 'Sample Residency, Pune (Demo Data)',
     projectTitle: '2 BHK INTERIOR DESIGN',
     status: 'APPROVED',
     total: 1873960,
@@ -315,15 +319,15 @@ const SAMPLE_QUOTATIONS = [
     ],
   },
 
-  // ── 5. Mr. Chandan Dhamale Sir – QT 1238 ────────────────────────────────
+  // ── 5. Demo Client Two – QT 1238 ────────────────────────────────────────
   {
     id: 'q5',
     quotationNo: '1238',
     date: '2026-03-17',
     clientId: 'c2',
-    clientName: 'Mr. Chandan Dhamale Sir',
-    clientContact: '+91 9850872330',
-    clientAddress: '57 Midtown Wakad Pune',
+    clientName: 'Demo Client Two',
+    clientContact: '+91 9000000002',
+    clientAddress: 'Sample Heights, Wakad Pune (Demo Data)',
     projectTitle: '3 BHK INTERIOR DESIGN',
     status: 'APPROVED',
     total: 1075000,
@@ -462,6 +466,113 @@ export const calculateNextQuoteNo = (quotesList, currentSettingNo = 1290) => {
   return Math.max(fallback, maxNo + 1);
 };
 
+export const DEFAULT_PAYMENT_TERMS = `1. 10% Advance upon confirmation & booking.
+2. 40% upon 3D design approval & commencement of production.
+3. 40% upon material delivery at site & carcass installation.
+4. 10% on project completion & final handover.`;
+
+export const PAYMENT_TERMS_PRESETS = [
+  {
+    name: '10% - 40% - 40% - 10% (Standard Modular)',
+    terms: `1. 10% Advance upon confirmation & booking.
+2. 40% upon 3D design approval & commencement of production.
+3. 40% upon material delivery at site & carcass installation.
+4. 10% on project completion & final handover.`
+  },
+  {
+    name: '50% - 40% - 10% (Fast Track)',
+    terms: `1. 50% Advance booking along with design sign-off.
+2. 40% upon material delivery at site.
+3. 10% upon completion & final handover.`
+  },
+  {
+    name: '30% - 30% - 30% - 10% (Equal Stages)',
+    terms: `1. 30% Advance booking & 2D/3D design approval.
+2. 30% upon woodwork completion at factory / dispatch.
+3. 30% upon site delivery & installation.
+4. 10% on completion & final handover.`
+  },
+  {
+    name: '10% - 50% - 35% - 5% (Custom Millwork)',
+    terms: `1. 10% Token advance upon confirmation.
+2. 50% upon final design & drawings sign-off before manufacturing.
+3. 35% upon material delivery at site before installation.
+4. 5% upon final handover & inspection.`
+  }
+];
+
+export const BRAND_COLOR_PRESETS = [
+  { name: 'Royal Sapphire', hex: '#1a56ff', dark: '#1240cc', light: '#e8eeff' },
+  { name: 'Luxury Gold', hex: '#b45309', dark: '#92400e', light: '#fef3c7' },
+  { name: 'Emerald Forest', hex: '#059669', dark: '#047857', light: '#d1fae5' },
+  { name: 'Midnight Purple', hex: '#6d28d9', dark: '#5b21b6', light: '#ede9fe' },
+  { name: 'Modern Charcoal', hex: '#334155', dark: '#1e293b', light: '#f1f5f9' },
+  { name: 'Crimson Rose', hex: '#e11d48', dark: '#be123c', light: '#ffe4e6' },
+  { name: 'Bronze Copper', hex: '#c2410c', dark: '#9a3412', light: '#ffedd5' },
+];
+
+export const VISTARA_SAMPLE_PROFILE = {
+  companyName: "VISTARA INTERIOR'S",
+  tagline: 'Designing Dreams Creating Reality......',
+  officeAddress: 'Office No.01, Ambekar Hotel Chowk, Undri Pisoli, Pune-411060',
+  phone: '+91 7720097476 / 8482946451',
+  email: 'teamvistarainteriors@gmail.com',
+  website: '',
+  gstNumber: '',
+  logo: null,
+  signature: null,
+  stamp: null,
+  brandColor: '#1a56ff',
+  brandColorDark: '#1240cc',
+  brandColorLight: '#e8eeff',
+  workspaceSubtitle: 'Interior Studio',
+  hidePlatformAttribution: true,
+  bankDetails: {
+    accountHolderName: '',
+    bankName: '',
+    branchName: '',
+    accountNumber: '',
+    ifscCode: '',
+    swiftCode: '',
+  },
+  upiId: '',
+  qrCode: null,
+  showBottomLogo: true,
+  bottomLogo: null,
+  paymentTerms: DEFAULT_PAYMENT_TERMS,
+};
+
+export const DEFAULT_COMPANY_PROFILE = {
+  companyName: '',
+  tagline: '',
+  officeAddress: '',
+  phone: '',
+  email: '',
+  website: '',
+  gstNumber: '',
+  logo: null,
+  signature: null,
+  stamp: null,
+  brandColor: '#1a56ff',
+  brandColorDark: '#1240cc',
+  brandColorLight: '#e8eeff',
+  workspaceSubtitle: 'Interior Studio',
+  hidePlatformAttribution: true,
+  bankDetails: {
+    accountHolderName: '',
+    bankName: '',
+    branchName: '',
+    accountNumber: '',
+    ifscCode: '',
+    swiftCode: '',
+  },
+  upiId: '',
+  qrCode: null,
+  showBottomLogo: true,
+  bottomLogo: null,
+  paymentTerms: DEFAULT_PAYMENT_TERMS,
+};
+
 export function AppProvider({ children }) {
   const { currentUser, userProfile, loading: authLoading } = useAuth();
   const [clients, setClients] = useState([]);
@@ -471,7 +582,14 @@ export function AppProvider({ children }) {
   const [materialSpec, setMaterialSpec] = useState(MATERIAL_SPEC_DEFAULT);
   const [nextQuoteNo, setNextQuoteNo] = useState(1290);
   const [tenantLogo, setTenantLogo] = useState(null);
-  const [subscription, setSubscription] = useState({ plan: 'trial', trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() });
+  const [companyProfile, setCompanyProfile] = useState(DEFAULT_COMPANY_PROFILE);
+  const [subscription, setSubscription] = useState({ 
+    plan: 'trial', 
+    trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    totalCredits: 50,
+    spentCredits: 0,
+    balanceCredits: 50
+  });
   const [loading, setLoading] = useState(true);
 
   // Load from Firebase
@@ -492,28 +610,57 @@ export function AppProvider({ children }) {
           return;
         }
         
+        const isVistara = (userProfile.companyName && userProfile.companyName.toLowerCase().includes('vistara')) ||
+                          (userProfile.tenantName && userProfile.tenantName.toLowerCase().includes('vistara')) ||
+                          (tenantId && tenantId.toLowerCase().includes('vistara'));
+
+        const initialBaseProfile = isVistara ? VISTARA_SAMPLE_PROFILE : {
+          ...DEFAULT_COMPANY_PROFILE,
+          companyName: userProfile.tenantName || userProfile.companyName || '',
+        };
+
         let clientsQ = query(collection(db, 'clients'), where('tenantId', '==', tenantId));
         const clientsSnap = await getDocs(clientsQ);
         let loadedClients = clientsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         
         if (isPrivate) loadedClients = loadedClients.filter(c => c.createdBy === currentUser.uid);
         
-        // If DB is completely empty for this tenant, seed it with sample data
+        // If DB is completely empty for this tenant, seed it with initial data
         if (loadedClients.length === 0 && !isPrivate) {
           console.log("Seeding database with initial data for new tenant...");
           
           await setDoc(doc(db, 'config', `${tenantId}_materialSpec`), { data: MATERIAL_SPEC_DEFAULT, tenantId });
           await setDoc(doc(db, 'config', `${tenantId}_nextQuoteNo`), { value: 1290, tenantId });
           await setDoc(doc(db, 'config', `${tenantId}_tenantLogo`), { data: null, tenantId });
+          await setDoc(doc(db, 'config', `${tenantId}_companyProfile`), { data: initialBaseProfile, tenantId });
+          setCompanyProfile(initialBaseProfile);
+
           const trialDate = new Date();
           trialDate.setDate(trialDate.getDate() + 30);
-          await setDoc(doc(db, 'config', `${tenantId}_subscription`), { plan: 'trial', trialEndsAt: trialDate.toISOString(), tenantId });
+          const initialTotal = 50;
+          const initialSpent = isVistara ? SAMPLE_QUOTATIONS.length : 0;
+          const initialBalance = Math.max(0, initialTotal - initialSpent);
+          await setDoc(doc(db, 'config', `${tenantId}_subscription`), { 
+            plan: 'trial', 
+            trialEndsAt: trialDate.toISOString(), 
+            tenantId,
+            totalCredits: initialTotal,
+            spentCredits: initialSpent,
+            balanceCredits: initialBalance
+          });
+          setSubscription({
+            plan: 'trial',
+            trialEndsAt: trialDate.toISOString(),
+            totalCredits: initialTotal,
+            spentCredits: initialSpent,
+            balanceCredits: initialBalance
+          });
 
           for (const pr of SAMPLE_PRODUCTS) await setDoc(doc(db, 'products', `${tenantId}_${pr.id}`), { ...pr, tenantId });
           setProducts(SAMPLE_PRODUCTS.map(pr => ({...pr, id: `${tenantId}_${pr.id}`, tenantId})));
 
           // Only seed Vistara demo clients/projects for Vistara accounts
-          if (userProfile.companyName && userProfile.companyName.toLowerCase().includes('vistara')) {
+          if (isVistara) {
             for (const c of SAMPLE_CLIENTS) await setDoc(doc(db, 'clients', `${tenantId}_${c.id}`), { ...c, tenantId, createdBy: currentUser.uid });
             for (const p of SAMPLE_PROJECTS) await setDoc(doc(db, 'projects', `${tenantId}_${p.id}`), { ...p, clientId: `${tenantId}_${p.clientId}`, tenantId, createdBy: currentUser.uid });
             for (const q of SAMPLE_QUOTATIONS) await setDoc(doc(db, 'quotations', `${tenantId}_${q.id}`), { ...q, clientId: `${tenantId}_${q.clientId}`, tenantId, createdBy: currentUser.uid });
@@ -546,19 +693,44 @@ export function AppProvider({ children }) {
           setProducts(productsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
           
           let savedNextNo = null;
+          let savedProfile = null;
           const specSnap = await getDocs(query(collection(db, 'config'), where('tenantId', '==', tenantId)));
           specSnap.docs.forEach(doc => {
             if (doc.id.includes('materialSpec')) setMaterialSpec(doc.data().data);
             if (doc.id.includes('nextQuoteNo')) savedNextNo = doc.data().value;
-            if (doc.id.includes('tenantLogo')) setTenantLogo(doc.data().data);
+            if (doc.id.includes('tenantLogo')) {
+              setTenantLogo(doc.data().data);
+            }
+            if (doc.id.includes('companyProfile')) {
+              savedProfile = doc.data().data;
+            }
             if (doc.id.includes('subscription')) {
+              const subData = doc.data();
+              const isPro = subData.plan === 'pro' || subData.plan === 'enterprise';
+              const defaultTotal = isPro ? 500 : 50;
+              const totalCreds = subData.totalCredits !== undefined ? Number(subData.totalCredits) : defaultTotal;
+              const spentCreds = subData.spentCredits !== undefined ? Number(subData.spentCredits) : loadedQuotes.length;
+              const balanceCreds = subData.balanceCredits !== undefined ? Number(subData.balanceCredits) : Math.max(0, totalCreds - spentCreds);
+
               setSubscription({ 
-                plan: doc.data().plan, 
-                quoteLimit: doc.data().quoteLimit,
-                trialEndsAt: doc.data().trialEndsAt 
+                plan: subData.plan || 'trial', 
+                quoteLimit: subData.quoteLimit,
+                trialEndsAt: subData.trialEndsAt,
+                totalCredits: totalCreds,
+                spentCredits: spentCreds,
+                balanceCredits: balanceCreds,
+                activeUntil: subData.activeUntil
               });
             }
           });
+
+          const resolvedProfile = savedProfile 
+            ? { ...initialBaseProfile, ...savedProfile } 
+            : initialBaseProfile;
+          setCompanyProfile(resolvedProfile);
+          if (resolvedProfile.logo) {
+            setTenantLogo(resolvedProfile.logo);
+          }
 
           const effectiveNextNo = calculateNextQuoteNo(loadedQuotes, savedNextNo || 1290);
           setNextQuoteNo(effectiveNextNo);
@@ -590,6 +762,42 @@ export function AppProvider({ children }) {
     };
     saveNextNo();
   }, [nextQuoteNo, loading, userProfile]);
+
+  // Dynamic White Label Theme Injection
+  useEffect(() => {
+    const domain = getDomainContext();
+    const isVistaraDomain = domain.tenantSubdomain && domain.tenantSubdomain.includes('vistara');
+
+    // Determine effective profile or subdomain defaults
+    const effectiveProfile = companyProfile || (isVistaraDomain ? VISTARA_SAMPLE_PROFILE : DEFAULT_COMPANY_PROFILE);
+
+    // Apply primary brand color if configured
+    const primary = effectiveProfile?.brandColor || '#1a56ff';
+    const dark = effectiveProfile?.brandColorDark || '#1240cc';
+    const light = effectiveProfile?.brandColorLight || '#e8eeff';
+
+    document.documentElement.style.setProperty('--primary', primary);
+    document.documentElement.style.setProperty('--primary-dark', dark);
+    document.documentElement.style.setProperty('--primary-light', light);
+
+    // Helper: Convert hex to r,g,b numbers for CSS rgba() compatibility
+    const cleanHex = primary.replace('#', '').trim();
+    if (cleanHex.length === 6) {
+      const r = parseInt(cleanHex.substring(0, 2), 16);
+      const g = parseInt(cleanHex.substring(2, 4), 16);
+      const b = parseInt(cleanHex.substring(4, 6), 16);
+      if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+        document.documentElement.style.setProperty('--primary-rgb', `${r}, ${g}, ${b}`);
+      }
+    }
+
+    // Dynamic browser title
+    const tenantBrand = effectiveProfile?.companyName || userProfile?.tenantName || (isVistaraDomain ? "VISTARA INTERIOR'S" : '');
+    if (tenantBrand && tenantBrand.trim()) {
+      const customSubtitle = effectiveProfile?.workspaceSubtitle || 'Quotation & Estimation Studio';
+      document.title = `${tenantBrand} – ${customSubtitle}`;
+    }
+  }, [companyProfile, userProfile]);
 
   useEffect(() => {
     if (loading || !userProfile?.tenantId || tenantLogo === null) return;
@@ -665,6 +873,28 @@ export function AppProvider({ children }) {
     const newNextNo = Math.max(calculatedNext, (isNaN(assignedVal) ? calculatedNext : assignedVal)) + 1;
     await setDoc(doc(db, 'config', `${userProfile.tenantId}_nextQuoteNo`), { value: newNextNo, tenantId: userProfile.tenantId });
     
+    // Update credit consumption
+    try {
+      const currentSpent = subscription.spentCredits !== undefined ? subscription.spentCredits : quotations.length;
+      const currentTotal = subscription.totalCredits !== undefined ? subscription.totalCredits : 50;
+      const newSpent = currentSpent + 1;
+      const newBalance = Math.max(0, currentTotal - newSpent);
+      const updatedSub = {
+        ...subscription,
+        spentCredits: newSpent,
+        balanceCredits: newBalance,
+        totalCredits: currentTotal
+      };
+      setSubscription(updatedSub);
+      await setDoc(doc(db, 'config', `${userProfile.tenantId}_subscription`), {
+        ...updatedSub,
+        tenantId: userProfile.tenantId,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (credErr) {
+      console.warn("Could not sync credit deduction:", credErr);
+    }
+
     setQuotations(prev => [...prev, { ...qWithDetails, id: docRef.id }]);
     setNextQuoteNo(newNextNo);
     return docRef.id;
@@ -699,8 +929,32 @@ export function AppProvider({ children }) {
   // Material spec
   const updateMaterialSpec = (spec) => setMaterialSpec(spec);
 
+  // Company Profile
+  const updateCompanyProfile = async (profileData) => {
+    if (!userProfile?.tenantId) return false;
+    try {
+      const updated = { ...profileData, updatedAt: new Date().toISOString() };
+      await setDoc(doc(db, 'config', `${userProfile.tenantId}_companyProfile`), {
+        data: updated,
+        tenantId: userProfile.tenantId
+      });
+      setCompanyProfile(updated);
+      if (updated.logo !== undefined) {
+        setTenantLogo(updated.logo);
+        await setDoc(doc(db, 'config', `${userProfile.tenantId}_tenantLogo`), { data: updated.logo, tenantId: userProfile.tenantId });
+      }
+      return true;
+    } catch (err) {
+      console.error("Error saving company profile:", err);
+      throw err;
+    }
+  };
+
   const value = {
-    clients, projects, quotations, products, materialSpec, nextQuoteNo, tenantLogo, setTenantLogo, subscription, loading,
+    clients, projects, quotations, products, materialSpec, nextQuoteNo, tenantLogo, setTenantLogo,
+    companyProfile, updateCompanyProfile, DEFAULT_COMPANY_PROFILE, VISTARA_SAMPLE_PROFILE,
+    DEFAULT_PAYMENT_TERMS, PAYMENT_TERMS_PRESETS, BRAND_COLOR_PRESETS,
+    subscription, loading,
     addClient, updateClient, deleteClient,
     addProject, updateProject, deleteProject,
     addQuotation, updateQuotation, deleteQuotation,

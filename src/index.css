@@ -78,6 +78,8 @@ input, textarea, select { font-family: inherit; }
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-light);
   box-shadow: var(--shadow-sm);
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* Buttons */
@@ -323,6 +325,9 @@ input, textarea, select { font-family: inherit; }
   padding: 16px;
   padding-bottom: calc(var(--bottomnav-height) + 16px);
   overflow-y: auto;
+  overflow-x: hidden;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .bottom-nav {
@@ -612,6 +617,11 @@ input, textarea, select { font-family: inherit; }
 @media (min-width: 1025px) {
   .mobile-only { display: none !important; }
 }
+@media (max-width: 768px) {
+  .btn {
+    white-space: normal;
+  }
+}
 
 /* Builder Navigation Tabs */
 .builder-tabs {
@@ -655,9 +665,19 @@ input, textarea, select { font-family: inherit; }
   }
 }
 @media (max-width: 480px) {
+  /* Compact 3-Tier Layout: Particular (Row 1), Size + Unit inline (Row 2), Rate + Amount inline (Row 3) */
   .item-row-grid {
-    grid-template-columns: 1fr;
-    gap: 8px;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 8px;
+  }
+  .item-row-grid > div .form-input,
+  .item-row-grid > div .form-select {
+    padding: 6px 8px !important;
+    font-size: 0.8rem !important;
+  }
+  .item-row-grid > div .form-label {
+    font-size: 0.58rem !important;
+    margin-bottom: 2px !important;
   }
 }
 

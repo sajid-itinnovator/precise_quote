@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Printer, Layers, Pencil, Copy, Lock, MessageSquare } from 'lucide-react';
+import { X, Printer, Layers, Pencil, Copy, Lock, MessageSquare, CreditCard, Download } from 'lucide-react';
 import { formatIndianCurrency, numberToWords, formatDate, cleanCustomerProjectTitle } from '../utils/helpers';
+import { generateQuotationPDF } from '../utils/pdfGenerator';
 import { useAuth } from '../context/AuthContext';
-import { useApp } from '../context/AppContext';
+import { useApp, DEFAULT_PAYMENT_TERMS, PAYMENT_TERMS_PRESETS } from '../context/AppContext';
 import MaterialSpecEditor from './MaterialSpecEditor';
 import WhatsAppShareModal from './WhatsAppShareModal';
 
@@ -11,11 +12,30 @@ import WhatsAppShareModal from './WhatsAppShareModal';
    Generates a fully self-contained HTML string for the quotation
    This is opened in a new window and printed from there.
    ────────────────────────────────────────────────────────────── */
-function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount = true) {
+function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount = true, companyProfile = null, customPaymentTerms = null) {
   let srNo = 1;
   let matSrNo = 1;
 
   const colSpan = showItemAmount ? 4 : 3;
+
+  const compName = companyProfile?.companyName || quotation?.tenantName || tenantName || "INTERIOR STUDIO";
+  const compTagline = companyProfile?.tagline !== undefined ? companyProfile.tagline : '';
+  const compAddress = companyProfile?.officeAddress || '';
+  const compPhone = companyProfile?.phone || '';
+  const compEmail = companyProfile?.email || '';
+  const compGst = companyProfile?.gstNumber ? ` &nbsp;|&nbsp; GST: ${companyProfile.gstNumber}` : '';
+  const compLogo = companyProfile?.logo || tenantLogo;
+  const compBank = companyProfile?.bankDetails;
+  const hasBank = compBank && (compBank.accountNumber || compBank.bankName || compBank.ifscCode);
+  const compUpi = companyProfile?.upiId;
+  const compQr = companyProfile?.qrCode;
+  const compStamp = companyProfile?.stamp;
+  const compSignature = companyProfile?.signature;
+  const showBottomLogo = companyProfile?.showBottomLogo !== false;
+  const bottomLogoUrl = showBottomLogo ? (companyProfile?.bottomLogo || compLogo) : null;
+
+  const brandColorHex = companyProfile?.brandColor || '#0F243E';
+  const brandTitleColorHex = companyProfile?.brandColor || '#17365D';
 
   const scopeRows = (quotation.rooms || []).map(room => {
     const headerRow = `
@@ -29,7 +49,7 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
       <tr>
         <td style="padding:5px 6px;border:1px solid #000;text-align:center;font-size:9.5pt;">${srNo++}</td>
         <td style="padding:5px 8px;border:1px solid #000;text-align:left;font-size:9.5pt;">${item.particular || ''}</td>
-        <td style="padding:5px 6px;border:1px solid #000;text-align:center;font-size:9.5pt;">${item.size || ''}</td>
+        <td style="padding:5px 8px;border:1px solid #000;text-align:center;font-size:9.5pt;">${item.size || ''}</td>
         ${showItemAmount ? `
         <td style="padding:5px 8px;border:1px solid #000;text-align:center;font-size:9.5pt;">
           ${item.amount ? Number(item.amount).toLocaleString('en-IN') : '—'}
@@ -59,7 +79,7 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <title>${tenantName || 'Quotation'} - ${quotation.clientName}</title>
+  <title>${compName || 'Quotation'} - ${quotation.clientName}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { 
@@ -90,7 +110,7 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
     tr { page-break-inside: avoid; break-inside: avoid; }
     th { 
       padding: 6px 8px; border: 1px solid #000; font-size: 10pt; font-weight: bold; 
-      background: #0F243E; color: #fff; text-align: center; vertical-align: middle;
+      background: ${brandColorHex}; color: #fff; text-align: center; vertical-align: middle;
     }
     td { vertical-align: middle; }
     
@@ -116,20 +136,20 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
 
 <div class="page">
   <div class="header-container">
-    ${tenantLogo ? `<img src="${tenantLogo}" alt="Logo" style="height: 60px; object-fit: contain;" />` : `<h2 style="margin:0; color: #17365D; font-size: 28px;">${tenantName || 'Company'}</h2>`}
+    ${compLogo ? `<img src="${compLogo}" alt="Logo" style="height: 60px; object-fit: contain;" />` : `<h2 style="margin:0; color: #17365D; font-size: 28px;">${compName}</h2>`}
     <div class="header-text">
-      <h1>${tenantName ? tenantName.toUpperCase() : "VISTARA INTERIOR'S"}</h1>
-      <p>Designing Dreams Creating Reality......</p>
+      <h1>${compName.toUpperCase()}</h1>
+      ${compTagline ? `<p>${compTagline}</p>` : ''}
     </div>
   </div>
   
   <hr class="divider"/>
   
   <div class="text-center" style="font-size:10pt; margin-bottom:4px;">
-    Office Address: Office No.01, Ambekar Hotel Chowk, Undri Pisoli, Pune-411060
+    Office Address: ${compAddress}
   </div>
   <div class="text-center" style="font-size:10pt; margin-bottom:4px;">
-    Contact: +91 7720097476 / 8482946451 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Email: <a href="mailto:teamvistarainteriors@gmail.com" style="color:blue;text-decoration:underline;">teamvistarainteriors@gmail.com</a>
+    Contact: ${compPhone} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Email: <a href="mailto:${compEmail}" style="color:blue;text-decoration:underline;">${compEmail}</a>${compGst}
   </div>
   <div class="text-center" style="font-size:10pt;">
     Date: ${formatDate(quotation.date)} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Quotation No: ${quotation.quotationNo}
@@ -193,7 +213,7 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
   <div class="terms-bullet">• Installation &amp; Finishing Work</div>
   <div class="terms-bullet">• Project Timeline: 60–65 Days</div>
 
-  <div class="section-title">2. Why Choose ${tenantName || 'Us'}?</div>
+  <div class="section-title">2. Why Choose ${compName || 'Us'}?</div>
   <div class="terms-bullet">• Transparent Pricing – No Hidden Charges</div>
   <div class="terms-bullet">• High-Quality Materials &amp; Craftsmanship</div>
   <div class="terms-bullet">• Personalized Design with 3D Views</div>
@@ -211,10 +231,61 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
     </ol>
   </div>
 
-  <div style="margin-top: 30px; text-align: right;">
-    <div style="font-size: 13pt; font-weight: bold; font-style: italic; color: #17365D; margin-bottom: 4px;">THANK YOU!</div>
-    <div style="font-size: 9.5pt; font-style: italic; color: #555; margin-bottom: 6px;">For any queries, feel free to contact us.</div>
-    <div style="font-size: 11.5pt; font-weight: bold; color: #0F243E;">TEAM VISTARA INTERIORS</div>
+  ${(() => {
+    const displayPaymentTerms = customPaymentTerms !== null && customPaymentTerms !== undefined
+      ? customPaymentTerms
+      : (quotation.paymentTerms !== undefined ? quotation.paymentTerms : (companyProfile?.paymentTerms || DEFAULT_PAYMENT_TERMS));
+    if (!displayPaymentTerms) return '';
+    return `
+    <div style="margin-top: 14px; margin-bottom: 10px; page-break-inside: avoid;">
+      <div style="font-weight: bold; color: #17365D; font-size: 10.5pt; text-transform: uppercase; margin-bottom: 4px;">Payment Terms &amp; Schedule:</div>
+      <div style="margin-left: 14px; font-size: 9.5pt; line-height: 1.55; color: #111; white-space: pre-line;">${displayPaymentTerms.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+    </div>`;
+  })()}
+
+  ${(hasBank || compUpi || compQr || compStamp || compSignature) ? `
+  <div style="margin-top: 18px; padding: 12px 16px; border: 1px solid #ccc; border-radius: 6px; background: #fafafa; page-break-inside: avoid; display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; font-size: 9.5pt;">
+    ${(hasBank || compUpi) ? `
+    <div style="flex: 1;">
+      <div style="font-weight: bold; color: #17365D; margin-bottom: 4px; font-size: 10pt;">PAYMENT DETAILS:</div>
+      ${compBank?.bankName ? `<div><strong>Bank:</strong> ${compBank.bankName} ${compBank.branchName ? `(${compBank.branchName})` : ''}</div>` : ''}
+      ${compBank?.accountHolderName ? `<div><strong>A/C Name:</strong> ${compBank.accountHolderName}</div>` : ''}
+      ${compBank?.accountNumber ? `<div><strong>A/C No:</strong> ${compBank.accountNumber}</div>` : ''}
+      ${compBank?.ifscCode ? `<div><strong>IFSC:</strong> ${compBank.ifscCode}</div>` : ''}
+      ${compBank?.swiftCode ? `<div><strong>SWIFT:</strong> ${compBank.swiftCode}</div>` : ''}
+      ${compUpi ? `<div style="margin-top: 4px;"><strong>UPI ID:</strong> ${compUpi}</div>` : ''}
+    </div>` : ''}
+
+    ${compQr ? `
+    <div style="text-align: center;">
+      <div style="font-weight: bold; color: #17365D; margin-bottom: 4px; font-size: 8.5pt;">SCAN TO PAY</div>
+      <img src="${compQr}" alt="UPI QR" style="width: 80px; height: 80px; object-fit: contain; border: 1px solid #ddd; padding: 2px; background: #fff;" />
+    </div>` : ''}
+
+    ${(compStamp || compSignature || bottomLogoUrl) ? `
+    <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end;">
+      ${bottomLogoUrl ? `
+      <div style="margin-bottom: 6px;">
+        <img src="${bottomLogoUrl}" alt="Logo" style="max-height: 42px; max-width: 120px; object-fit: contain;" />
+      </div>` : ''}
+      <div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 4px;">
+        ${compStamp ? `<img src="${compStamp}" alt="Stamp" style="height: 55px; object-fit: contain;" />` : ''}
+        ${compSignature ? `<img src="${compSignature}" alt="Signature" style="height: 45px; object-fit: contain;" />` : ''}
+      </div>
+      <div style="font-weight: bold; font-size: 8.5pt; color: #333; border-top: 1px solid #999; padding-top: 2px;">Authorized Signatory</div>
+    </div>` : ''}
+  </div>` : ''}
+
+  <div style="margin-top: 24px; display: flex; justify-content: space-between; align-items: flex-end;">
+    ${bottomLogoUrl ? `
+    <div style="display: flex; align-items: center;">
+      <img src="${bottomLogoUrl}" alt="Company Logo" style="max-height: 44px; max-width: 130px; object-fit: contain;" />
+    </div>` : '<div></div>'}
+    <div style="text-align: right;">
+      <div style="font-size: 13pt; font-weight: bold; font-style: italic; color: #17365D; margin-bottom: 4px;">THANK YOU!</div>
+      <div style="font-size: 9.5pt; font-style: italic; color: #555; margin-bottom: 6px;">For any queries, feel free to contact us.</div>
+      <div style="font-size: 11.5pt; font-weight: bold; color: #0F243E;">TEAM ${compName.toUpperCase().replace(/^TEAM\s+/i, '')}</div>
+    </div>
   </div>
 </div>
 
@@ -228,7 +299,7 @@ function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount
 export default function QuotationPreview({ quotation, onClose, onUpdateShowItemAmount, onUpdateMaterialSpec, onInvoiceCreated }) {
   const navigate = useNavigate();
   const { userProfile } = useAuth();
-  const { tenantLogo, updateQuotation, updateProject, projects } = useApp();
+  const { tenantLogo, companyProfile, updateQuotation, updateProject, projects } = useApp();
   const tenantName = userProfile?.tenantName || 'Workspace';
 
   const [showItemAmount, setShowItemAmount] = useState(
@@ -236,6 +307,17 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
   );
   const [currentSpec, setCurrentSpec] = useState(quotation.materialSpec || []);
   const [showBrandEditor, setShowBrandEditor] = useState(false);
+  const [showPaymentTermsModal, setShowPaymentTermsModal] = useState(false);
+  const [currentPaymentTerms, setCurrentPaymentTerms] = useState(
+    quotation.paymentTerms !== undefined
+      ? quotation.paymentTerms
+      : (companyProfile?.paymentTerms || DEFAULT_PAYMENT_TERMS)
+  );
+  const [tempPaymentTerms, setTempPaymentTerms] = useState(
+    quotation.paymentTerms !== undefined
+      ? quotation.paymentTerms
+      : (companyProfile?.paymentTerms || DEFAULT_PAYMENT_TERMS)
+  );
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(quotation.status || 'DRAFT');
 
@@ -266,6 +348,18 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
     }
   };
 
+  const handleSavePaymentTerms = async (newTerms) => {
+    setCurrentPaymentTerms(newTerms);
+    setShowPaymentTermsModal(false);
+    if (quotation.id && updateQuotation) {
+      try {
+        await updateQuotation(quotation.id, { paymentTerms: newTerms });
+      } catch (err) {
+        console.error('Failed to update quotation payment terms', err);
+      }
+    }
+  };
+
   const total = quotation.total ||
     (quotation.rooms || []).reduce((s, r) =>
       s + (r.items || []).reduce((ss, i) => ss + (Number(i.amount) || 0), 0), 0);
@@ -284,6 +378,23 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
     }
   };
 
+  const handleDownloadPDF = async () => {
+    if (currentStatus === 'DRAFT') {
+      await handleStatusChange('INVOICE CREATED');
+    }
+    if (onInvoiceCreated) {
+      onInvoiceCreated();
+    }
+    const qWithSpec = { 
+      ...quotation, 
+      materialSpec: currentSpec, 
+      status: currentStatus === 'DRAFT' ? 'INVOICE CREATED' : currentStatus,
+      paymentTerms: currentPaymentTerms,
+      showItemAmount,
+    };
+    generateQuotationPDF(qWithSpec, null, companyProfile);
+  };
+
   const handlePrint = async () => {
     // Automatically transition quotation to 'INVOICE CREATED' on printing if draft
     if (currentStatus === 'DRAFT') {
@@ -293,8 +404,14 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
       onInvoiceCreated();
     }
 
-    const qWithSpec = { ...quotation, materialSpec: currentSpec, status: currentStatus === 'DRAFT' ? 'INVOICE CREATED' : currentStatus };
-    const html = buildPrintHTML(qWithSpec, total, tenantName, tenantLogo, showItemAmount);
+    const qWithSpec = { 
+      ...quotation, 
+      materialSpec: currentSpec, 
+      status: currentStatus === 'DRAFT' ? 'INVOICE CREATED' : currentStatus,
+      paymentTerms: currentPaymentTerms,
+      showItemAmount,
+    };
+    const html = buildPrintHTML(qWithSpec, total, tenantName, tenantLogo, showItemAmount, companyProfile, currentPaymentTerms);
     const win = window.open('', '_blank', 'width=900,height=1000,scrollbars=yes');
     if (!win) { alert('Please allow popups for this site to print.'); return; }
     win.document.open();
@@ -309,7 +426,13 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
     };
   };
 
-  const currentQuotation = { ...quotation, materialSpec: currentSpec, status: currentStatus };
+  const currentQuotation = { 
+    ...quotation, 
+    materialSpec: currentSpec, 
+    status: currentStatus,
+    paymentTerms: currentPaymentTerms,
+    showItemAmount,
+  };
 
   return (
     <div style={{
@@ -360,22 +483,20 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
             >
               <option value="DRAFT">DRAFT</option>
               <option value="INVOICE CREATED">INVOICE CREATED</option>
-              <option value="PENDING">PENDING</option>
               <option value="APPROVED">APPROVED</option>
+              <option value="PENDING">PENDING</option>
               <option value="REJECTED">REJECTED</option>
             </select>
           </div>
         </div>
 
-        {/* Edit & Revision Buttons */}
+        {/* Action buttons on desktop */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {currentStatus !== 'APPROVED' ? (
             <button
               type="button"
               onClick={() => {
-                if (quotation.id) {
-                  navigate(`/builder?edit=${quotation.id}`);
-                }
+                navigate(`/builder?edit=${quotation.id}`);
                 onClose();
               }}
               style={{
@@ -431,6 +552,26 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
           <Layers size={15} /> Customize Brands
         </button>
 
+        {/* Customize Payment Terms button */}
+        <button
+          type="button"
+          onClick={() => {
+            setTempPaymentTerms(currentPaymentTerms);
+            setShowPaymentTermsModal(true);
+          }}
+          style={{
+            background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)',
+            borderRadius: 6, padding: '7px 14px', color: '#fff', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600,
+            transition: 'background 0.2s'
+          }}
+          onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
+          onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+          title="Customize milestone payment terms for this invoice"
+        >
+          <CreditCard size={15} /> Payment Terms
+        </button>
+
         {/* Toggle Show/Hide Item Amounts */}
         <label style={{
           display: 'flex', alignItems: 'center', gap: 8,
@@ -453,15 +594,28 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
           <span>Show Item Amount</span>
         </label>
 
-        <button onClick={handlePrint} style={{
-          background: '#1a56ff', border: 'none', borderRadius: 6,
-          padding: '9px 20px', color: '#fff', fontWeight: 700, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem',
-          boxShadow: '0 4px 12px rgba(26,86,255,0.4)',
+        {/* Direct Download PDF Button (1-Click, No popup blocker) */}
+        <button onClick={handleDownloadPDF} style={{
+          background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', border: 'none', borderRadius: 6,
+          padding: '9px 18px', color: '#fff', fontWeight: 700, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: 7, fontSize: '0.875rem',
+          boxShadow: '0 4px 12px rgba(37,99,235,0.4)',
           transition: 'transform 0.15s, background 0.2s'
-        }} onMouseOver={e => e.currentTarget.style.background = '#124ccf'}
-           onMouseOut={e => e.currentTarget.style.background = '#1a56ff'}>
-          <Printer size={16} /> Print / Save PDF
+        }} onMouseOver={e => e.currentTarget.style.background = '#1e40af'}
+           onMouseOut={e => e.currentTarget.style.background = 'linear-gradient(135deg, #2563eb, #1d4ed8)'}
+           title="Download PDF directly to your device (No popup blocker required)">
+          <Download size={16} /> Download PDF
+        </button>
+
+        <button onClick={handlePrint} style={{
+          background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 6,
+          padding: '9px 16px', color: '#fff', fontWeight: 600, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: 7, fontSize: '0.875rem',
+          transition: 'transform 0.15s, background 0.2s'
+        }} onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
+           onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
+           title="Open browser print preview dialog">
+          <Printer size={16} /> Browser Print
         </button>
 
         <button onClick={() => setShowWhatsAppModal(true)} style={{
@@ -480,7 +634,7 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
       {/* Notice Banner for Draft Invoices */}
       {currentStatus === 'DRAFT' && (
         <div style={{
-          background: 'linear-gradient(90deg, #1e3a8a, #1d4ed8)',
+          background: 'linear-gradient(90deg, #1e3a8a, #2563eb)',
           borderBottom: '1px solid #3b82f6',
           padding: '8px 24px',
           display: 'flex',
@@ -493,25 +647,27 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
           gap: 10
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ background: '#f59e0b', color: '#000', fontSize: '0.65rem', fontWeight: 800, padding: '2px 6px', borderRadius: 4 }}>
+            <span style={{ background: '#3b82f6', color: '#fff', fontSize: '0.65rem', fontWeight: 800, padding: '2px 6px', borderRadius: 4 }}>
               DRAFT
             </span>
-            <span>This is a saved <strong>Draft Quotation</strong>. You can edit items, dimensions, and rates anytime, or click <strong>Print / Save as PDF</strong> to generate the final invoice.</span>
+            <span>This quotation is currently in <strong>DRAFT</strong> mode. Printing or sending via WhatsApp will automatically convert it into an <strong>INVOICE CREATED</strong>.</span>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              if (quotation.id) navigate(`/builder?edit=${quotation.id}`);
-              onClose();
-            }}
-            style={{
-              background: '#fff', color: '#1e3a8a', border: 'none', borderRadius: 4,
-              padding: '4px 12px', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 4
-            }}
-          >
-            <Pencil size={12} /> Edit Draft Now
-          </button>
+          {quotation.id && (
+            <button
+              type="button"
+              onClick={() => {
+                navigate(`/builder?edit=${quotation.id}`);
+                onClose();
+              }}
+              style={{
+                background: '#fff', color: '#1e3a8a', border: 'none', borderRadius: 4,
+                padding: '4px 12px', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 4
+              }}
+            >
+              <Pencil size={12} /> Edit Details Now
+            </button>
+          )}
         </div>
       )}
 
@@ -557,7 +713,7 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
 
       <div style={{ flex: 1, overflow: 'auto', padding: '32px 0', display: 'flex', justifyContent: 'center' }}>
         <div style={{ pointerEvents: 'none' }}>
-          <QuotationDocument quotation={currentQuotation} total={total} tenantName={tenantName} tenantLogo={tenantLogo} showItemAmount={showItemAmount} />
+          <QuotationDocument quotation={currentQuotation} total={total} tenantName={tenantName} tenantLogo={tenantLogo} showItemAmount={showItemAmount} companyProfile={companyProfile} paymentTerms={currentPaymentTerms} />
         </div>
       </div>
 
@@ -624,6 +780,152 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
         </div>
       )}
 
+      {/* Payment Terms Customization Modal Overlay */}
+      {showPaymentTermsModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1100,
+            background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(3px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowPaymentTermsModal(false); }}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: 12,
+              width: '100%', maxWidth: 640, maxHeight: '88vh',
+              display: 'flex', flexDirection: 'column',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.4)', overflow: 'hidden'
+            }}
+          >
+            <div style={{
+              padding: '16px 20px', borderBottom: '1px solid #e2e8f0',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              background: '#f8fafc'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>
+                  Customize Payment Terms for this Invoice
+                </h3>
+                <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2 }}>
+                  Set milestone percentages &amp; payment schedule for Quote #{quotation.quotationNo}
+                </div>
+              </div>
+              <button
+                type="button"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: 4 }}
+                onClick={() => setShowPaymentTermsModal(false)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ padding: 20, overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  Quick Milestone Presets:
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {PAYMENT_TERMS_PRESETS.map((preset, idx) => {
+                    const isMatch = tempPaymentTerms?.trim() === preset.terms.trim();
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setTempPaymentTerms(preset.terms)}
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: '0.75rem',
+                          borderRadius: 8,
+                          border: isMatch ? '1px solid #1a56ff' : '1px solid #cbd5e1',
+                          background: isMatch ? '#eff6ff' : '#f8fafc',
+                          color: isMatch ? '#1a56ff' : '#334155',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        {preset.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#334155' }}>
+                    Milestone Schedule &amp; Conditions:
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setTempPaymentTerms(companyProfile?.paymentTerms || DEFAULT_PAYMENT_TERMS)}
+                    style={{
+                      background: 'none', border: 'none', color: '#2563eb',
+                      fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+                      textDecoration: 'underline'
+                    }}
+                  >
+                    Reset to Profile Default
+                  </button>
+                </div>
+                <textarea
+                  rows={7}
+                  value={tempPaymentTerms}
+                  onChange={(e) => setTempPaymentTerms(e.target.value)}
+                  placeholder="1. 10% Advance on booking...&#10;2. 40% on 3D approval..."
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 8,
+                    border: '1px solid #cbd5e1',
+                    fontSize: '0.88rem',
+                    lineHeight: 1.5,
+                    fontFamily: 'inherit',
+                    boxSizing: 'border-box',
+                    resize: 'vertical'
+                  }}
+                />
+                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4 }}>
+                  Tip: These terms will appear above the payment details in the print and exported PDF.
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              padding: '12px 20px', borderTop: '1px solid #e2e8f0',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc'
+            }}>
+              <button
+                type="button"
+                onClick={() => setShowPaymentTermsModal(false)}
+                style={{
+                  background: '#f1f5f9', border: '1px solid #cbd5e1',
+                  borderRadius: 6, padding: '8px 16px', color: '#475569',
+                  fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSavePaymentTerms(tempPaymentTerms)}
+                style={{
+                  background: '#1a56ff', border: 'none',
+                  borderRadius: 6, padding: '8px 20px', color: '#fff',
+                  fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(26,86,255,0.3)'
+                }}
+              >
+                Apply &amp; Save to Invoice
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* WhatsApp Share Modal with File Name Customization */}
       {showWhatsAppModal && (
         <WhatsAppShareModal
@@ -643,37 +945,57 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
    QuotationDocument — HTML preview inside the modal using React
    Matches the buildPrintHTML structure exactly.
    ────────────────────────────────────────────────────────────── */
-function QuotationDocument({ quotation, total, tenantName, tenantLogo, showItemAmount = true }) {
+function QuotationDocument({ quotation, total, tenantName, tenantLogo, showItemAmount = true, companyProfile = null, paymentTerms = null }) {
   let scopeSrNo = 1;
   let matSrNo = 1;
   const colSpan = showItemAmount ? 4 : 3;
+
+  const compName = companyProfile?.companyName || quotation?.tenantName || tenantName || "INTERIOR STUDIO";
+  const compTagline = companyProfile?.tagline !== undefined ? companyProfile.tagline : '';
+  const compAddress = companyProfile?.officeAddress || '';
+  const compPhone = companyProfile?.phone || '';
+  const compEmail = companyProfile?.email || '';
+  const compGst = companyProfile?.gstNumber ? `GST: ${companyProfile.gstNumber}` : '';
+  const compLogo = companyProfile?.logo || tenantLogo;
+  const compBank = companyProfile?.bankDetails;
+  const hasBank = compBank && (compBank.accountNumber || compBank.bankName || compBank.ifscCode);
+  const compUpi = companyProfile?.upiId;
+  const compQr = companyProfile?.qrCode;
+  const compStamp = companyProfile?.stamp;
+  const compSignature = companyProfile?.signature;
+  const showBottomLogo = companyProfile?.showBottomLogo !== false;
+  const bottomLogoUrl = showBottomLogo ? (companyProfile?.bottomLogo || compLogo) : null;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* PAGE 1 */}
       <Page>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 15, marginBottom: 10 }}>
-          {tenantLogo ? (
-            <img src={tenantLogo} alt="Logo" style={{ height: 60, objectFit: 'contain' }} />
+          {compLogo ? (
+            <img src={compLogo} alt="Logo" style={{ height: 60, objectFit: 'contain' }} />
           ) : (
-            <h2 style={{ margin: 0, color: '#17365D', fontSize: 28 }}>{tenantName || 'Company'}</h2>
+            <h2 style={{ margin: 0, color: '#17365D', fontSize: 28 }}>{compName}</h2>
           )}
           <div>
             <h1 style={{ color: '#17365D', margin: 0, fontSize: 26, fontWeight: 'bold', letterSpacing: 0.5, fontFamily: 'Cambria, Georgia, serif' }}>
-              {tenantName ? tenantName.toUpperCase() : "VISTARA INTERIOR'S"}
+              {compName.toUpperCase()}
             </h1>
-            <p style={{ color: '#000', margin: 0, fontSize: 9.5, fontStyle: 'italic', textAlign: 'right', marginTop: 2 }}>
-              Designing Dreams Creating Reality......
-            </p>
+            {compTagline && (
+              <p style={{ color: '#000', margin: 0, fontSize: 9.5, fontStyle: 'italic', textAlign: 'right', marginTop: 2 }}>
+                {compTagline}
+              </p>
+            )}
           </div>
         </div>
 
         <hr style={{ border: 'none', borderTop: '1px solid #666', margin: '8px 0' }} />
 
         <div style={{ textAlign: 'center', fontSize: 10, marginBottom: 4 }}>
-          Office Address: Office No.01, Ambekar Hotel Chowk, Undri Pisoli, Pune-411060
+          Office Address: {compAddress}
         </div>
         <div style={{ textAlign: 'center', fontSize: 10, marginBottom: 4 }}>
-          Contact: +91 7720097476 / 8482946451 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Email: <span style={{ color: 'blue', textDecoration: 'underline' }}>teamvistarainteriors@gmail.com</span>
+          Contact: {compPhone} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Email: <span style={{ color: 'blue', textDecoration: 'underline' }}>{compEmail}</span>
+          {compGst && <span> &nbsp;|&nbsp; <strong>{compGst}</strong></span>}
         </div>
         <div style={{ textAlign: 'center', fontSize: 10 }}>
           Date: {formatDate(quotation.date)} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Quotation No: {quotation.quotationNo}
@@ -773,7 +1095,7 @@ function QuotationDocument({ quotation, total, tenantName, tenantLogo, showItemA
           <div key={`s1-${i}`} style={{ marginLeft: 20, fontSize: 10, lineHeight: 1.6 }}>• {t}</div>
         ))}
 
-        <div style={{ fontWeight: 'bold', fontSize: 13.5, color: '#222222', margin: '18px 0 8px' }}>2. Why Choose {tenantName || 'Vistara Interiors'}?</div>
+        <div style={{ fontWeight: 'bold', fontSize: 13.5, color: '#222222', margin: '18px 0 8px' }}>2. Why Choose {compName || 'Our Studio'}?</div>
         {['Transparent Pricing – No Hidden Charges', 'High-Quality Materials & Craftsmanship', 'Personalized Design with 3D Views', '10-Year Warranty on Workmanship', 'Professional Team with End-to-End Support', 'Deep Cleaning will be provided by us', 'All Furniture Edge Work Will Be Done In Laminate Matching PVC Edge Binds to Ensure Smooth Edges and Seamless Finishing'].map((t, i) => (
           <div key={`s2-${i}`} style={{ marginLeft: 20, fontSize: 10, lineHeight: 1.6 }}>• {t}</div>
         ))}
@@ -785,10 +1107,76 @@ function QuotationDocument({ quotation, total, tenantName, tenantLogo, showItemA
           <li>Warranty will not be applicable for physical damage.</li>
         </ol>
 
-        <div style={{ marginTop: 30, textAlign: 'right' }}>
-          <div style={{ fontSize: 13, fontWeight: 'bold', fontStyle: 'italic', color: '#17365D', marginBottom: 4 }}>THANK YOU!</div>
-          <div style={{ fontSize: 9.5, fontStyle: 'italic', color: '#555', marginBottom: 6 }}>For any queries, feel free to contact us.</div>
-          <div style={{ fontSize: 11.5, fontWeight: 'bold', color: '#0F243E' }}>TEAM VISTARA INTERIORS</div>
+        {(() => {
+          const displayPaymentTerms = paymentTerms !== null && paymentTerms !== undefined
+            ? paymentTerms
+            : (quotation.paymentTerms !== undefined ? quotation.paymentTerms : (companyProfile?.paymentTerms || DEFAULT_PAYMENT_TERMS));
+          if (!displayPaymentTerms) return null;
+          return (
+            <div style={{ marginTop: 14, marginBottom: 10, pageBreakInside: 'avoid' }}>
+              <div style={{ fontWeight: 'bold', fontSize: 11, color: '#17365D', textTransform: 'uppercase', marginBottom: 4 }}>
+                Payment Terms &amp; Schedule:
+              </div>
+              <div style={{ marginLeft: 14, fontSize: 9.5, lineHeight: 1.55, color: '#111', whiteSpace: 'pre-line' }}>
+                {displayPaymentTerms}
+              </div>
+            </div>
+          );
+        })()}
+
+        {(hasBank || compUpi || compQr || compStamp || compSignature) && (
+          <div style={{
+            marginTop: 18, padding: '12px 16px', border: '1px solid #ccc', borderRadius: 6,
+            background: '#fafafa', display: 'flex', justifyContent: 'space-between',
+            alignItems: 'flex-end', gap: 16, fontSize: 9.5
+          }}>
+            {(hasBank || compUpi) && (
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 'bold', color: '#17365D', marginBottom: 4, fontSize: 10 }}>PAYMENT DETAILS:</div>
+                {compBank?.bankName && <div><strong>Bank:</strong> {compBank.bankName} {compBank.branchName ? `(${compBank.branchName})` : ''}</div>}
+                {compBank?.accountHolderName && <div><strong>A/C Name:</strong> {compBank.accountHolderName}</div>}
+                {compBank?.accountNumber && <div><strong>A/C No:</strong> {compBank.accountNumber}</div>}
+                {compBank?.ifscCode && <div><strong>IFSC:</strong> {compBank.ifscCode}</div>}
+                {compBank?.swiftCode && <div><strong>SWIFT:</strong> {compBank.swiftCode}</div>}
+                {compUpi && <div style={{ marginTop: 4 }}><strong>UPI ID:</strong> {compUpi}</div>}
+              </div>
+            )}
+
+            {compQr && (
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontWeight: 'bold', color: '#17365D', marginBottom: 4, fontSize: '8.5pt' }}>SCAN TO PAY</div>
+                <img src={compQr} alt="UPI QR" style={{ width: 80, height: 80, objectFit: 'contain', border: '1px solid #ddd', padding: 2, background: '#fff' }} />
+              </div>
+            )}
+
+            {(compStamp || compSignature || bottomLogoUrl) && (
+              <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                {bottomLogoUrl && (
+                  <div style={{ marginBottom: 6 }}>
+                    <img src={bottomLogoUrl} alt="Logo" style={{ maxHeight: 42, maxWidth: 120, objectFit: 'contain' }} />
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', marginBottom: 4 }}>
+                  {compStamp && <img src={compStamp} alt="Stamp" style={{ height: 55, objectFit: 'contain' }} />}
+                  {compSignature && <img src={compSignature} alt="Signature" style={{ height: 45, objectFit: 'contain' }} />}
+                </div>
+                <div style={{ fontWeight: 'bold', fontSize: '8.5pt', color: '#333', borderTop: '1px solid #999', paddingTop: 2 }}>Authorized Signatory</div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <div style={{ marginTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          {bottomLogoUrl ? (
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <img src={bottomLogoUrl} alt="Company Logo" style={{ maxHeight: 44, maxWidth: 130, objectFit: 'contain' }} />
+            </div>
+          ) : <div />}
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: 13, fontWeight: 'bold', fontStyle: 'italic', color: '#17365D', marginBottom: 4 }}>THANK YOU!</div>
+            <div style={{ fontSize: 9.5, fontStyle: 'italic', color: '#555', marginBottom: 6 }}>For any queries, feel free to contact us.</div>
+            <div style={{ fontSize: 11.5, fontWeight: 'bold', color: '#0F243E' }}>TEAM {compName.toUpperCase().replace(/^TEAM\s+/i, '')}</div>
+          </div>
         </div>
       </Page>
     </div>

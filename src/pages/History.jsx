@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, Filter, MoreVertical, Eye, Trash2, FileText, Pencil, Copy, Calendar, MessageSquare, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { formatIndianCurrency, formatDate, formatDateTime } from '../utils/helpers';
@@ -16,7 +16,7 @@ const STATUS_BADGE = {
   REJECT: 'badge-danger',
 };
 
-const PAGE_SIZE = 5;
+const PAGE_SIZE = 10;
 
 function QuotationCard({ quotation, onDelete, onView, onWhatsApp, onUpdateStatus }) {
   const navigate = useNavigate();
@@ -210,13 +210,26 @@ function QuotationCard({ quotation, onDelete, onView, onWhatsApp, onUpdateStatus
 
 export default function History() {
   const { quotations, deleteQuotation, updateQuotation, updateProject, projects } = useApp();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const initialStatus = queryParams.get('status') || 'ALL';
+
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState('ALL');
-  const [showFilters, setShowFilters] = useState(false);
+  const [filterStatus, setFilterStatus] = useState(initialStatus);
+  const [showFilters, setShowFilters] = useState(initialStatus !== 'ALL');
   const [page, setPage] = useState(1);
   const [deleteId, setDeleteId] = useState(null);
   const [previewQuotation, setPreviewQuotation] = useState(null);
   const [whatsAppQuotation, setWhatsAppQuotation] = useState(null);
+
+  useEffect(() => {
+    const s = new URLSearchParams(location.search).get('status');
+    if (s) {
+      setFilterStatus(s);
+      setShowFilters(true);
+      setPage(1);
+    }
+  }, [location.search]);
 
   const handleUpdateStatus = async (quotationId, newStatus) => {
     try {

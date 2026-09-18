@@ -2,13 +2,51 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Vistara Interiors – Professional interior design quotation management for designers and studios." />
-    <title>Vistara Interiors – Quotation Studio</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Precise Quote – Interior Quotation & Estimation Studio</title>
+    <meta name="description" content="Precise Quote – Professional interior design quotation and estimation software for studios, designers, and contractors." />
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Color Theme -->
+    <meta name="theme-color" content="#1a56ff" />
+    <meta name="color-scheme" content="light" />
+
+    <!-- Icons -->
+    <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-180.png" />
+
+    <!-- iOS / Safari Web App Standalone Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Precise Quote" />
+    <link rel="apple-touch-icon" href="/icons/icon-180.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512.png" />
+
+    <!-- Windows Tiles -->
+    <meta name="msapplication-TileColor" content="#0a1636" />
+    <meta name="msapplication-TileImage" content="/icons/icon-192.png" />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      // Service worker registration
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('[PreciseQuote PWA] ServiceWorker registered with scope:', registration.scope);
+            })
+            .catch((error) => {
+              console.warn('[PreciseQuote PWA] ServiceWorker registration failed:', error);
+            });
+        });
+      }
+    </script>
   </body>
 </html>

@@ -12,6 +12,19 @@ dist
 dist-ssr
 *.local
 
+# Environment files — copy .env.example to .env locally (never commit)
+.env
+.env.*
+!.env.example
+
+# Service account keys — NEVER commit or deploy
+serviceAccountKey*.json
+
+# One-time password handoff file from scripts/set-password.js — NEVER commit
+new-password.txt
+*service-account*.json
+*-firebase-adminsdk-*.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { formatIndianCurrency, formatDateTime } from '../utils/helpers';
 import QuotationPreview from '../components/QuotationPreview';
-import { Eye, FileText, Calendar, Search, Pencil, Copy } from 'lucide-react';
+import { Eye, FileText, Calendar, Search, Pencil, Copy, Building2 } from 'lucide-react';
 
 export default function Admin() {
   const navigate = useNavigate();
@@ -126,15 +126,15 @@ export default function Admin() {
   if (loading) return <div style={{ padding: 20 }}>Loading...</div>;
 
   return (
-    <div style={{ padding: 20, maxWidth: 1000, margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-        <h2>User Management</h2>
+    <div style={{ padding: '16px 12px', maxWidth: 1000, margin: '0 auto', width: '100%', boxSizing: 'border-box', overflowX: 'hidden' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+        <h2 style={{ fontSize: '1.4rem' }}>User &amp; Company Management</h2>
       </div>
 
-      <div className="row">
+      <div className="row" style={{ display: 'flex', flexWrap: 'wrap', gap: 16, margin: 0, width: '100%', maxWidth: '100%' }}>
         {/* CREATE USER FORM */}
-        <div className="col-md-5">
-          <div className="card" style={{ padding: 20 }}>
+        <div className="col-md-5" style={{ flex: '1 1 300px', minWidth: 0, padding: 0, maxWidth: '100%' }}>
+          <div className="card" style={{ padding: '18px 16px', boxSizing: 'border-box', overflow: 'hidden' }}>
             <h4 style={{ marginBottom: 20 }}>Create New User</h4>
             
             {error && <div className="alert alert-danger" style={{ padding: 10, fontSize: '0.9rem' }}>{error}</div>}
@@ -201,21 +201,21 @@ export default function Admin() {
         </div>
 
         {/* USERS LIST & SETTINGS */}
-        <div className="col-md-7">
-          <div className="card" style={{ padding: 20, marginBottom: 20 }}>
+        <div className="col-md-7" style={{ flex: '1 1 340px', minWidth: 0, padding: 0, maxWidth: '100%' }}>
+          <div className="card" style={{ padding: '18px 16px', marginBottom: 20, boxSizing: 'border-box', overflow: 'hidden' }}>
             <h4 style={{ marginBottom: 15 }}>Company Settings</h4>
             
             {/* SUBSCRIPTION WIDGET */}
             {subscription && (
-              <div style={{ background: '#f8f9fa', border: '1px solid #e0e0e0', borderRadius: 8, padding: 16, marginBottom: 20 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <div style={{ background: '#f8f9fa', border: '1px solid #e0e0e0', borderRadius: 8, padding: 16, marginBottom: 20, boxSizing: 'border-box' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
                   <h5 style={{ margin: 0, fontWeight: 700, color: 'var(--secondary)' }}>Subscription Plan</h5>
                   <span style={{ background: (subscription.plan === 'free' || subscription.plan === 'trial') ? '#e0e0e0' : 'var(--primary)', color: (subscription.plan === 'free' || subscription.plan === 'trial') ? '#333' : '#fff', padding: '4px 12px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600, textTransform: 'uppercase' }}>
                     {subscription.plan} TIER
                   </span>
                 </div>
                 
-                {subscription.plan === 'trial' ? (
+                {subscription.plan === 'trial' && (
                   <>
                     <div style={{ marginBottom: 6, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
                       Days left in trial: <strong>{Math.max(0, Math.ceil((new Date(subscription.trialEndsAt) - new Date()) / (1000 * 60 * 60 * 24)))}</strong> / 30
@@ -224,17 +224,29 @@ export default function Admin() {
                       <div style={{ height: '100%', width: `${Math.min((Math.max(0, 30 - Math.ceil((new Date(subscription.trialEndsAt) - new Date()) / (1000 * 60 * 60 * 24))) / 30) * 100, 100)}%`, background: new Date() > new Date(subscription.trialEndsAt) ? '#dc3545' : 'var(--primary)', transition: 'width 0.3s ease' }}></div>
                     </div>
                   </>
-                ) : (
-                  <div style={{ marginBottom: 6, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                    Quotations Used: <strong>{quotations.length}</strong> / {subscription.plan === 'enterprise' || subscription.plan === 'pro' ? 'Unlimited' : subscription.quoteLimit}
-                  </div>
                 )}
-                
-                {subscription.plan !== 'enterprise' && subscription.plan !== 'pro' && subscription.plan !== 'trial' && (
-                  <div style={{ height: 8, background: '#e0e0e0', borderRadius: 4, overflow: 'hidden', marginBottom: 16 }}>
-                    <div style={{ height: '100%', width: `${Math.min((quotations.length / subscription.quoteLimit) * 100, 100)}%`, background: quotations.length >= subscription.quoteLimit ? '#dc3545' : 'var(--primary)', transition: 'width 0.3s ease' }}></div>
+                {/* SPENT & BALANCE CREDITS */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12, marginBottom: 14 }}>
+                  <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Spent Credits</div>
+                    <div style={{ fontSize: '1.35rem', fontWeight: 800, color: '#c2410c', marginTop: 2 }}>
+                      {subscription.spentCredits !== undefined ? subscription.spentCredits : quotations.length}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Quotes Generated</div>
                   </div>
-                )}
+                  <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Balance Credits</div>
+                    <div style={{
+                      fontSize: '1.35rem',
+                      fontWeight: 800,
+                      color: (subscription.balanceCredits !== undefined ? subscription.balanceCredits : Math.max(0, (subscription.totalCredits || 50) - quotations.length)) <= 5 ? '#dc2626' : '#16a34a',
+                      marginTop: 2
+                    }}>
+                      {subscription.balanceCredits !== undefined ? subscription.balanceCredits : Math.max(0, (subscription.totalCredits || 50) - quotations.length)}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Remaining Balance</div>
+                  </div>
+                </div>
                 
                 {subscription.plan !== 'enterprise' && subscription.plan !== 'pro' && (
                   <button className="btn btn-outline-primary w-100" onClick={() => alert("Redirecting to Stripe Billing... (Mock)")}>
@@ -250,11 +262,11 @@ export default function Admin() {
                 Upload your company logo to display in the sidebar and on PDF Quotations. (Max 500KB, PNG or JPG)
               </p>
               
-              <div style={{ display: 'flex', alignItems: 'center', gap: 15, marginTop: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 10, flexWrap: 'wrap', width: '100%', maxWidth: '100%' }}>
                 {tenantLogo ? (
-                  <img src={tenantLogo} alt="Tenant Logo" style={{ height: 60, width: 60, objectFit: 'contain', background: '#f8f9fa', border: '1px solid #ddd', borderRadius: 6, padding: 4 }} />
+                  <img src={tenantLogo} alt="Tenant Logo" style={{ height: 50, width: 50, objectFit: 'contain', background: '#f8f9fa', border: '1px solid #ddd', borderRadius: 6, padding: 4, flexShrink: 0 }} />
                 ) : (
-                  <div style={{ height: 60, width: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8f9fa', border: '1px dashed #ccc', borderRadius: 6, fontSize: '0.7rem', color: '#888', textAlign: 'center' }}>
+                  <div style={{ height: 50, width: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8f9fa', border: '1px dashed #ccc', borderRadius: 6, fontSize: '0.7rem', color: '#888', textAlign: 'center', flexShrink: 0 }}>
                     No Logo
                   </div>
                 )}
@@ -264,16 +276,41 @@ export default function Admin() {
                   accept="image/png, image/jpeg" 
                   onChange={handleLogoUpload}
                   className="form-control"
-                  style={{ flex: 1 }}
+                  style={{ flex: '1 1 140px', minWidth: 0, width: '100%', maxWidth: '100%', fontSize: '0.8rem' }}
                 />
               </div>
             </div>
+
+            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--border-light, #eee)', width: '100%' }}>
+              <button 
+                type="button"
+                className="btn btn-primary"
+                onClick={() => navigate('/company-profile')}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
+                  whiteSpace: 'normal',
+                  wordBreak: 'break-word',
+                  textAlign: 'center',
+                  lineHeight: 1.35,
+                  padding: '10px 12px',
+                  fontSize: '0.82rem',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <Building2 size={16} style={{ flexShrink: 0 }} />
+                <span>Manage Full Company Profile &amp; Banking</span>
+              </button>
+            </div>
           </div>
 
-          <div className="card" style={{ padding: 20 }}>
+          <div className="card" style={{ padding: '18px 16px', boxSizing: 'border-box', overflow: 'hidden' }}>
             <h4 style={{ marginBottom: 20 }}>Registered Users</h4>
             
-            <div className="table-responsive">
+            <div className="table-responsive" style={{ width: '100%', maxWidth: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
               <table className="table table-hover">
                 <thead>
                   <tr>
@@ -321,19 +358,19 @@ export default function Admin() {
       </div>
 
       {/* ALL INVOICES & CREATION ACTIVITY LOG */}
-      <div className="card" style={{ padding: 20, marginTop: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
-          <div>
-            <h4 style={{ margin: 0, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <FileText size={20} color="var(--primary)" /> Company Invoices &amp; Activity Log
+      <div className="card" style={{ padding: '18px 16px', marginTop: 24, boxSizing: 'border-box', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+            <h4 style={{ margin: 0, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, fontSize: '1rem', flexWrap: 'wrap' }}>
+              <FileText size={20} color="var(--primary)" style={{ flexShrink: 0 }} /> <span>Company Invoices &amp; Activity Log</span>
             </h4>
             <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
               Complete audit trail of all quotations and invoices generated across the studio with exact creation dates and timestamps.
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ position: 'relative', minWidth: 240 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: '1 1 240px', minWidth: 0, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', flex: '1 1 160px', minWidth: 0 }}>
               <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input
                 type="text"
@@ -341,16 +378,16 @@ export default function Admin() {
                 placeholder="Search invoices, clients..."
                 value={invoiceSearch}
                 onChange={e => setInvoiceSearch(e.target.value)}
-                style={{ paddingLeft: 30, fontSize: '0.82rem' }}
+                style={{ paddingLeft: 30, fontSize: '0.82rem', width: '100%', boxSizing: 'border-box' }}
               />
             </div>
-            <span className="badge badge-info" style={{ padding: '6px 12px', fontSize: '0.78rem' }}>
+            <span className="badge badge-info" style={{ padding: '6px 10px', fontSize: '0.78rem', flexShrink: 0, whiteSpace: 'nowrap' }}>
               {(quotations || []).length} Total
             </span>
           </div>
         </div>
 
-        <div className="table-responsive">
+        <div className="table-responsive" style={{ width: '100%', maxWidth: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <table className="table table-hover">
             <thead>
               <tr>

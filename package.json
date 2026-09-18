@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "set:superadmin": "node scripts/set-superadmin-claim.js",
+    "set:password": "node scripts/set-password.js"
   },
   "dependencies": {
     "firebase": "^12.12.1",
@@ -28,6 +30,7 @@
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "firebase-admin": "^12.7.0",
     "firebase-tools": "^15.15.0",
     "globals": "^17.4.0",
     "vite": "^8.0.4"

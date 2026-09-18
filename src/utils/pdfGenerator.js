@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { numberToWords, formatDate, cleanCustomerProjectTitle } from './helpers.js';
+import { DEFAULT_PAYMENT_TERMS } from '../context/AppContext.jsx';
 
 const BRAND_BLUE = [26, 86, 255];      // #1a56ff
 const DARK_NAVY = [15, 36, 62];        // #0F243E (matching Word doc table headers and theme)
@@ -11,40 +12,84 @@ const WHITE = [255, 255, 255];
 const LIGHT_GRAY = [245, 247, 252];
 const BLACK = [0, 0, 0];
 
-function addPageBorder(doc) {
+export function hexToRgb(hex, fallback = [26, 86, 255]) {
+  if (!hex || typeof hex !== 'string') return fallback;
+  const clean = hex.replace('#', '').trim();
+  if (clean.length === 3) {
+    const r = parseInt(clean[0] + clean[0], 16);
+    const g = parseInt(clean[1] + clean[1], 16);
+    const b = parseInt(clean[2] + clean[2], 16);
+    return isNaN(r) || isNaN(g) || isNaN(b) ? fallback : [r, g, b];
+  }
+  if (clean.length === 6) {
+    const r = parseInt(clean.substring(0, 2), 16);
+    const g = parseInt(clean.substring(2, 4), 16);
+    const b = parseInt(clean.substring(4, 6), 16);
+    return isNaN(r) || isNaN(g) || isNaN(b) ? fallback : [r, g, b];
+  }
+  return fallback;
+}
+
+function addPageBorder(doc, themeColor = DARK_NAVY) {
   const w = doc.internal.pageSize.getWidth();
   const h = doc.internal.pageSize.getHeight();
-  doc.setDrawColor(...DARK_NAVY);
+  doc.setDrawColor(...themeColor);
   doc.setLineWidth(0.5);
   doc.rect(8, 8, w - 16, h - 16);
 }
 
-function addHeader(doc, quotation) {
+function addHeader(doc, quotation, companyProfile = null) {
   const w = doc.internal.pageSize.getWidth();
 
-  // Logo area (left square box)
-  doc.setFillColor(...DARK_NAVY);
-  doc.rect(14, 14, 30, 28, 'F');
-  // "V" letter in box
-  doc.setTextColor(...WHITE);
-  doc.setFontSize(20);
-  doc.setFont('times', 'bold');
-  doc.text('V', 29, 34, { align: 'center' });
-  doc.setFontSize(6);
-  doc.setFont('times', 'normal');
-  doc.text('VISTARA', 29, 39, { align: 'center' });
+  const compName = companyProfile?.companyName || quotation?.tenantName || "INTERIOR STUDIO";
+  const compTagline = companyProfile?.tagline !== undefined ? companyProfile.tagline : '';
+  const compAddress = companyProfile?.officeAddress || '';
+  const compPhone = companyProfile?.phone || '';
+  const compEmail = companyProfile?.email || '';
+  const compGst = companyProfile?.gstNumber ? `GST: ${companyProfile.gstNumber}` : '';
+  const compLogo = companyProfile?.logo;
+
+  // Logo area (left square box or image)
+  let logoLoaded = false;
+  if (compLogo) {
+    try {
+      doc.addImage(compLogo, 'PNG', 14, 14, 30, 28);
+      logoLoaded = true;
+    } catch {
+      try {
+        doc.addImage(compLogo, 'JPEG', 14, 14, 30, 28);
+        logoLoaded = true;
+      } catch {}
+    }
+  }
+
+  if (!logoLoaded) {
+    doc.setFillColor(...DARK_NAVY);
+    doc.rect(14, 14, 30, 28, 'F');
+    doc.setTextColor(...WHITE);
+    doc.setFontSize(20);
+    doc.setFont('times', 'bold');
+    const initialLetter = (compName || 'V').trim().charAt(0).toUpperCase();
+    doc.text(initialLetter, 29, 34, { align: 'center' });
+    doc.setFontSize(6);
+    doc.setFont('times', 'normal');
+    const badgeText = compName.length > 10 ? compName.substring(0, 10).toUpperCase() : compName.toUpperCase();
+    doc.text(badgeText, 29, 39, { align: 'center' });
+  }
 
   // Company name
   doc.setTextColor(...TITLE_BLUE);
-  doc.setFontSize(22);
+  doc.setFontSize(20);
   doc.setFont('times', 'bold');
-  doc.text("VISTARA INTERIOR'S", 50, 26);
+  doc.text(compName.toUpperCase(), 48, 26);
 
   // Tagline
-  doc.setFontSize(9.5);
-  doc.setFont('times', 'italic');
-  doc.setTextColor(80, 80, 80);
-  doc.text('Designing Dreams Creating Reality......', 50, 33);
+  if (compTagline) {
+    doc.setFontSize(9.5);
+    doc.setFont('times', 'italic');
+    doc.setTextColor(80, 80, 80);
+    doc.text(compTagline, 48, 33);
+  }
 
   // Divider line
   doc.setDrawColor(...DARK_NAVY);
@@ -55,13 +100,14 @@ function addHeader(doc, quotation) {
   doc.setFontSize(8.5);
   doc.setFont('times', 'normal');
   doc.setTextColor(...BLACK);
-  doc.text('Office Address: Office No.01, Ambekar Hotel Chowk, Undri Pisoli, Pune-411060', 14, 52);
-  doc.text('Contact: +91 7720097476/8482946451', 14, 58);
+  doc.text(`Office Address: ${compAddress}`, 14, 52);
+  doc.text(`Contact: ${compPhone}`, 14, 58);
   doc.setTextColor(...BRAND_BLUE);
-  doc.text('Email: teamvistarainteriors@gmail.com', 100, 58);
+  doc.text(`Email: ${compEmail}`, 100, 58);
   doc.setTextColor(...BLACK);
   doc.text(`Date: ${formatDate(quotation.date)}`, 14, 64);
-  doc.text(`Quotation No: ${quotation.quotationNo || ''}`, 100, 64);
+  const quoteAndGst = `${quotation.quotationNo ? `Quotation No: ${quotation.quotationNo}` : ''}${compGst ? `  |  ${compGst}` : ''}`;
+  doc.text(quoteAndGst, 100, 64);
 
   // Divider
   doc.line(14, 68, w - 14, 68);
@@ -135,7 +181,7 @@ function buildScopeTable(quotation) {
   return body;
 }
 
-function addScopeOfWork(doc, quotation, startY) {
+function addScopeOfWork(doc, quotation, startY, themeColor = DARK_NAVY) {
   const w = doc.internal.pageSize.getWidth();
   const showAmount = quotation.showItemAmount !== false;
 
@@ -176,7 +222,7 @@ function addScopeOfWork(doc, quotation, startY) {
     body,
     theme: 'grid',
     styles: { font: 'times', fontSize: 8.5, cellPadding: 3, textColor: BLACK, valign: 'middle' },
-    headStyles: { fillColor: DARK_NAVY, textColor: WHITE, fontStyle: 'bold', fontSize: 9, valign: 'middle' },
+    headStyles: { fillColor: themeColor, textColor: WHITE, fontStyle: 'bold', fontSize: 9, valign: 'middle' },
     columnStyles,
     margin: { left: 14, right: 14 },
     alternateRowStyles: { fillColor: [255, 255, 255] },
@@ -210,7 +256,7 @@ function addScopeOfWork(doc, quotation, startY) {
   return afterTable + 24;
 }
 
-function addMaterialSpec(doc, materialSpec, startY) {
+function addMaterialSpec(doc, materialSpec, startY, themeColor = DARK_NAVY) {
   let y = startY || 20;
   // If not enough room on current page, add new page
   if (y > 220) {
@@ -260,7 +306,7 @@ function addMaterialSpec(doc, materialSpec, startY) {
     body,
     theme: 'grid',
     styles: { font: 'times', fontSize: 8.5, cellPadding: 3, textColor: BLACK, valign: 'middle' },
-    headStyles: { fillColor: DARK_NAVY, textColor: WHITE, fontStyle: 'bold', fontSize: 9, valign: 'middle' },
+    headStyles: { fillColor: themeColor, textColor: WHITE, fontStyle: 'bold', fontSize: 9, valign: 'middle' },
     columnStyles: {
       0: { cellWidth: 16, halign: 'center', valign: 'middle' },
       1: { cellWidth: 65, halign: 'left', valign: 'middle' },
@@ -282,9 +328,10 @@ function addMaterialSpec(doc, materialSpec, startY) {
   return doc.lastAutoTable.finalY + 10;
 }
 
-function addServicesTerms(doc, startY) {
+function addServicesTerms(doc, startY, companyProfile = null, quotation = null) {
   let y = startY;
   const w = doc.internal.pageSize.getWidth();
+  const compName = companyProfile?.companyName || quotation?.tenantName || "Our Studio";
 
   // Check if we need a new page
   if (y > 220) { doc.addPage(); y = 20; }
@@ -312,7 +359,7 @@ function addServicesTerms(doc, startY) {
   doc.setFont('times', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(...TEXT_DARK);
-  doc.text('2. Why Choose Vistara Interiors?', 14, y);
+  doc.text(`2. Why Choose ${compName}?`, 14, y);
   y += 5.5;
   const whyItems = [
     'Transparent Pricing – No Hidden Charges',
@@ -350,10 +397,141 @@ function addServicesTerms(doc, startY) {
   doc.setTextColor(...TEXT_DARK);
   termsItems.forEach(item => { doc.text(item, 18, y); y += 4.5; });
 
-  y += 8;
+  y += 5;
 
-  // Thank you section (aligned at right side as requested by user)
-  if (y > 250) { doc.addPage(); y = 25; }
+  // Payment Terms & Schedule (customized per quotation or tenant default)
+  const paymentTermsText = quotation?.paymentTerms !== undefined
+    ? quotation.paymentTerms
+    : (companyProfile?.paymentTerms || DEFAULT_PAYMENT_TERMS);
+
+  if (paymentTermsText) {
+    if (y > 215) { doc.addPage(); y = 20; }
+    doc.setFont('times', 'bold');
+    doc.setFontSize(10.5);
+    doc.setTextColor(...TITLE_BLUE);
+    doc.text('PAYMENT TERMS & SCHEDULE:', 14, y);
+    y += 5;
+
+    doc.setFont('times', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...TEXT_DARK);
+    const lines = paymentTermsText.split('\n');
+    lines.forEach(line => {
+      if (line.trim()) {
+        const wrapped = doc.splitTextToSize(line.trim(), w - 28);
+        doc.text(wrapped, 18, y);
+        y += wrapped.length * 4.2;
+      }
+    });
+    y += 4;
+  }
+
+  // Payment Details Block (Bank, UPI, QR Code, Stamp & Signature) if present
+  const compBank = companyProfile?.bankDetails;
+  const hasBank = compBank && (compBank.accountNumber || compBank.bankName || compBank.ifscCode);
+  const compUpi = companyProfile?.upiId;
+  const compQr = companyProfile?.qrCode;
+  const compStamp = companyProfile?.stamp;
+  const compSig = companyProfile?.signature;
+  const showBottomLogo = companyProfile?.showBottomLogo !== false;
+  const bottomLogo = showBottomLogo ? (companyProfile?.bottomLogo || companyProfile?.logo) : null;
+
+  if (hasBank || compUpi || compQr || compStamp || compSig || bottomLogo) {
+    if (y > 230) { doc.addPage(); y = 20; }
+    
+    // Payment details box
+    doc.setDrawColor(210, 210, 210);
+    doc.setFillColor(250, 250, 252);
+    doc.roundedRect(14, y, w - 28, 30, 2, 2, 'FD');
+
+    // Left: Bank details
+    doc.setFont('times', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(...TITLE_BLUE);
+    doc.text('PAYMENT DETAILS', 18, y + 5.5);
+
+    doc.setFont('times', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...TEXT_DARK);
+    let by = y + 10;
+    if (compBank?.bankName) {
+      doc.text(`Bank: ${compBank.bankName} ${compBank.branchName ? `(${compBank.branchName})` : ''}`, 18, by);
+      by += 3.8;
+    }
+    if (compBank?.accountHolderName) {
+      doc.text(`A/C Name: ${compBank.accountHolderName}`, 18, by);
+      by += 3.8;
+    }
+    if (compBank?.accountNumber) {
+      doc.text(`A/C No: ${compBank.accountNumber}   |   IFSC: ${compBank.ifscCode || '—'}`, 18, by);
+      by += 3.8;
+    }
+    if (compUpi) {
+      doc.text(`UPI ID: ${compUpi}`, 18, by);
+      by += 3.8;
+    }
+
+    // QR Code in middle if available
+    if (compQr) {
+      try {
+        doc.addImage(compQr, 'PNG', 110, y + 3, 23, 23);
+        doc.setFontSize(6.5);
+        doc.setFont('times', 'bold');
+        doc.text('SCAN TO PAY', 121.5, y + 28, { align: 'center' });
+      } catch {
+        try { 
+          doc.addImage(compQr, 'JPEG', 110, y + 3, 23, 23); 
+          doc.setFontSize(6.5);
+          doc.setFont('times', 'bold');
+          doc.text('SCAN TO PAY', 121.5, y + 28, { align: 'center' });
+        } catch {}
+      }
+    }
+
+    // Right: Stamp & Signature & Logo
+    const rightX = w - 18;
+    if (bottomLogo) {
+      try {
+        doc.addImage(bottomLogo, 'PNG', rightX - (compStamp ? 66 : 42), y + 3, 20, 15);
+      } catch {
+        try { doc.addImage(bottomLogo, 'JPEG', rightX - (compStamp ? 66 : 42), y + 3, 20, 15); } catch {}
+      }
+    }
+    if (compStamp) {
+      try {
+        doc.addImage(compStamp, 'PNG', rightX - 44, y + 3, 19, 19);
+      } catch {
+        try { doc.addImage(compStamp, 'JPEG', rightX - 44, y + 3, 19, 19); } catch {}
+      }
+    }
+    if (compSig) {
+      try {
+        doc.addImage(compSig, 'PNG', rightX - 22, y + 5, 20, 15);
+      } catch {
+        try { doc.addImage(compSig, 'JPEG', rightX - 22, y + 5, 20, 15); } catch {}
+      }
+    }
+    doc.setFont('times', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...DARK_NAVY);
+    doc.text('Authorized Signatory', rightX, y + 27.5, { align: 'right' });
+
+    y += 35;
+  }
+
+  y += 4;
+
+  // Thank you section (aligned at right side, with bottom logo on left side)
+  if (y > 255) { doc.addPage(); y = 25; }
+
+  if (bottomLogo) {
+    try {
+      doc.addImage(bottomLogo, 'PNG', 14, y - 2, 28, 18);
+    } catch {
+      try { doc.addImage(bottomLogo, 'JPEG', 14, y - 2, 28, 18); } catch {}
+    }
+  }
+
   doc.setFont('times', 'bolditalic');
   doc.setFontSize(12);
   doc.setTextColor(...TITLE_BLUE);
@@ -367,33 +545,37 @@ function addServicesTerms(doc, startY) {
   doc.setFont('times', 'bold');
   doc.setFontSize(10.5);
   doc.setTextColor(...DARK_NAVY);
-  doc.text('TEAM VISTARA INTERIORS', w - 14, y, { align: 'right' });
+  const signoffCompany = companyProfile?.companyName || quotation?.tenantName || 'OUR TEAM';
+  const displaySignoff = signoffCompany.toUpperCase().startsWith('TEAM ') ? signoffCompany.toUpperCase() : `TEAM ${signoffCompany.toUpperCase()}`;
+  doc.text(displaySignoff, w - 14, y, { align: 'right' });
 }
 
-export function buildQuotationPDFDoc(quotation) {
+export function buildQuotationPDFDoc(quotation, companyProfile = null) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const themeColor = hexToRgb(companyProfile?.brandColor, DARK_NAVY);
 
-  let y = addHeader(doc, quotation);
+  let y = addHeader(doc, quotation, companyProfile);
   y = addClientDetails(doc, quotation, y);
-  const scopeEndY = addScopeOfWork(doc, quotation, y + 4);
+  const scopeEndY = addScopeOfWork(doc, quotation, y + 4, themeColor);
 
   // Material spec appears immediately after total if space permits
-  const specY = addMaterialSpec(doc, quotation.materialSpec, scopeEndY + 6);
-  addServicesTerms(doc, specY);
+  const specY = addMaterialSpec(doc, quotation.materialSpec, scopeEndY + 6, themeColor);
+  addServicesTerms(doc, specY, companyProfile, quotation);
 
   // Apply border to ALL pages (guarantees autoTable-generated multi-page splits and all pages have borders)
   const totalPages = doc.internal.getNumberOfPages();
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
-    addPageBorder(doc);
+    addPageBorder(doc, themeColor);
   }
 
   return doc;
 }
 
-export function generateQuotationPDF(quotation, customFileName) {
-  const doc = buildQuotationPDFDoc(quotation);
-  const cleanName = (customFileName || `Vistara_Invoice_${quotation.quotationNo || 'Quote'}_${quotation.clientName?.replace(/\s+/g, '_') || 'Client'}`).trim();
+export function generateQuotationPDF(quotation, customFileName, companyProfile = null) {
+  const doc = buildQuotationPDFDoc(quotation, companyProfile);
+  const companyPrefix = (companyProfile?.companyName || quotation?.tenantName || 'PreciseQuote').replace(/[^a-zA-Z0-9]/g, '');
+  const cleanName = (customFileName || `${companyPrefix}_Invoice_${quotation.quotationNo || 'Quote'}_${quotation.clientName?.replace(/\s+/g, '_') || 'Client'}`).trim();
   const fileName = cleanName.toLowerCase().endsWith('.pdf') ? cleanName : `${cleanName}.pdf`;
   doc.save(fileName);
   return fileName;

@@ -2,6 +2,14 @@
   "projects": {
     "default": "vistara-interiors"
   },
-  "targets": {},
+  "targets": {
+    "vistara-interiors": {
+      "hosting": {
+        "app": [
+          "precisequote"
+        ]
+      }
+    }
+  },
   "etags": {}
 }

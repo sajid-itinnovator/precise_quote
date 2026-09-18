@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, TrendingUp, FileText, Eye, Pencil, Plus, Calendar, Trash2 } from 'lucide-react';
+import { Search, TrendingUp, FileText, Eye, Pencil, Plus, Calendar, Trash2, CheckCircle, Clock, FileCheck, FileEdit, XCircle, ArrowRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
 import { formatIndianCurrency, formatDate } from '../utils/helpers';
@@ -207,9 +207,94 @@ export default function Hub() {
     }
   };
 
-  const totalRevenue = quotations.filter(q => q.status === 'APPROVED').reduce((s, q) => s + (q.total || 0), 0);
+  // ─── Quotation Stages & Financial Metric Totals ───
+  const approvedQuotes = quotations.filter(q => q.status === 'APPROVED');
+  const totalRevenue = approvedQuotes.reduce((s, q) => s + (q.total || 0), 0);
+
   const pendingQuotes = quotations.filter(q => q.status === 'PENDING');
   const pendingValue = pendingQuotes.reduce((s, q) => s + (q.total || 0), 0);
+
+  const invoiceCreatedQuotes = quotations.filter(q => q.status === 'INVOICE CREATED');
+  const invoiceCreatedValue = invoiceCreatedQuotes.reduce((s, q) => s + (q.total || 0), 0);
+
+  const draftQuotes = quotations.filter(q => q.status === 'DRAFT' || !q.status);
+  const draftValue = draftQuotes.reduce((s, q) => s + (q.total || 0), 0);
+
+  const rejectedQuotes = quotations.filter(q => q.status === 'REJECTED' || q.status === 'REJECT');
+  const rejectedValue = rejectedQuotes.reduce((s, q) => s + (q.total || 0), 0);
+
+  const stageTiles = [
+    {
+      id: 'approved',
+      status: 'APPROVED',
+      label: 'Approved / Total Revenue',
+      subtitle: `${approvedQuotes.length} Closed Won`,
+      amount: totalRevenue,
+      count: approvedQuotes.length,
+      icon: CheckCircle,
+      iconColor: '#16a34a',
+      iconBg: '#dcfce7',
+      borderColor: '#bbf7d0',
+      badgeClass: 'badge-success',
+      actionText: 'View Approved'
+    },
+    {
+      id: 'pending',
+      status: 'PENDING',
+      label: 'Pending Quotes',
+      subtitle: `${pendingQuotes.length} Awaiting Client Decision`,
+      amount: pendingValue,
+      count: pendingQuotes.length,
+      icon: Clock,
+      iconColor: '#d97706',
+      iconBg: '#fef3c7',
+      borderColor: '#fde68a',
+      badgeClass: 'badge-warning',
+      actionText: 'Review Pending'
+    },
+    {
+      id: 'invoice_created',
+      status: 'INVOICE CREATED',
+      label: 'Invoices Created',
+      subtitle: `${invoiceCreatedQuotes.length} Formal Invoices Issued`,
+      amount: invoiceCreatedValue,
+      count: invoiceCreatedQuotes.length,
+      icon: FileCheck,
+      iconColor: '#2563eb',
+      iconBg: '#dbeafe',
+      borderColor: '#bfdbfe',
+      badgeClass: 'badge-primary',
+      actionText: 'View Invoices'
+    },
+    {
+      id: 'draft',
+      status: 'DRAFT',
+      label: 'Draft Quotations',
+      subtitle: `${draftQuotes.length} Work In Progress`,
+      amount: draftValue,
+      count: draftQuotes.length,
+      icon: FileEdit,
+      iconColor: '#64748b',
+      iconBg: '#f1f5f9',
+      borderColor: '#e2e8f0',
+      badgeClass: 'badge-draft',
+      actionText: 'Open Drafts'
+    },
+    {
+      id: 'rejected',
+      status: 'REJECTED',
+      label: 'Lost / Rejected',
+      subtitle: `${rejectedQuotes.length} Declined Proposals`,
+      amount: rejectedValue,
+      count: rejectedQuotes.length,
+      icon: XCircle,
+      iconColor: '#dc2626',
+      iconBg: '#fee2e2',
+      borderColor: '#fecaca',
+      badgeClass: 'badge-danger',
+      actionText: 'View Lost'
+    },
+  ];
 
   const getClient = (clientId) => clients.find(c => c.id === clientId);
 
@@ -299,31 +384,100 @@ export default function Hub() {
         </button>
       </div>
 
-      {/* Stats */}
-      <div className="stat-grid">
-        <div className="stat-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
-              <div className="stat-label">Total Revenue</div>
-              <div className="stat-value">₹{formatIndianCurrency(totalRevenue)}</div>
+      {/* Quotation Pipeline & Stages Overview */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+          <div>
+            <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--secondary)' }}>
+              Quotation Pipeline &amp; Stages
             </div>
-            <div style={{ width: 36, height: 36, background: 'var(--primary-light)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <TrendingUp size={18} style={{ color: 'var(--primary)' }} />
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              Real-time financial status, pipeline distribution, and stages
             </div>
           </div>
-          <div className="stat-change">+12% from last month</div>
+          <button 
+            className="btn btn-ghost btn-sm" 
+            style={{ color: 'var(--primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}
+            onClick={() => navigate('/history')}
+          >
+            Full Archive <ArrowRight size={14} />
+          </button>
         </div>
-        <div className="stat-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
-              <div className="stat-label">Pending Quotes</div>
-              <div className="stat-value">₹{formatIndianCurrency(pendingValue)}</div>
-            </div>
-            <div style={{ width: 36, height: 36, background: '#fef9c3', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <FileText size={18} style={{ color: '#713f12' }} />
-            </div>
-          </div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>{pendingQuotes.length} Quote{pendingQuotes.length !== 1 ? 's' : ''} awaiting approval</div>
+
+        {/* 5-Stage Cards Grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+          gap: 12,
+        }}>
+          {stageTiles.map((stage) => {
+            const Icon = stage.icon;
+            return (
+              <div
+                key={stage.id}
+                onClick={() => navigate(`/history?status=${encodeURIComponent(stage.status)}`)}
+                className="stat-card"
+                style={{
+                  cursor: 'pointer',
+                  border: `1px solid ${stage.borderColor}`,
+                  background: 'var(--surface)',
+                  padding: '16px 14px',
+                  borderRadius: 12,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                  transition: 'transform 0.16s, box-shadow 0.16s, border-color 0.16s',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  minHeight: 120,
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}
+                onMouseOver={e => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.08)';
+                }}
+                onMouseOut={e => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
+                }}
+                title={`Click to filter quotes in ${stage.status} stage`}
+              >
+                {/* Top header: Title & Icon */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)' }}>
+                      {stage.label}
+                    </div>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: 2 }}>
+                      ₹{formatIndianCurrency(stage.amount)}
+                    </div>
+                  </div>
+                  <div style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 8,
+                    background: stage.iconBg,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    <Icon size={18} color={stage.iconColor} />
+                  </div>
+                </div>
+
+                {/* Bottom footer: count pill & CTA link */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px dashed var(--border-light)', paddingTop: 8, marginTop: 4 }}>
+                  <span className={`badge ${stage.badgeClass}`} style={{ fontSize: '0.68rem', fontWeight: 700 }}>
+                    {stage.count} Quote{stage.count !== 1 ? 's' : ''}
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--primary)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                    {stage.actionText} →
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
