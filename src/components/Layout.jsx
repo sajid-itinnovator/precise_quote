@@ -7,6 +7,7 @@ import { usePWAInstall } from '../hooks/usePWAInstall';
 import { Smartphone, LogOut, Building2, Settings, User, X, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
+import Modal from './Modal';
 
 export function Layout({ children, title }) {
   const [showNewProject, setShowNewProject] = useState(false);
@@ -182,20 +183,22 @@ function UserAccountDrawer({ isOpen, onClose, onOpenInstall }) {
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      background: 'rgba(15, 23, 42, 0.65)',
-      backdropFilter: 'blur(4px)',
-      zIndex: 99999,
-      display: 'flex',
-      alignItems: 'flex-end',
-      justifyContent: 'center'
-    }}>
+    <Modal
+      onClose={onClose}
+      zLevel={99999}
+      className="bottom-sheet"
+      maxWidth={500}
+      labelledBy="account-drawer-title"
+      overlayStyle={{
+        alignItems: 'flex-end',
+        background: 'rgba(15, 23, 42, 0.65)',
+        backdropFilter: 'blur(4px)',
+        padding: 0
+      }}
+    >
       <div style={{
         background: '#ffffff',
         width: '100%',
-        maxWidth: 500,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         boxShadow: '0 -10px 40px rgba(0,0,0,0.3)',
@@ -203,7 +206,7 @@ function UserAccountDrawer({ isOpen, onClose, onOpenInstall }) {
         animation: 'slideUp 0.25s ease-out'
       }}>
         {/* Drawer Header */}
-        <div style={{
+        <div id="account-drawer-title" style={{
           padding: '20px 20px 16px',
           borderBottom: '1px solid #e2e8f0',
           display: 'flex',
@@ -403,6 +406,6 @@ function UserAccountDrawer({ isOpen, onClose, onOpenInstall }) {
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

@@ -1,7 +1,8 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Search, Trash2, Plus, X, User, ChevronDown, Check, Phone } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useToast } from './Toast';
+import Modal from './Modal';
 
 export default function ClientPicker({
   value,
@@ -15,16 +16,12 @@ export default function ClientPicker({
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
 
-  // Lock body scroll when picker is open on mobile; clear the search on close
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    }
-    return () => {
-      document.body.style.overflow = '';
-      if (!isOpen) setSearch('');
-    };
-  }, [isOpen]);
+  // Clear stale search whenever the picker opens; nothing to lock here —
+  // the Modal primitive owns the body scroll lock.
+  const openPicker = () => {
+    setSearch('');
+    setIsOpen(true);
+  };
 
   // 1) Sort Alphabetically A B C D
   const sortedClients = useMemo(() => {
@@ -92,7 +89,7 @@ export default function ClientPicker({
     <>
       {/* Trigger Field */}
       <div
-        onClick={() => setIsOpen(true)}
+        onClick={openPicker}
         className="form-select"
         style={{
           display: 'flex',
@@ -134,35 +131,24 @@ export default function ClientPicker({
 
       {/* Mobile Bottom-Sheet & Desktop Modal Picker */}
       {isOpen && (
-        <div
+        <Modal
+          onClose={() => setIsOpen(false)}
+          zLevel={9999}
+          className="bottom-sheet"
+          maxWidth={520}
+          labelledBy="client-picker-title"
           style={{
-            position: 'fixed',
-            inset: 0,
+            background: 'var(--surface, #ffffff)',
+            borderRadius: '20px 20px 0 0',
+            boxShadow: '0 -8px 30px rgba(0,0,0,0.25)'
+          }}
+          overlayStyle={{
+            alignItems: 'flex-end',
             background: 'rgba(15, 23, 42, 0.65)',
             backdropFilter: 'blur(3px)',
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'center',
-            animation: 'fadeIn 0.15s ease'
+            padding: 0
           }}
-          onClick={() => setIsOpen(false)}
         >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              width: '100%',
-              maxWidth: 520,
-              maxHeight: '85vh',
-              background: 'var(--surface, #ffffff)',
-              borderRadius: '20px 20px 0 0',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 -8px 30px rgba(0,0,0,0.25)',
-              overflow: 'hidden',
-              animation: 'slideUp 0.2s ease'
-            }}
-          >
             {/* Modal Header */}
             <div style={{
               padding: '16px 18px 12px',
@@ -172,7 +158,7 @@ export default function ClientPicker({
               alignItems: 'center'
             }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--secondary, #0f172a)' }}>
+                <h3 id="client-picker-title" style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--secondary, #0f172a)' }}>
                   Select Client
                 </h3>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
@@ -311,8 +297,7 @@ export default function ClientPicker({
                 </button>
               )}
             </div>
-          </div>
-        </div>
+          </Modal>
       )}
     </>
   );

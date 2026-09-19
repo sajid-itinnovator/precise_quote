@@ -8,6 +8,7 @@ import { db, auth } from '../firebase';
 // and no client-side role check.
 import { useAuth } from '../context/AuthContext';
 import { deriveSubscription } from '../utils/subscription';
+import Modal from '../components/Modal';
 import { 
   Building2, Users, Calendar, Search, Filter, 
   Sparkles, CheckCircle2, Clock, AlertTriangle, ArrowRight, 
@@ -932,21 +933,14 @@ export default function SuperAdmin() {
 
       {/* Tenant Detailed Profile & Plan Management Modal */}
       {selectedTenant && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(15, 23, 42, 0.65)',
-          backdropFilter: 'blur(4px)',
-          zIndex: 9999,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 16
-        }}>
-          <div style={{
+        <Modal
+          onClose={() => setSelectedTenant(null)}
+          zLevel={9999}
+          className="nested-modal-panel"
+          maxWidth={580}
+          style={{
             background: '#ffffff',
             borderRadius: 20,
-            maxWidth: 580,
             width: '100%',
             boxShadow: '0 25px 60px rgba(0,0,0,0.3)',
             overflow: 'hidden',
@@ -954,7 +948,9 @@ export default function SuperAdmin() {
             display: 'flex',
             flexDirection: 'column',
             animation: 'fadeIn 0.2s ease-out'
-          }}>
+          }}
+          overlayStyle={{ padding: 16 }}
+        >
             {/* Modal Header */}
             <div style={{
               padding: '18px 24px',
@@ -1336,8 +1332,7 @@ export default function SuperAdmin() {
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );
