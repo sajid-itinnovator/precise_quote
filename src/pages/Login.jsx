@@ -7,6 +7,11 @@ import { doc, setDoc } from 'firebase/firestore';
 import { Eye, EyeOff, KeyRound, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 import { getDomainContext } from '../utils/domainRouting';
 
+/** Tenant IDs are generated at submit time, not during render (render purity). */
+function makeTenantId() {
+  return `tenant_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+}
+
 export default function Login() {
   const { login, loginWithGoogle, resetPassword } = useAuth();
   const navigate = useNavigate();
@@ -21,7 +26,6 @@ export default function Login() {
     domain.tenantSubdomain ? domain.tenantSubdomain.replace(/[-_]/g, ' ').toUpperCase() : ''
   );
   const [error, setError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -35,14 +39,13 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccessMsg('');
     setLoading(true);
 
     try {
       if (isRegister) {
         // Register new company (Tenant)
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const newTenantId = `tenant_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const newTenantId = makeTenantId();
         
         // Write the admin role and tenant ID to Firestore
         await setDoc(doc(db, 'users', userCredential.user.uid), {
@@ -173,7 +176,7 @@ export default function Login() {
         }}>
           <button 
             type="button"
-            onClick={() => { setIsRegister(false); setError(''); setSuccessMsg(''); }}
+            onClick={() => { setIsRegister(false); setError(''); }}
             style={{
               flex: 1,
               padding: '9px 12px',
@@ -192,7 +195,7 @@ export default function Login() {
           </button>
           <button 
             type="button"
-            onClick={() => { setIsRegister(true); setError(''); setSuccessMsg(''); }}
+            onClick={() => { setIsRegister(true); setError(''); }}
             style={{
               flex: 1,
               padding: '9px 12px',

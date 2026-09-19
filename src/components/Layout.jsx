@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar, TopBar, BottomNav } from './Navigation';
 import { NewProjectModal } from './Modals';
-import { InstallAppModal, InstallAppBanner, usePWAInstall } from './InstallAppModal';
+import { InstallAppModal, InstallAppBanner } from './InstallAppModal';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 import { Smartphone, LogOut, Building2, Settings, User, X, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
@@ -56,7 +57,7 @@ export function Layout({ children, title }) {
   );
 }
 
-function MobileTopBar({ title, onOpenInstall, onOpenAccount }) {
+function MobileTopBar({ onOpenInstall, onOpenAccount }) {
   const { userProfile, logout } = useAuth();
   const { tenantLogo, companyProfile } = useApp();
   const { isStandalone } = usePWAInstall();
@@ -168,7 +169,7 @@ function MobileTopBar({ title, onOpenInstall, onOpenAccount }) {
 }
 
 function UserAccountDrawer({ isOpen, onClose, onOpenInstall }) {
-  const { currentUser, userProfile, logout } = useAuth();
+  const { currentUser, userProfile, isPlatformAdmin, logout } = useAuth();
   const { companyProfile } = useApp();
   const navigate = useNavigate();
 
@@ -341,7 +342,7 @@ function UserAccountDrawer({ isOpen, onClose, onOpenInstall }) {
             </button>
           )}
 
-          {(userProfile?.role === 'admin' || userProfile?.role === 'superadmin' || userProfile?.isSuperAdmin) && (
+          {isPlatformAdmin && (
             <button
               onClick={() => handleNavigate('/super-admin')}
               style={{

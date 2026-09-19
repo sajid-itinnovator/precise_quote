@@ -33,4 +33,11 @@ export default defineConfig([
       globals: globals.node,
     },
   },
+  {
+    // Service worker: classic worker script with its own global scope
+    files: ['public/sw.js'],
+    languageOptions: {
+      globals: globals.serviceworker,
+    },
+  },
 ])

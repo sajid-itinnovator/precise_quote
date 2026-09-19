@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, ChevronDown, ChevronUp, Calculator, Eye, Home, ArrowRight, Building, Layers, FileCheck, Save, Copy, Pencil, RotateCcw, Check, Lock, Users, Phone, MapPin, Hash } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { formatIndianCurrency, numberToWords } from '../utils/helpers';
+import { formatIndianCurrency, numberToWords, getNextRevisionTitle } from '../utils/helpers';
+import { parseItemQuantity, calculateItemSqft, detectUnit } from '../utils/dimensions';
 import QuotationPreview from '../components/QuotationPreview';
 import MaterialSpecEditor from '../components/MaterialSpecEditor';
 import ClientPicker from '../components/ClientPicker';
@@ -53,225 +54,18 @@ const PRESET_ROOMS = [
 const ALL_PRESET_ITEMS = Array.from(new Set(Object.values(ROOM_PRESET_ITEMS).flat()));
 
 
-// ─── Parse dimensions: 2D ("L X W") or 3D ("L X W X H") → object or null ─
-export function parseDimensions(sizeStr) {
-  if (!sizeStr) return null;
-  // Strip feet/inch symbols and trim
-  const cleaned = sizeStr.replace(/['"“”]/g, '').replace(/\b(?:ft|feet)\b/gi, '').trim();
-
-  // 3 dimensions: e.g. "1.5 X 2 X 2", "6 x 3 x 1.5", "2*2*2"
-  const match3 = cleaned.match(/^([\d.]+)\s*[xX×*]\s*([\d.]+)\s*[xX×*]\s*([\d.]+)$/);
-  if (match3) {
-    const d1 = parseFloat(match3[1]) || 0;
-    const d2 = parseFloat(match3[2]) || 0;
-    const d3 = parseFloat(match3[3]) || 0;
-    if (d1 > 0 && d2 > 0 && d3 > 0) {
-      const total = Math.round(d1 * d2 * d3 * 100) / 100;
-      return {
-        count: 3,
-        d1, d2, d3,
-        l: d1, w: d2, h: d3,
-        total,
-        unit: 'cft',
-        formatted: `${d1} × ${d2} × ${d3}`,
-      };
-    }
-  }
-
-  // 2 dimensions: e.g. "7 X 4.5", "2 x 2", "10*7"
-  const match2 = cleaned.match(/^([\d.]+)\s*[xX×*]\s*([\d.]+)$/);
-  if (match2) {
-    const d1 = parseFloat(match2[1]) || 0;
-    const d2 = parseFloat(match2[2]) || 0;
-    if (d1 > 0 && d2 > 0) {
-      const total = Math.round(d1 * d2 * 100) / 100;
-      return {
-        count: 2,
-        d1, d2,
-        l: d1, w: d2,
-        total,
-        unit: 'sqft',
-        formatted: `${d1} × ${d2}`,
-      };
-    }
-  }
-
-  return null;
-}
-
-function parseLW(sizeStr) {
-  return parseDimensions(sizeStr);
-}
-
-// ─── Parse Item Quantity & Unit (Sq Ft, Per Point, Running Feet, Inches, Meters) ────────
-export function parseItemQuantity(item) {
-  if (!item || !item.size) return null;
-  const sizeStr = String(item.size).trim();
-  const unit = item.unit || (() => {
-    const s = sizeStr.toLowerCase();
-    if (s.includes('point') || s.includes(' pt')) return 'point';
-    if (s.includes('rft') || s.includes('running')) return 'rft';
-    if (s.includes('inch') || s.includes('in"') || s.includes('"')) return 'inch';
-    if (s.includes('meter') || s.includes('mtr') || s.includes(' m')) return 'meter';
-    return 'sqft';
-  })();
-
-  // 1. 3 dimensions: e.g. "1.5 X 2 X 2"
-  const cleaned = sizeStr.replace(/['"“”]/g, '').replace(/\b(?:ft|feet)\b/gi, '').trim();
-  const match3 = cleaned.match(/^([\d.]+)\s*[xX×*]\s*([\d.]+)\s*[xX×*]\s*([\d.]+)$/);
-  if (match3) {
-    const d1 = parseFloat(match3[1]) || 0;
-    const d2 = parseFloat(match3[2]) || 0;
-    const d3 = parseFloat(match3[3]) || 0;
-    if (d1 > 0 && d2 > 0 && d3 > 0) {
-      const total = Math.round(d1 * d2 * d3 * 100) / 100;
-      return {
-        qty: total,
-        unit: 'cft',
-        unitShort: 'cft',
-        unitLabel: 'CFT',
-        formatted: `${total} CFT`,
-        formula: `${d1} × ${d2} × ${d3} = ${total} CFT`,
-        is2D: false,
-        is3D: true
-      };
-    }
-  }
-
-  // 2. 2 dimensions: e.g. "7 X 4.5"
-  const match2 = cleaned.match(/^([\d.]+)\s*[xX×*]\s*([\d.]+)$/);
-  if (match2) {
-    const d1 = parseFloat(match2[1]) || 0;
-    const d2 = parseFloat(match2[2]) || 0;
-    if (d1 > 0 && d2 > 0) {
-      const total = Math.round(d1 * d2 * 100) / 100;
-      const unitLbl = unit === 'meter' ? 'Meter' : unit === 'inch' ? 'Inch' : 'Sq Ft';
-      const unitSht = unit === 'meter' ? 'mtr' : unit === 'inch' ? 'inch' : 'sqft';
-      return {
-        qty: total,
-        unit: unit === 'meter' ? 'meter' : unit === 'inch' ? 'inch' : 'sqft',
-        unitShort: unitSht,
-        unitLabel: unitLbl,
-        formatted: `${total} ${unitLbl}`,
-        formula: `${d1} × ${d2} = ${total} ${unitLbl}`,
-        is2D: true
-      };
-    }
-  }
-
-  // 3. Single numeric quantity: e.g. "12", "12 Points", "25 Rft", "36 Inch", "3.5 Meter", "120 Sq Ft"
-  const numMatch = sizeStr.match(/^([\d.]+)/);
-  if (numMatch) {
-    const qty = parseFloat(numMatch[1]) || 0;
-    if (qty > 0) {
-      if (unit === 'point') {
-        return {
-          qty,
-          unit: 'point',
-          unitShort: 'point',
-          unitLabel: 'Per Point',
-          formatted: `${qty} Points`,
-          is2D: false
-        };
-      } else if (unit === 'rft') {
-        return {
-          qty,
-          unit: 'rft',
-          unitShort: 'rft',
-          unitLabel: 'Running Feet',
-          formatted: `${qty} Rft`,
-          is2D: false
-        };
-      } else if (unit === 'inch') {
-        return {
-          qty,
-          unit: 'inch',
-          unitShort: 'inch',
-          unitLabel: 'Inches',
-          formatted: `${qty} Inch`,
-          is2D: false
-        };
-      } else if (unit === 'meter') {
-        return {
-          qty,
-          unit: 'meter',
-          unitShort: 'meter',
-          unitLabel: 'Meters',
-          formatted: `${qty} Meter`,
-          is2D: false
-        };
-      } else {
-        return {
-          qty,
-          unit: 'sqft',
-          unitShort: 'sqft',
-          unitLabel: 'Sq Ft',
-          formatted: `${qty} Sq Ft`,
-          is2D: false
-        };
-      }
-    }
-  }
-
-  return null;
-}
-
-// ─── Calculate SQFT / Units for an Item (Interior Designer Only) ────────
-export function calculateItemSqft(item) {
-  if (!item) return 0;
-  const unit = item.unit || (() => {
-    const s = (item.size || '').toLowerCase();
-    if (s.includes('point') || s.includes(' pt')) return 'point';
-    if (s.includes('rft') || s.includes('running')) return 'rft';
-    if (s.includes('inch') || s.includes('in"') || s.includes('"')) return 'inch';
-    if (s.includes('meter') || s.includes('mtr') || s.includes(' m')) return 'meter';
-    return 'sqft';
-  })();
-  if (unit === 'point' || unit === 'rft' || unit === 'inch' || unit === 'meter') {
-    return 0;
-  }
-
-  if (item.sqft && !isNaN(Number(item.sqft))) return Number(item.sqft);
-  
-  const dims = parseDimensions(item.size);
-  if (dims && dims.total > 0) {
-    return dims.total;
-  }
-
-  const sizeStr = (item.size || '').trim();
-  const directMatch = sizeStr.match(/^([\d.]+)\s*(?:sq\.?\s*ft|sft)$/i);
-  if (directMatch) {
-    return parseFloat(directMatch[1]) || 0;
-  }
-
-  const rateNum = parseFloat(item._rate) || 0;
-  const amtNum = parseFloat(item.amount) || 0;
-  if (rateNum > 0 && amtNum > 0) {
-    return Math.round((amtNum / rateNum) * 100) / 100;
-  }
-
-  return 0;
-}
 
 // ─── Item Row ─────────────────────────────────────────────────────────────
 function ItemRow({ item, index = 0, roomName, onUpdate, onDelete }) {
   const [manualOverride, setManualOverride] = useState(false);
   const rate = item._rate ?? '';
 
-  const currentUnit = item.unit || (() => {
-    const s = (item.size || '').toLowerCase();
-    if (s.includes('point') || s.includes(' pt')) return 'point';
-    if (s.includes('rft') || s.includes('running')) return 'rft';
-    if (s.includes('inch') || s.includes('in"') || s.includes('"')) return 'inch';
-    if (s.includes('meter') || s.includes('mtr') || s.includes(' m')) return 'meter';
-    return 'sqft';
-  })();
+  const currentUnit = item.unit || detectUnit(item.size);
 
   const parsedQty = parseItemQuantity({ ...item, unit: currentUnit });
   const rateNum = parseFloat(rate) || 0;
   const isAutoCalc = parsedQty !== null && rateNum > 0;
   const autoAmount = isAutoCalc ? Math.round(parsedQty.qty * rateNum) : null;
-  const itemSqft = calculateItemSqft({ ...item, unit: currentUnit });
 
   const normalizedRoom = (roomName || '').trim().toUpperCase();
   const roomKey = Object.keys(ROOM_PRESET_ITEMS).find(k => 
@@ -603,7 +397,7 @@ function ItemRow({ item, index = 0, roomName, onUpdate, onDelete }) {
 }
 
 // ─── Room Section ─────────────────────────────────────────────────────────
-function RoomSection({ room, index, onUpdate, onDelete, onMoveUp, onMoveDown, isFirst, isLast }) {
+function RoomSection({ room, onUpdate, onDelete, onMoveUp, onMoveDown, isFirst, isLast }) {
   const [collapsed, setCollapsed] = useState(false);
   const sectionRef = React.useRef(null);
   const [shouldScrollNewItem, setShouldScrollNewItem] = useState(false);
@@ -685,17 +479,6 @@ function RoomSection({ room, index, onUpdate, onDelete, onMoveUp, onMoveDown, is
   );
 }
 
-// ─── Next revision title helper ──────────────────────────────────────────
-export function getNextRevisionTitle(originalTitle) {
-  if (!originalTitle) return '2 BHK INTERIOR DESIGN (Rev 1)';
-  const match = originalTitle.match(/\(Rev\s*(\d+)\)$/i);
-  if (match) {
-    const revNum = parseInt(match[1], 10) + 1;
-    return originalTitle.replace(/\(Rev\s*(\d+)\)$/i, `(Rev ${revNum})`);
-  }
-  return `${originalTitle.trim()} (Rev 1)`;
-}
-
 // ─── Main Builder Page ────────────────────────────────────────────────────
 export default function Builder() {
   const { clients, projects, updateProject, updateClient, addClient, quotations, addQuotation, updateQuotation, materialSpec, updateMaterialSpec, ROOMS_DEFAULT, nextQuoteNo, calculateNextQuoteNo } = useApp();
@@ -731,13 +514,17 @@ export default function Builder() {
 
   const loadedQuoteRef = useRef(null);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- one-time seed of the quote's spec from tenant defaults */
   useEffect(() => {
     if (materialSpec && materialSpec.length > 0 && quoteMaterialSpec.length === 0) {
       setQuoteMaterialSpec(JSON.parse(JSON.stringify(materialSpec)));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-seed when tenant defaults change
   }, [materialSpec]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Load quote for edit or revision
+  // Load quote for edit or revision — one-shot init guarded by loadedQuoteRef
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const targetId = editId || reviseId;
     if (!targetId || !quotations || quotations.length === 0) return;
@@ -768,16 +555,20 @@ export default function Builder() {
       }
     }
   }, [editId, reviseId, quotations, nextQuoteNo, calculateNextQuoteNo]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Auto-assign next quotation number for new quotations
+  // Auto-assign next quotation number for new quotations — fills once, never overrides user input
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!editId && !reviseId) {
       const computed = calculateNextQuoteNo ? calculateNextQuoteNo(quotations, nextQuoteNo) : (nextQuoteNo || 1290);
       setQuotationNo(prev => prev ? prev : String(computed));
     }
   }, [nextQuoteNo, quotations, editId, reviseId, calculateNextQuoteNo]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Pre-fill client if passed in query param
+  // Pre-fill client if passed in query param — one-shot init
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (preClientId && !editId && !reviseId && clients && clients.length > 0) {
       setClientId(preClientId);
@@ -789,8 +580,10 @@ export default function Builder() {
       }
     }
   }, [preClientId, clients, editId, reviseId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Pre-fill project title if passed in query param
+  // Pre-fill project title if passed in query param — one-shot init
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (preProjectTitle && !editId && !reviseId) {
       try {
@@ -800,6 +593,7 @@ export default function Builder() {
       }
     }
   }, [preProjectTitle, editId, reviseId]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleClientChange = (selectedId) => {
     setClientId(selectedId);
@@ -851,6 +645,7 @@ export default function Builder() {
     setShowRoomPicker(false);
   };
 
+  /* eslint-disable react-hooks/set-state-in-effect -- one-shot scroll target, cleared after scheduling */
   useEffect(() => {
     if (scrollTargetRoomIndex !== null) {
       const timer = setTimeout(() => {
@@ -863,6 +658,7 @@ export default function Builder() {
       return () => clearTimeout(timer);
     }
   }, [rooms, scrollTargetRoomIndex]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const updateRoom = (i, data) => setRooms(prev => prev.map((r, idx) => idx === i ? data : r));
   const deleteRoom = (i) => setRooms(prev => prev.filter((_, idx) => idx !== i));

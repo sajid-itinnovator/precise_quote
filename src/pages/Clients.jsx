@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Users, Phone, Mail, MapPin, FileText, Eye, Copy, Calendar, X, ExternalLink } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { formatIndianCurrency, formatDate, formatDateTime } from '../utils/helpers';
+import { formatIndianCurrency, formatDateTime } from '../utils/helpers';
 import { ClientModal, ConfirmModal } from '../components/Modals';
 import QuotationPreview from '../components/QuotationPreview';
 

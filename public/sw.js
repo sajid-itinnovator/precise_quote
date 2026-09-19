@@ -37,8 +37,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  const url = new URL(event.request.url);
-
   // For navigation requests (HTML document), use Network First with Cache fallback
   if (event.request.mode === 'navigate') {
     event.respondWith(

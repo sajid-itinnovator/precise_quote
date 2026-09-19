@@ -77,3 +77,14 @@ export function cleanCustomerProjectTitle(title) {
     .replace(/\s*\(v\d+\)/gi, '')
     .trim();
 }
+
+/** "Kitchen Design" → "Kitchen Design (Rev 1)"; "(Rev N)" → "(Rev N+1)". Used by Builder revisions. */
+export function getNextRevisionTitle(originalTitle) {
+  if (!originalTitle) return '2 BHK INTERIOR DESIGN (Rev 1)';
+  const match = originalTitle.match(/\(Rev\s*(\d+)\)$/i);
+  if (match) {
+    const revNum = parseInt(match[1], 10) + 1;
+    return originalTitle.replace(/\(Rev\s*(\d+)\)$/i, `(Rev ${revNum})`);
+  }
+  return `${originalTitle.trim()} (Rev 1)`;
+}

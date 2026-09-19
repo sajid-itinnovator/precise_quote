@@ -1,85 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 import { Download, Smartphone, Apple, Check, Share2, PlusSquare, Monitor, X, ExternalLink, ShieldCheck } from 'lucide-react';
 
-// Global listener for beforeinstallprompt
-let globalDeferredPrompt = null;
-const installListeners = new Set();
 
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    globalDeferredPrompt = e;
-    installListeners.forEach((listener) => listener(e));
-  });
 
-  window.addEventListener('appinstalled', () => {
-    globalDeferredPrompt = null;
-    installListeners.forEach((listener) => listener(null));
-    console.log('[PreciseQuote] App installed successfully');
-  });
-}
-
-export function usePWAInstall() {
-  const [deferredPrompt, setDeferredPrompt] = useState(globalDeferredPrompt);
-  const [isStandalone, setIsStandalone] = useState(false);
-  const [isIOS, setIsIOS] = useState(false);
-  const [isAndroid, setIsAndroid] = useState(false);
-
-  useEffect(() => {
-    // Check if running in standalone mode
-    const checkStandalone = 
-      window.matchMedia('(display-mode: standalone)').matches ||
-      window.navigator.standalone === true ||
-      document.referrer.includes('android-app://');
-    setIsStandalone(Boolean(checkStandalone));
-
-    // Detect platform
-    const ua = window.navigator.userAgent || '';
-    const isIOSDevice = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const isAndroidDevice = /Android/i.test(ua);
-    setIsIOS(isIOSDevice);
-    setIsAndroid(isAndroidDevice);
-
-    const handlePrompt = (prompt) => {
-      setDeferredPrompt(prompt);
-    };
-
-    installListeners.add(handlePrompt);
-    return () => installListeners.delete(handlePrompt);
-  }, []);
-
-  const triggerNativePrompt = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setDeferredPrompt(null);
-        globalDeferredPrompt = null;
-      }
-      return outcome;
-    }
-    return null;
-  };
-
-  return {
-    deferredPrompt,
-    isStandalone,
-    isIOS,
-    isAndroid,
-    triggerNativePrompt,
-    canInstallNative: Boolean(deferredPrompt),
-  };
+/** Mobile platforms without the native install prompt get manual-instructions tabs. */
+function getPlatform() {
+  if (typeof window === 'undefined') return 'ios';
+  const ua = window.navigator.userAgent || '';
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  return isIOS ? 'ios' : /Android/i.test(ua) ? 'android' : 'ios';
 }
 
 export function InstallAppModal({ isOpen, onClose }) {
-  const { deferredPrompt, isStandalone, isIOS, isAndroid, triggerNativePrompt } = usePWAInstall();
-  const [activeTab, setActiveTab] = useState(isIOS ? 'ios' : isAndroid ? 'android' : 'ios');
+  const { deferredPrompt, isStandalone, triggerNativePrompt } = usePWAInstall();
+  const [activeTab, setActiveTab] = useState(getPlatform());
   const [installedSuccess, setInstalledSuccess] = useState(false);
-
-  useEffect(() => {
-    if (isIOS) setActiveTab('ios');
-    else if (isAndroid) setActiveTab('android');
-  }, [isIOS, isAndroid]);
 
   if (!isOpen) return null;
 
@@ -489,13 +425,15 @@ export function InstallAppModal({ isOpen, onClose }) {
 
 // Subtle non-intrusive floating banner for mobile visitors
 export function InstallAppBanner({ onOpenModal }) {
-  const { isStandalone, isIOS, isAndroid } = usePWAInstall();
+  const { isStandalone } = usePWAInstall();
   const [dismissed, setDismissed] = useState(false);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- one-time sessionStorage probe on mount */
   useEffect(() => {
     const isDismissed = sessionStorage.getItem('pq_install_banner_dismissed');
     if (isDismissed) setDismissed(true);
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   if (isStandalone || dismissed) return null;
 

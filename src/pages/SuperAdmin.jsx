@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc } from 'firebase/firestore';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { db, auth } from '../firebase';
 // SECURITY: console access is granted ONLY to Firebase Auth accounts carrying
@@ -7,16 +7,17 @@ import { db, auth } from '../firebase';
 // set-superadmin-claim.js). There is no shared passcode, no shared password,
 // and no client-side role check.
 import { useAuth } from '../context/AuthContext';
+import { deriveSubscription } from '../utils/subscription';
 import { 
   Building2, Users, Calendar, Search, Filter, 
   Sparkles, CheckCircle2, Clock, AlertTriangle, ArrowRight, 
   ExternalLink, Mail, KeyRound, Lock, RefreshCw, X, ChevronRight,
   MapPin, Phone, MessageSquare, Globe, Coins, Plus
 } from 'lucide-react';
-import { formatDate, formatDateTime } from '../utils/helpers';
+import { formatDate } from '../utils/helpers';
 
 export default function SuperAdmin() {
-  const { currentUser, userProfile } = useAuth();
+  const { isPlatformAdmin } = useAuth();
   
   const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,32 +26,17 @@ export default function SuperAdmin() {
   const [refreshing, setRefreshing] = useState(false);
   const [ownerEmail, setOwnerEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [manuallyUnlocked, setManuallyUnlocked] = useState(false);
   const [unlockError, setUnlockError] = useState('');
+  // Derived: claim holders pass the gate without a second sign-in; others
+  // must complete the owner sign-in form successfully.
+  const isUnlocked = isPlatformAdmin || manuallyUnlocked;
 
   // Modal states for managing a tenant
   const [selectedTenant, setSelectedTenant] = useState(null);
   const [actionSuccess, setActionSuccess] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [loadingCreditAmount, setLoadingCreditAmount] = useState(null);
-
-  // Check if the signed-in account carries the server-provisioned superadmin claim
-  useEffect(() => {
-    let cancelled = false;
-    const checkClaim = async () => {
-      if (!auth.currentUser) return;
-      try {
-        const idTokenResult = await auth.currentUser.getIdTokenResult();
-        if (!cancelled && idTokenResult?.claims?.superadmin === true) {
-          setIsUnlocked(true);
-        }
-      } catch (err) {
-        console.warn('SuperAdmin claim check failed:', err);
-      }
-    };
-    checkClaim();
-    return () => { cancelled = true; };
-  }, [userProfile]);
 
   const handleUnlock = async (e) => {
     e.preventDefault();
@@ -59,7 +45,7 @@ export default function SuperAdmin() {
       const cred = await signInWithEmailAndPassword(auth, ownerEmail, password);
       const idTokenResult = await cred.user.getIdTokenResult();
       if (idTokenResult?.claims?.superadmin === true) {
-        setIsUnlocked(true);
+        setManuallyUnlocked(true);
       } else {
         await auth.signOut();
         setUnlockError('This account does not have Platform Super Admin access.');
@@ -100,15 +86,8 @@ export default function SuperAdmin() {
             trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() 
           };
 
-          const isPro = subDoc.plan === 'pro' || subDoc.plan === 'enterprise';
-          const defaultTotal = isPro ? 500 : 50;
-          const totalCredits = subDoc.totalCredits !== undefined ? Number(subDoc.totalCredits) : defaultTotal;
-          const spentCredits = subDoc.spentCredits !== undefined 
-            ? Number(subDoc.spentCredits) 
-            : (tId.includes('vistara') ? 2 : 0);
-          const balanceCredits = subDoc.balanceCredits !== undefined 
-            ? Number(subDoc.balanceCredits) 
-            : Math.max(0, totalCredits - spentCredits);
+          const derived = deriveSubscription(subDoc, { docSpent: tId.includes('vistara') ? 2 : 0 });
+          const { totalCredits, spentCredits, balanceCredits } = derived;
 
           tenantMap[tId] = {
             tenantId: tId,
@@ -157,11 +136,13 @@ export default function SuperAdmin() {
     }
   };
 
+  /* eslint-disable react-hooks/set-state-in-effect -- mount-load of tenant data; loading state lives here by design */
   useEffect(() => {
     if (isUnlocked) {
       fetchTenantsData();
     }
   }, [isUnlocked]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Action: Extend Trial
   const handleExtendTrial = async (days) => {
@@ -263,8 +244,9 @@ export default function SuperAdmin() {
     setLoadingCreditAmount(amount);
     setActionSuccess('');
     try {
-      const currentTotal = selectedTenant.totalCredits !== undefined ? selectedTenant.totalCredits : 50;
-      const currentSpent = selectedTenant.spentCredits !== undefined ? selectedTenant.spentCredits : 0;
+      const derived = deriveSubscription(selectedTenant.subscription || selectedTenant);
+      const currentTotal = derived.totalCredits;
+      const currentSpent = derived.spentCredits;
       const newTotal = currentTotal + amount;
       const newBalance = Math.max(0, newTotal - currentSpent);
 
@@ -500,7 +482,7 @@ export default function SuperAdmin() {
             <button
               onClick={async () => {
                 await auth.signOut();
-                setIsUnlocked(false);
+                setManuallyUnlocked(false);
               }}
               style={{
                 background: 'rgba(239, 68, 68, 0.15)',

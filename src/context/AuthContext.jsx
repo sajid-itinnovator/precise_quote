@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- context modules export the useAuth hook alongside the provider by convention */
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   onAuthStateChanged, 
@@ -19,7 +20,27 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null); // { role, dataAccess, name, tenantId, tenantName }
+  const [isSuperadmin, setIsSuperadmin] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Platform-admin truth: the server-provisioned `superadmin` custom claim,
+  // read from the fresh ID token. Claim-only — the client-writable profile
+  // document is never consulted for authorization.
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      if (!currentUser) { if (!cancelled) setIsSuperadmin(false); return; }
+      try {
+        const token = await currentUser.getIdTokenResult();
+        if (!cancelled) setIsSuperadmin(token?.claims?.superadmin === true);
+      } catch (err) {
+        console.warn('Superadmin claim check failed:', err);
+        if (!cancelled) setIsSuperadmin(false);
+      }
+    };
+    check();
+    return () => { cancelled = true; };
+  }, [currentUser]);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -99,6 +120,7 @@ export function AuthProvider({ children }) {
   const value = {
     currentUser,
     userProfile,
+    isPlatformAdmin: isSuperadmin,
     loading,
     login,
     loginWithGoogle,

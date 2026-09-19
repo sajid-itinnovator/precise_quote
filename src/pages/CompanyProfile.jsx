@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Check, AlertCircle, Trash2, LogOut, ShieldCheck, User } from 'lucide-react';
-import { useApp, DEFAULT_PAYMENT_TERMS, PAYMENT_TERMS_PRESETS, BRAND_COLOR_PRESETS } from '../context/AppContext';
+import { useApp } from '../context/AppContext';
+import { DEFAULT_PAYMENT_TERMS, PAYMENT_TERMS_PRESETS, BRAND_COLOR_PRESETS } from '../constants/defaults';
 import { useAuth } from '../context/AuthContext';
 import { Palette } from 'lucide-react';
 
@@ -53,7 +54,8 @@ export default function CompanyProfile() {
   const bottomLogoInputRef = useRef(null);
   const qrInputRef = useRef(null);
 
-  // Sync if companyProfile changes in context
+  // Sync if companyProfile changes in context — form mirrors context; user edits go the other way on save
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (companyProfile) {
       setFormData(prev => ({

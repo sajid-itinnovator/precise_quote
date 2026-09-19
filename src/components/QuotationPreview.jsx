@@ -1,301 +1,20 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Printer, Layers, Pencil, Copy, Lock, MessageSquare, CreditCard, Download } from 'lucide-react';
-import { formatIndianCurrency, numberToWords, formatDate, cleanCustomerProjectTitle } from '../utils/helpers';
 import { generateQuotationPDF } from '../utils/pdfGenerator';
+import { buildPrintHTML } from '../utils/printRenderer';
+import QuotationDocument from './QuotationDocument';
 import { useAuth } from '../context/AuthContext';
-import { useApp, DEFAULT_PAYMENT_TERMS, PAYMENT_TERMS_PRESETS } from '../context/AppContext';
+import { useApp } from '../context/AppContext';
+import { DEFAULT_PAYMENT_TERMS, PAYMENT_TERMS_PRESETS } from '../constants/defaults';
 import MaterialSpecEditor from './MaterialSpecEditor';
 import WhatsAppShareModal from './WhatsAppShareModal';
 
-/* ──────────────────────────────────────────────────────────────
-   Generates a fully self-contained HTML string for the quotation
-   This is opened in a new window and printed from there.
-   ────────────────────────────────────────────────────────────── */
-function buildPrintHTML(quotation, total, tenantName, tenantLogo, showItemAmount = true, companyProfile = null, customPaymentTerms = null) {
-  let srNo = 1;
-  let matSrNo = 1;
-
-  const colSpan = showItemAmount ? 4 : 3;
-
-  const compName = companyProfile?.companyName || quotation?.tenantName || tenantName || "INTERIOR STUDIO";
-  const compTagline = companyProfile?.tagline !== undefined ? companyProfile.tagline : '';
-  const compAddress = companyProfile?.officeAddress || '';
-  const compPhone = companyProfile?.phone || '';
-  const compEmail = companyProfile?.email || '';
-  const compGst = companyProfile?.gstNumber ? ` &nbsp;|&nbsp; GST: ${companyProfile.gstNumber}` : '';
-  const compLogo = companyProfile?.logo || tenantLogo;
-  const compBank = companyProfile?.bankDetails;
-  const hasBank = compBank && (compBank.accountNumber || compBank.bankName || compBank.ifscCode);
-  const compUpi = companyProfile?.upiId;
-  const compQr = companyProfile?.qrCode;
-  const compStamp = companyProfile?.stamp;
-  const compSignature = companyProfile?.signature;
-  const showBottomLogo = companyProfile?.showBottomLogo !== false;
-  const bottomLogoUrl = showBottomLogo ? (companyProfile?.bottomLogo || compLogo) : null;
-
-  const brandColorHex = companyProfile?.brandColor || '#0F243E';
-  const brandTitleColorHex = companyProfile?.brandColor || '#17365D';
-
-  const scopeRows = (quotation.rooms || []).map(room => {
-    const headerRow = `
-      <tr>
-        <td colspan="${colSpan}" style="background:#BFBFBF;color:#000;font-weight:bold;text-align:center;
-          padding:6px;font-size:10.5pt;border:1px solid #000;letter-spacing:0.5px;">
-          ${room.name}
-        </td>
-      </tr>`;
-    const items = (room.items || []).map((item) => `
-      <tr>
-        <td style="padding:5px 6px;border:1px solid #000;text-align:center;font-size:9.5pt;">${srNo++}</td>
-        <td style="padding:5px 8px;border:1px solid #000;text-align:left;font-size:9.5pt;">${item.particular || ''}</td>
-        <td style="padding:5px 8px;border:1px solid #000;text-align:center;font-size:9.5pt;">${item.size || ''}</td>
-        ${showItemAmount ? `
-        <td style="padding:5px 8px;border:1px solid #000;text-align:center;font-size:9.5pt;">
-          ${item.amount ? Number(item.amount).toLocaleString('en-IN') : '—'}
-        </td>` : ''}
-      </tr>`).join('');
-    return headerRow + items;
-  }).join('');
-
-  const matRows = (quotation.materialSpec || []).map(cat => {
-    const catHeader = `
-      <tr>
-        <td colspan="3" style="background:#BFBFBF;color:#000;font-weight:bold;text-align:center;
-          padding:6px;font-size:10.5pt;border:1px solid #000;letter-spacing:0.5px;">
-          ${cat.category}
-        </td>
-      </tr>`;
-    const items = (cat.items || []).map((item) => `
-      <tr>
-        <td style="padding:5px 6px;border:1px solid #000;text-align:center;font-size:9.5pt;">${matSrNo++}</td>
-        <td style="padding:5px 8px;border:1px solid #000;text-align:left;font-size:9.5pt;">${item.material || ''}</td>
-        <td style="padding:5px 8px;border:1px solid #000;text-align:center;font-size:9.5pt;white-space:pre-line;">${(item.brand || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>
-      </tr>`).join('');
-    return catHeader + items;
-  }).join('');
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <title>${compName || 'Quotation'} - ${quotation.clientName}</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { 
-      font-family: Cambria, Georgia, "Times New Roman", serif; 
-      font-size: 10pt; color: #000; background: #fff; 
-      line-height: 1.4;
-    }
-    .page { 
-      width: 210mm; min-height: 277mm; padding: 12mm; 
-      margin: 0 auto 10mm; background: #fff;
-      border: 1px solid #ccc;
-    }
-    @media print {
-      body { margin: 0; }
-      .page { 
-        width: 100%; min-height: auto; margin: 0; padding: 0; border: none; 
-        box-shadow: none;
-      }
-      @page { size: A4; margin: 12mm; }
-      ::-webkit-scrollbar { display: none; }
-      tr, .terms-bullet { page-break-inside: avoid; break-inside: avoid; }
-      thead { display: table-header-group; }
-      .section-title { page-break-after: avoid; break-after: avoid; }
-      .total-box { page-break-inside: avoid; break-inside: avoid; }
-    }
-    
-    table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-    tr { page-break-inside: avoid; break-inside: avoid; }
-    th { 
-      padding: 6px 8px; border: 1px solid #000; font-size: 10pt; font-weight: bold; 
-      background: ${brandColorHex}; color: #fff; text-align: center; vertical-align: middle;
-    }
-    td { vertical-align: middle; }
-    
-    .divider { border: none; border-top: 1px solid #666; margin: 8px 0; }
-    
-    .text-center { text-align: center; }
-    .text-bold { font-weight: bold; }
-    
-    .total-box { 
-      border-top: 1px solid #000; border-bottom: 1px solid #000; 
-      padding: 12px 0; margin: 18px 0; text-align: center; 
-    }
-    .section-title { font-weight: bold; font-size: 13.5pt; color: #222222; margin-bottom: 8px; margin-top: 18px; }
-    .terms-bullet { margin-left: 20px; font-size: 10pt; line-height: 1.6; }
-    
-    .header-container { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 10px; }
-    .header-text h1 { color: #17365D; margin: 0; font-size: 26pt; font-weight: bold; font-family: Cambria, Georgia, serif; letter-spacing: 0.5px; }
-    .header-text p { color: #000; margin: 0; font-size: 9.5pt; font-style: italic; text-align: right; margin-top: 2px; }
-    
-  </style>
-</head>
-<body>
-
-<div class="page">
-  <div class="header-container">
-    ${compLogo ? `<img src="${compLogo}" alt="Logo" style="height: 60px; object-fit: contain;" />` : `<h2 style="margin:0; color: #17365D; font-size: 28px;">${compName}</h2>`}
-    <div class="header-text">
-      <h1>${compName.toUpperCase()}</h1>
-      ${compTagline ? `<p>${compTagline}</p>` : ''}
-    </div>
-  </div>
-  
-  <hr class="divider"/>
-  
-  <div class="text-center" style="font-size:10pt; margin-bottom:4px;">
-    Office Address: ${compAddress}
-  </div>
-  <div class="text-center" style="font-size:10pt; margin-bottom:4px;">
-    Contact: ${compPhone} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Email: <a href="mailto:${compEmail}" style="color:blue;text-decoration:underline;">${compEmail}</a>${compGst}
-  </div>
-  <div class="text-center" style="font-size:10pt;">
-    Date: ${formatDate(quotation.date)} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Quotation No: ${quotation.quotationNo}
-  </div>
-  
-  <hr class="divider"/>
-
-  <div class="text-center text-bold" style="font-size:11pt; margin: 12px 0 6px;">
-    CLIENT DETAILS
-  </div>
-  <div style="font-size:10pt; line-height: 1.6; text-align: left;">
-    <div>Client Name: ${quotation.clientName || ''}</div>
-    <div>Contact: ${quotation.clientContact || ''}</div>
-    <div>Billing Address: ${quotation.clientAddress || ''}</div>
-  </div>
-  
-  <hr class="divider" style="margin-top:10px; border-color:#ccc;"/>
-  
-  <div class="text-center text-bold" style="font-size:18pt; text-decoration: underline; margin: 16px 0 14px; color: #17365D;">
-    ${cleanCustomerProjectTitle(quotation.projectTitle) || 'INTERIOR DESIGN'}
-  </div>
-
-  <div class="section-title">SCOPE OF WORK:</div>
-  <table>
-    <thead>
-      <tr>
-        <th style="width:50px; text-align:center;">SR .NO</th>
-        <th style="text-align:center;">PARTICULAR</th>
-        <th style="width:${showItemAmount ? '120px' : '150px'}; text-align:center;">SIZE</th>
-        ${showItemAmount ? `<th style="width:100px; text-align:center;">AMOUNT</th>` : ''}
-      </tr>
-    </thead>
-    <tbody>${scopeRows}</tbody>
-  </table>
-
-  <div class="total-box">
-    <div class="text-bold" style="font-size:11.5pt; margin-bottom:6px; color: #000;">
-      COMPLETE INTERIOR TOTAL BUDGET – APPROX. ₹ ${total.toLocaleString('en-IN')}/-
-    </div>
-    <div class="text-bold" style="font-size:10.5pt; color: #000;">
-      AMOUNT IN WORDS – ${numberToWords(total).replace('Rupees ', '').replace(' Rupees', '')} Only
-    </div>
-  </div>
-
-  <div class="section-title" style="margin-top:20px;">MATERIAL SPECIFICATION:</div>
-  <table>
-    <thead>
-      <tr>
-        <th style="width:50px; text-align:center;">SR .NO</th>
-        <th style="width:200px; text-align:center;">MATERIAL</th>
-        <th style="text-align:center;">BRAND</th>
-      </tr>
-    </thead>
-    <tbody>${matRows}</tbody>
-  </table>
-
-  <div class="section-title">1. Design &amp; Execution:</div>
-  <div class="terms-bullet">• 2D &amp; 3D Designing &amp; Visualization</div>
-  <div class="terms-bullet">• Material Selection Assistance</div>
-  <div class="terms-bullet">• On-site Supervision</div>
-  <div class="terms-bullet">• Installation &amp; Finishing Work</div>
-  <div class="terms-bullet">• Project Timeline: 60–65 Days</div>
-
-  <div class="section-title">2. Why Choose ${compName || 'Us'}?</div>
-  <div class="terms-bullet">• Transparent Pricing – No Hidden Charges</div>
-  <div class="terms-bullet">• High-Quality Materials &amp; Craftsmanship</div>
-  <div class="terms-bullet">• Personalized Design with 3D Views</div>
-  <div class="terms-bullet">• 10-Year Warranty on Workmanship</div>
-  <div class="terms-bullet">• Professional Team with End-to-End Support</div>
-  <div class="terms-bullet">• Deep Cleaning will be provided by us</div>
-  <div class="terms-bullet">• All Furniture Edge Work Will Be Done In Laminate Matching PVC Edge Binds to Ensure Smooth Edges and Seamless Finishing</div>
-
-  <div class="section-title" style="margin-top:15px;">Terms &amp; Conditions:</div>
-  <div style="margin-left:20px; font-size:10pt; line-height: 1.6;">
-    <ol style="margin-top:0; padding-left:15px;">
-      <li>Quotation subject to revision based on final 3D design.</li>
-      <li>Standard wardrobe modules included; extra drawers at additional cost.</li>
-      <li>Warranty will not be applicable for physical damage.</li>
-    </ol>
-  </div>
-
-  ${(() => {
-    const displayPaymentTerms = customPaymentTerms !== null && customPaymentTerms !== undefined
-      ? customPaymentTerms
-      : (quotation.paymentTerms !== undefined ? quotation.paymentTerms : (companyProfile?.paymentTerms || DEFAULT_PAYMENT_TERMS));
-    if (!displayPaymentTerms) return '';
-    return `
-    <div style="margin-top: 14px; margin-bottom: 10px; page-break-inside: avoid;">
-      <div style="font-weight: bold; color: #17365D; font-size: 10.5pt; text-transform: uppercase; margin-bottom: 4px;">Payment Terms &amp; Schedule:</div>
-      <div style="margin-left: 14px; font-size: 9.5pt; line-height: 1.55; color: #111; white-space: pre-line;">${displayPaymentTerms.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
-    </div>`;
-  })()}
-
-  ${(hasBank || compUpi || compQr || compStamp || compSignature) ? `
-  <div style="margin-top: 18px; padding: 12px 16px; border: 1px solid #ccc; border-radius: 6px; background: #fafafa; page-break-inside: avoid; display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; font-size: 9.5pt;">
-    ${(hasBank || compUpi) ? `
-    <div style="flex: 1;">
-      <div style="font-weight: bold; color: #17365D; margin-bottom: 4px; font-size: 10pt;">PAYMENT DETAILS:</div>
-      ${compBank?.bankName ? `<div><strong>Bank:</strong> ${compBank.bankName} ${compBank.branchName ? `(${compBank.branchName})` : ''}</div>` : ''}
-      ${compBank?.accountHolderName ? `<div><strong>A/C Name:</strong> ${compBank.accountHolderName}</div>` : ''}
-      ${compBank?.accountNumber ? `<div><strong>A/C No:</strong> ${compBank.accountNumber}</div>` : ''}
-      ${compBank?.ifscCode ? `<div><strong>IFSC:</strong> ${compBank.ifscCode}</div>` : ''}
-      ${compBank?.swiftCode ? `<div><strong>SWIFT:</strong> ${compBank.swiftCode}</div>` : ''}
-      ${compUpi ? `<div style="margin-top: 4px;"><strong>UPI ID:</strong> ${compUpi}</div>` : ''}
-    </div>` : ''}
-
-    ${compQr ? `
-    <div style="text-align: center;">
-      <div style="font-weight: bold; color: #17365D; margin-bottom: 4px; font-size: 8.5pt;">SCAN TO PAY</div>
-      <img src="${compQr}" alt="UPI QR" style="width: 80px; height: 80px; object-fit: contain; border: 1px solid #ddd; padding: 2px; background: #fff;" />
-    </div>` : ''}
-
-    ${(compStamp || compSignature || bottomLogoUrl) ? `
-    <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end;">
-      ${bottomLogoUrl ? `
-      <div style="margin-bottom: 6px;">
-        <img src="${bottomLogoUrl}" alt="Logo" style="max-height: 42px; max-width: 120px; object-fit: contain;" />
-      </div>` : ''}
-      <div style="display: flex; gap: 10px; align-items: flex-end; margin-bottom: 4px;">
-        ${compStamp ? `<img src="${compStamp}" alt="Stamp" style="height: 55px; object-fit: contain;" />` : ''}
-        ${compSignature ? `<img src="${compSignature}" alt="Signature" style="height: 45px; object-fit: contain;" />` : ''}
-      </div>
-      <div style="font-weight: bold; font-size: 8.5pt; color: #333; border-top: 1px solid #999; padding-top: 2px;">Authorized Signatory</div>
-    </div>` : ''}
-  </div>` : ''}
-
-  <div style="margin-top: 24px; display: flex; justify-content: space-between; align-items: flex-end;">
-    ${bottomLogoUrl ? `
-    <div style="display: flex; align-items: center;">
-      <img src="${bottomLogoUrl}" alt="Company Logo" style="max-height: 44px; max-width: 130px; object-fit: contain;" />
-    </div>` : '<div></div>'}
-    <div style="text-align: right;">
-      <div style="font-size: 13pt; font-weight: bold; font-style: italic; color: #17365D; margin-bottom: 4px;">THANK YOU!</div>
-      <div style="font-size: 9.5pt; font-style: italic; color: #555; margin-bottom: 6px;">For any queries, feel free to contact us.</div>
-      <div style="font-size: 11.5pt; font-weight: bold; color: #0F243E;">TEAM ${compName.toUpperCase().replace(/^TEAM\s+/i, '')}</div>
-    </div>
-  </div>
-</div>
-
-</body>
-</html>`;
-}
-
-/* ──────────────────────────────────────────────────────────────
-   QuotationPreview — In-app preview modal & triggers new window print
-   ────────────────────────────────────────────────────────────── */
+/**
+ * In-app preview modal + print/PDF/WhatsApp actions.
+ * Presentation lives in QuotationDocument (single renderer for preview,
+ * print, and PDF data paths); this component owns actions and toolbar UI.
+ */
 export default function QuotationPreview({ quotation, onClose, onUpdateShowItemAmount, onUpdateMaterialSpec, onInvoiceCreated }) {
   const navigate = useNavigate();
   const { userProfile } = useAuth();
@@ -313,11 +32,7 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
       ? quotation.paymentTerms
       : (companyProfile?.paymentTerms || DEFAULT_PAYMENT_TERMS)
   );
-  const [tempPaymentTerms, setTempPaymentTerms] = useState(
-    quotation.paymentTerms !== undefined
-      ? quotation.paymentTerms
-      : (companyProfile?.paymentTerms || DEFAULT_PAYMENT_TERMS)
-  );
+  const [tempPaymentTerms, setTempPaymentTerms] = useState(currentPaymentTerms);
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(quotation.status || 'DRAFT');
 
@@ -360,17 +75,6 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
     }
   };
 
-  const total = quotation.total ||
-    (quotation.rooms || []).reduce((s, r) =>
-      s + (r.items || []).reduce((ss, i) => ss + (Number(i.amount) || 0), 0), 0);
-
-  const handleToggleAmount = (val) => {
-    setShowItemAmount(val);
-    if (onUpdateShowItemAmount) {
-      onUpdateShowItemAmount(val);
-    }
-  };
-
   const handleSpecChange = (newSpec) => {
     setCurrentSpec(newSpec);
     if (onUpdateMaterialSpec) {
@@ -385,14 +89,14 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
     if (onInvoiceCreated) {
       onInvoiceCreated();
     }
-    const qWithSpec = { 
-      ...quotation, 
-      materialSpec: currentSpec, 
+    const qWithSpec = {
+      ...quotation,
+      materialSpec: currentSpec,
       status: currentStatus === 'DRAFT' ? 'INVOICE CREATED' : currentStatus,
       paymentTerms: currentPaymentTerms,
       showItemAmount,
     };
-    generateQuotationPDF(qWithSpec, null, companyProfile);
+    await generateQuotationPDF(qWithSpec, null, companyProfile, tenantName, tenantLogo);
   };
 
   const handlePrint = async () => {
@@ -404,20 +108,20 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
       onInvoiceCreated();
     }
 
-    const qWithSpec = { 
-      ...quotation, 
-      materialSpec: currentSpec, 
+    const qWithSpec = {
+      ...quotation,
+      materialSpec: currentSpec,
       status: currentStatus === 'DRAFT' ? 'INVOICE CREATED' : currentStatus,
       paymentTerms: currentPaymentTerms,
       showItemAmount,
     };
-    const html = buildPrintHTML(qWithSpec, total, tenantName, tenantLogo, showItemAmount, companyProfile, currentPaymentTerms);
+    const html = buildPrintHTML(qWithSpec, tenantName, tenantLogo, companyProfile, currentPaymentTerms);
     const win = window.open('', '_blank', 'width=900,height=1000,scrollbars=yes');
     if (!win) { alert('Please allow popups for this site to print.'); return; }
     win.document.open();
     win.document.write(html);
     win.document.close();
-    
+
     win.onload = () => {
       setTimeout(() => {
         win.focus();
@@ -426,9 +130,9 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
     };
   };
 
-  const currentQuotation = { 
-    ...quotation, 
-    materialSpec: currentSpec, 
+  const currentQuotation = {
+    ...quotation,
+    materialSpec: currentSpec,
     status: currentStatus,
     paymentTerms: currentPaymentTerms,
     showItemAmount,
@@ -713,7 +417,13 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
 
       <div style={{ flex: 1, overflow: 'auto', padding: '32px 0', display: 'flex', justifyContent: 'center' }}>
         <div style={{ pointerEvents: 'none' }}>
-          <QuotationDocument quotation={currentQuotation} total={total} tenantName={tenantName} tenantLogo={tenantLogo} showItemAmount={showItemAmount} companyProfile={companyProfile} paymentTerms={currentPaymentTerms} />
+          <QuotationDocument
+            quotation={currentQuotation}
+            tenantName={tenantName}
+            tenantLogo={tenantLogo}
+            companyProfile={companyProfile}
+            paymentTerms={currentPaymentTerms}
+          />
         </div>
       </div>
 
@@ -940,268 +650,3 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
     </div>
   );
 }
-
-/* ──────────────────────────────────────────────────────────────
-   QuotationDocument — HTML preview inside the modal using React
-   Matches the buildPrintHTML structure exactly.
-   ────────────────────────────────────────────────────────────── */
-function QuotationDocument({ quotation, total, tenantName, tenantLogo, showItemAmount = true, companyProfile = null, paymentTerms = null }) {
-  let scopeSrNo = 1;
-  let matSrNo = 1;
-  const colSpan = showItemAmount ? 4 : 3;
-
-  const compName = companyProfile?.companyName || quotation?.tenantName || tenantName || "INTERIOR STUDIO";
-  const compTagline = companyProfile?.tagline !== undefined ? companyProfile.tagline : '';
-  const compAddress = companyProfile?.officeAddress || '';
-  const compPhone = companyProfile?.phone || '';
-  const compEmail = companyProfile?.email || '';
-  const compGst = companyProfile?.gstNumber ? `GST: ${companyProfile.gstNumber}` : '';
-  const compLogo = companyProfile?.logo || tenantLogo;
-  const compBank = companyProfile?.bankDetails;
-  const hasBank = compBank && (compBank.accountNumber || compBank.bankName || compBank.ifscCode);
-  const compUpi = companyProfile?.upiId;
-  const compQr = companyProfile?.qrCode;
-  const compStamp = companyProfile?.stamp;
-  const compSignature = companyProfile?.signature;
-  const showBottomLogo = companyProfile?.showBottomLogo !== false;
-  const bottomLogoUrl = showBottomLogo ? (companyProfile?.bottomLogo || compLogo) : null;
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* PAGE 1 */}
-      <Page>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 15, marginBottom: 10 }}>
-          {compLogo ? (
-            <img src={compLogo} alt="Logo" style={{ height: 60, objectFit: 'contain' }} />
-          ) : (
-            <h2 style={{ margin: 0, color: '#17365D', fontSize: 28 }}>{compName}</h2>
-          )}
-          <div>
-            <h1 style={{ color: '#17365D', margin: 0, fontSize: 26, fontWeight: 'bold', letterSpacing: 0.5, fontFamily: 'Cambria, Georgia, serif' }}>
-              {compName.toUpperCase()}
-            </h1>
-            {compTagline && (
-              <p style={{ color: '#000', margin: 0, fontSize: 9.5, fontStyle: 'italic', textAlign: 'right', marginTop: 2 }}>
-                {compTagline}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <hr style={{ border: 'none', borderTop: '1px solid #666', margin: '8px 0' }} />
-
-        <div style={{ textAlign: 'center', fontSize: 10, marginBottom: 4 }}>
-          Office Address: {compAddress}
-        </div>
-        <div style={{ textAlign: 'center', fontSize: 10, marginBottom: 4 }}>
-          Contact: {compPhone} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Email: <span style={{ color: 'blue', textDecoration: 'underline' }}>{compEmail}</span>
-          {compGst && <span> &nbsp;|&nbsp; <strong>{compGst}</strong></span>}
-        </div>
-        <div style={{ textAlign: 'center', fontSize: 10 }}>
-          Date: {formatDate(quotation.date)} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Quotation No: {quotation.quotationNo}
-        </div>
-
-        <hr style={{ border: 'none', borderTop: '1px solid #666', margin: '8px 0' }} />
-
-        <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 11, margin: '12px 0 6px' }}>
-          CLIENT DETAILS
-        </div>
-        <div style={{ textAlign: 'left', fontSize: 10, lineHeight: 1.6 }}>
-          <div>Client Name: {quotation.clientName}</div>
-          <div>Contact: {quotation.clientContact}</div>
-          <div>Billing Address: {quotation.clientAddress}</div>
-        </div>
-
-        <hr style={{ border: 'none', borderTop: '1px solid #ccc', margin: '10px 0' }} />
-
-        <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 18, textDecoration: 'underline', margin: '16px 0 14px', color: '#17365D' }}>
-          {cleanCustomerProjectTitle(quotation.projectTitle) || 'INTERIOR DESIGN'}
-        </div>
-
-        <div style={{ fontWeight: 'bold', fontSize: 13.5, color: '#222222', marginBottom: 8, marginTop: 18 }}>SCOPE OF WORK:</div>
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 15 }}>
-          <thead>
-            <tr>
-              <th style={{ width: 50, ...thStyle }}>SR .NO</th>
-              <th style={thStyle}>PARTICULAR</th>
-              <th style={{ width: showItemAmount ? 120 : 150, ...thStyle }}>SIZE</th>
-              {showItemAmount && <th style={{ width: 100, ...thStyle }}>AMOUNT</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {(quotation.rooms || []).map((room, ri) => (
-              <React.Fragment key={`room-${ri}`}>
-                <tr>
-                  <td colSpan={colSpan} style={{ background: '#BFBFBF', color: '#000', fontWeight: 'bold', textAlign: 'center', padding: '6px', fontSize: 10.5, border: '1px solid #000', letterSpacing: 0.5 }}>
-                    {room.name}
-                  </td>
-                </tr>
-                {(room.items || []).map((item, ii) => (
-                  <tr key={`item-${ri}-${ii}`}>
-                    <td style={{ ...tdStyle, textAlign: 'center' }}>{scopeSrNo++}</td>
-                    <td style={{ ...tdStyle, textAlign: 'left' }}>{item.particular}</td>
-                    <td style={{ ...tdStyle, textAlign: 'center' }}>{item.size}</td>
-                    {showItemAmount && (
-                      <td style={{ ...tdStyle, textAlign: 'center' }}>{item.amount ? Number(item.amount).toLocaleString('en-IN') : '—'}</td>
-                    )}
-                  </tr>
-                ))}
-              </React.Fragment>
-            ))}
-          </tbody>
-        </table>
-
-        <div style={{ borderTop: '1px solid #000', borderBottom: '1px solid #000', padding: '12px 0', margin: '18px 0', textAlign: 'center' }}>
-          <div style={{ fontWeight: 'bold', fontSize: 11.5, marginBottom: 6, color: '#000' }}>
-            COMPLETE INTERIOR TOTAL BUDGET – APPROX. ₹ {total.toLocaleString('en-IN')}/-
-          </div>
-          <div style={{ fontWeight: 'bold', fontSize: 10.5, color: '#000' }}>
-            AMOUNT IN WORDS – {numberToWords(total).replace('Rupees ', '').replace(' Rupees', '')} Only
-          </div>
-        </div>
-
-        {/* MATERIAL SPECIFICATION appears immediately after total amount */}
-        <div style={{ fontWeight: 'bold', fontSize: 13.5, color: '#222222', margin: '20px 0 8px' }}>MATERIAL SPECIFICATION:</div>
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 15 }}>
-          <thead>
-            <tr>
-              <th style={{ width: 50, ...thStyle }}>SR .NO</th>
-              <th style={{ width: 200, ...thStyle }}>MATERIAL</th>
-              <th style={thStyle}>BRAND</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(quotation.materialSpec || []).map((cat, ci) => (
-              <React.Fragment key={`cat-${ci}`}>
-                <tr>
-                  <td colSpan={3} style={{ background: '#BFBFBF', color: '#000', fontWeight: 'bold', textAlign: 'center', padding: '6px', fontSize: 10.5, border: '1px solid #000', letterSpacing: 0.5 }}>
-                    {cat.category}
-                  </td>
-                </tr>
-                {(cat.items || []).map((item, ii) => (
-                  <tr key={`mat-${ci}-${ii}`}>
-                    <td style={{ ...tdStyle, textAlign: 'center' }}>{matSrNo++}</td>
-                    <td style={{ ...tdStyle, textAlign: 'left' }}>{item.material}</td>
-                    <td style={{ ...tdStyle, textAlign: 'center', whiteSpace: 'pre-line' }}>{item.brand}</td>
-                  </tr>
-                ))}
-              </React.Fragment>
-            ))}
-          </tbody>
-        </table>
-
-        <div style={{ fontWeight: 'bold', fontSize: 13.5, color: '#222222', margin: '18px 0 8px' }}>1. Design &amp; Execution:</div>
-        {['2D & 3D Designing & Visualization', 'Material Selection Assistance', 'On-site Supervision', 'Installation & Finishing Work', 'Project Timeline: 60–65 Days'].map((t, i) => (
-          <div key={`s1-${i}`} style={{ marginLeft: 20, fontSize: 10, lineHeight: 1.6 }}>• {t}</div>
-        ))}
-
-        <div style={{ fontWeight: 'bold', fontSize: 13.5, color: '#222222', margin: '18px 0 8px' }}>2. Why Choose {compName || 'Our Studio'}?</div>
-        {['Transparent Pricing – No Hidden Charges', 'High-Quality Materials & Craftsmanship', 'Personalized Design with 3D Views', '10-Year Warranty on Workmanship', 'Professional Team with End-to-End Support', 'Deep Cleaning will be provided by us', 'All Furniture Edge Work Will Be Done In Laminate Matching PVC Edge Binds to Ensure Smooth Edges and Seamless Finishing'].map((t, i) => (
-          <div key={`s2-${i}`} style={{ marginLeft: 20, fontSize: 10, lineHeight: 1.6 }}>• {t}</div>
-        ))}
-
-        <div style={{ fontWeight: 'bold', fontSize: 13.5, color: '#222222', margin: '18px 0 8px' }}>Terms &amp; Conditions:</div>
-        <ol style={{ margin: '0 0 0 20px', paddingLeft: 15, fontSize: 10, lineHeight: 1.6 }}>
-          <li>Quotation subject to revision based on final 3D design.</li>
-          <li>Standard wardrobe modules included; extra drawers at additional cost.</li>
-          <li>Warranty will not be applicable for physical damage.</li>
-        </ol>
-
-        {(() => {
-          const displayPaymentTerms = paymentTerms !== null && paymentTerms !== undefined
-            ? paymentTerms
-            : (quotation.paymentTerms !== undefined ? quotation.paymentTerms : (companyProfile?.paymentTerms || DEFAULT_PAYMENT_TERMS));
-          if (!displayPaymentTerms) return null;
-          return (
-            <div style={{ marginTop: 14, marginBottom: 10, pageBreakInside: 'avoid' }}>
-              <div style={{ fontWeight: 'bold', fontSize: 11, color: '#17365D', textTransform: 'uppercase', marginBottom: 4 }}>
-                Payment Terms &amp; Schedule:
-              </div>
-              <div style={{ marginLeft: 14, fontSize: 9.5, lineHeight: 1.55, color: '#111', whiteSpace: 'pre-line' }}>
-                {displayPaymentTerms}
-              </div>
-            </div>
-          );
-        })()}
-
-        {(hasBank || compUpi || compQr || compStamp || compSignature) && (
-          <div style={{
-            marginTop: 18, padding: '12px 16px', border: '1px solid #ccc', borderRadius: 6,
-            background: '#fafafa', display: 'flex', justifyContent: 'space-between',
-            alignItems: 'flex-end', gap: 16, fontSize: 9.5
-          }}>
-            {(hasBank || compUpi) && (
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 'bold', color: '#17365D', marginBottom: 4, fontSize: 10 }}>PAYMENT DETAILS:</div>
-                {compBank?.bankName && <div><strong>Bank:</strong> {compBank.bankName} {compBank.branchName ? `(${compBank.branchName})` : ''}</div>}
-                {compBank?.accountHolderName && <div><strong>A/C Name:</strong> {compBank.accountHolderName}</div>}
-                {compBank?.accountNumber && <div><strong>A/C No:</strong> {compBank.accountNumber}</div>}
-                {compBank?.ifscCode && <div><strong>IFSC:</strong> {compBank.ifscCode}</div>}
-                {compBank?.swiftCode && <div><strong>SWIFT:</strong> {compBank.swiftCode}</div>}
-                {compUpi && <div style={{ marginTop: 4 }}><strong>UPI ID:</strong> {compUpi}</div>}
-              </div>
-            )}
-
-            {compQr && (
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontWeight: 'bold', color: '#17365D', marginBottom: 4, fontSize: '8.5pt' }}>SCAN TO PAY</div>
-                <img src={compQr} alt="UPI QR" style={{ width: 80, height: 80, objectFit: 'contain', border: '1px solid #ddd', padding: 2, background: '#fff' }} />
-              </div>
-            )}
-
-            {(compStamp || compSignature || bottomLogoUrl) && (
-              <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                {bottomLogoUrl && (
-                  <div style={{ marginBottom: 6 }}>
-                    <img src={bottomLogoUrl} alt="Logo" style={{ maxHeight: 42, maxWidth: 120, objectFit: 'contain' }} />
-                  </div>
-                )}
-                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', marginBottom: 4 }}>
-                  {compStamp && <img src={compStamp} alt="Stamp" style={{ height: 55, objectFit: 'contain' }} />}
-                  {compSignature && <img src={compSignature} alt="Signature" style={{ height: 45, objectFit: 'contain' }} />}
-                </div>
-                <div style={{ fontWeight: 'bold', fontSize: '8.5pt', color: '#333', borderTop: '1px solid #999', paddingTop: 2 }}>Authorized Signatory</div>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div style={{ marginTop: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-          {bottomLogoUrl ? (
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <img src={bottomLogoUrl} alt="Company Logo" style={{ maxHeight: 44, maxWidth: 130, objectFit: 'contain' }} />
-            </div>
-          ) : <div />}
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: 13, fontWeight: 'bold', fontStyle: 'italic', color: '#17365D', marginBottom: 4 }}>THANK YOU!</div>
-            <div style={{ fontSize: 9.5, fontStyle: 'italic', color: '#555', marginBottom: 6 }}>For any queries, feel free to contact us.</div>
-            <div style={{ fontSize: 11.5, fontWeight: 'bold', color: '#0F243E' }}>TEAM {compName.toUpperCase().replace(/^TEAM\s+/i, '')}</div>
-          </div>
-        </div>
-      </Page>
-    </div>
-  );
-}
-
-function Page({ children }) {
-  return (
-    <div style={{
-      width: '210mm', minHeight: '277mm', background: '#fff', padding: '12mm',
-      border: '1px solid #ccc', margin: '0 auto', boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-      fontFamily: 'Cambria, Georgia, "Times New Roman", serif', fontSize: '10pt', color: '#000', lineHeight: 1.4
-    }}>
-      {children}
-    </div>
-  );
-}
-
-// Helper cell styles for React HTML equivalent
-const thStyle = {
-  padding: '6px 8px', border: '1px solid #000', fontSize: '10pt',
-  fontWeight: 'bold', background: '#0F243E', color: '#fff', textAlign: 'center',
-  verticalAlign: 'middle'
-};
-const tdStyle = {
-  padding: '5px 8px', border: '1px solid #000', fontSize: '9.5pt',
-  verticalAlign: 'middle'
-};

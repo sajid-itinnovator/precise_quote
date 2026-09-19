@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, Filter, MoreVertical, Eye, Trash2, FileText, Pencil, Copy, Calendar, MessageSquare, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { formatIndianCurrency, formatDate, formatDateTime } from '../utils/helpers';
+import { formatIndianCurrency, formatDateTime } from '../utils/helpers';
 import { ConfirmModal } from '../components/Modals';
 import QuotationPreview from '../components/QuotationPreview';
 import WhatsAppShareModal from '../components/WhatsAppShareModal';
@@ -222,6 +222,7 @@ export default function History() {
   const [previewQuotation, setPreviewQuotation] = useState(null);
   const [whatsAppQuotation, setWhatsAppQuotation] = useState(null);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- URL param is the source of truth; apply it to local filter state on change */
   useEffect(() => {
     const s = new URLSearchParams(location.search).get('status');
     if (s) {
@@ -230,6 +231,7 @@ export default function History() {
       setPage(1);
     }
   }, [location.search]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleUpdateStatus = async (quotationId, newStatus) => {
     try {

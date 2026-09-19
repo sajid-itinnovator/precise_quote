@@ -16,7 +16,7 @@ function ModalOverlay({ children, onClose }) {
 
 // ---- New Project Modal ----
 export function NewProjectModal({ onClose }) {
-  const { clients, addProject, addClient } = useApp();
+  const { addProject, addClient } = useApp();
   const navigate = useNavigate();
   const [mode, setMode] = useState('existing'); // 'existing' | 'new'
   const [form, setForm] = useState({ name: '', clientId: '', status: 'DRAFT', tags: '' });

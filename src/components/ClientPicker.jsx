@@ -13,16 +13,14 @@ export default function ClientPicker({
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
 
-  // Lock body scroll when picker is open on mobile
+  // Lock body scroll when picker is open on mobile; clear the search on close
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-      setSearch('');
     }
     return () => {
       document.body.style.overflow = '';
+      if (!isOpen) setSearch('');
     };
   }, [isOpen]);
 

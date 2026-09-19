@@ -5,7 +5,7 @@ import { formatIndianCurrency, formatDate, cleanCustomerProjectTitle } from '../
 import { useApp } from '../context/AppContext';
 
 export default function WhatsAppShareModal({ quotation, onClose, onInvoiceSent }) {
-  const { updateQuotation, companyProfile } = useApp();
+  const { updateQuotation, companyProfile, tenantLogo } = useApp();
 
   const compName = companyProfile?.companyName || quotation?.tenantName || "Interior Studio";
   const compPhone = companyProfile?.phone || "";
@@ -70,9 +70,10 @@ Warm regards,
     }
 
     try {
-      // 2. Generate PDF Blob (with companyProfile so the shared PDF carries
-      // the studio's white-label branding, matching the download path)
-      const doc = buildQuotationPDFDoc(quotation, companyProfile);
+      // 2. Generate PDF Blob (captured from the shared QuotationDocument, so
+      // the shared PDF carries the studio's white-label branding, matching
+      // the download and print paths)
+      const doc = await buildQuotationPDFDoc(quotation, companyProfile, compName, tenantLogo);
       const pdfBlob = doc.output('blob');
       const pdfFile = new File([pdfBlob], finalFileName, { type: 'application/pdf' });
 
@@ -124,9 +125,9 @@ Warm regards,
     }
   };
 
-  const handleDownloadOnly = () => {
+  const handleDownloadOnly = async () => {
     const finalFileName = getFullFileName();
-    generateQuotationPDF(quotation, finalFileName, companyProfile);
+    await generateQuotationPDF(quotation, finalFileName, companyProfile, compName, tenantLogo);
   };
 
   return (

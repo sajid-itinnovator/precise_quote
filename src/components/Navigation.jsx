@@ -8,7 +8,7 @@ export function Sidebar({ onNewProject, onOpenInstall }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { userProfile, logout } = useAuth();
+  const { userProfile, isPlatformAdmin, logout } = useAuth();
   const { tenantLogo, companyProfile } = useApp();
 
   const navItems = [
@@ -24,7 +24,7 @@ export function Sidebar({ onNewProject, onOpenInstall }) {
     navItems.push({ icon: Settings, label: 'Admin Panel', path: '/admin' });
   }
 
-  if (userProfile?.role === 'admin' || userProfile?.role === 'superadmin' || userProfile?.isSuperAdmin) {
+  if (isPlatformAdmin) {
     navItems.push({ icon: ShieldCheck, label: 'Platform Admin', path: '/super-admin' });
   }
 

@@ -92,6 +92,7 @@ export default function MaterialSpecEditor({ spec = [], onChange, onReset, onSav
 
   useEffect(() => {
     if (scrollTargetItem) {
+      /* eslint-disable react-hooks/set-state-in-effect -- one-shot scroll target, cleared after scheduling */
       const timer = setTimeout(() => {
         const el = document.querySelector(`[data-spec-row="${scrollTargetItem.catIdx}-${scrollTargetItem.itemIdx}"]`);
         if (el) {
@@ -104,6 +105,7 @@ export default function MaterialSpecEditor({ spec = [], onChange, onReset, onSav
       return () => clearTimeout(timer);
     }
   }, [scrollTargetItem]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleDeleteItem = (catIdx, itemIdx) => {
     const updated = spec.map((cat, ci) => {

@@ -41,9 +41,12 @@ export default function Admin() {
     }
   };
 
+  /* eslint-disable react-hooks/set-state-in-effect -- mount-load of user list; loading state lives here by design */
   useEffect(() => {
     fetchUsers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only load
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleCreateUser = async (e) => {
     e.preventDefault();
