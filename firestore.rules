@@ -64,13 +64,16 @@ service cloud.firestore {
     match /config/{configId} {
       // Tenant reads own config; SuperAdmin can read/write subscription records for plan management
       allow read: if isAuthenticated() && (
-        (resource == null || resource.data.tenantId == getUserTenantId()) ||
+        resource.data.tenantId == getUserTenantId() ||
         isSuperAdmin()
       );
-      allow write: if isAuthenticated() && (
-        (request.resource == null || request.resource.data.tenantId == getUserTenantId()) ||
+      allow create, update: if isAuthenticated() && (
+        request.resource.data.tenantId == getUserTenantId() ||
         isSuperAdmin()
       );
+      // Deletes are privileged: request.resource is null on delete, so the
+      // tenantId-match above cannot apply — do not leave delete implicit.
+      allow delete: if isSuperAdmin();
     }
 
     // ─── DPDP ACT COMPLIANT SENSITIVE DATA ENFORCEMENT ─────────────────
@@ -79,34 +82,56 @@ service cloud.firestore {
     
     // ─── Clients Directory (Personal Contact Information) ───────────────
     match /clients/{clientId} {
-      allow read, write: if isAuthenticated() && (
-        (resource == null || resource.data.tenantId == getUserTenantId()) &&
-        (request.resource == null || request.resource.data.tenantId == getUserTenantId())
-      );
+      // NOTE: read must not reference request.resource (invalid on reads).
+      // Delete omits request.resource (it is null on delete).
+      allow read: if isAuthenticated() &&
+        (resource == null || resource.data.tenantId == getUserTenantId());
+      allow create: if isAuthenticated() &&
+        request.resource.data.tenantId == getUserTenantId();
+      allow update: if isAuthenticated() &&
+        resource.data.tenantId == getUserTenantId() &&
+        request.resource.data.tenantId == getUserTenantId();
+      allow delete: if isAuthenticated() &&
+        resource.data.tenantId == getUserTenantId();
     }
 
     // ─── Projects ────────────────────────────────────────────────────────
     match /projects/{projectId} {
-      allow read, write: if isAuthenticated() && (
-        (resource == null || resource.data.tenantId == getUserTenantId()) &&
-        (request.resource == null || request.resource.data.tenantId == getUserTenantId())
-      );
+      allow read: if isAuthenticated() &&
+        (resource == null || resource.data.tenantId == getUserTenantId());
+      allow create: if isAuthenticated() &&
+        request.resource.data.tenantId == getUserTenantId();
+      allow update: if isAuthenticated() &&
+        resource.data.tenantId == getUserTenantId() &&
+        request.resource.data.tenantId == getUserTenantId();
+      allow delete: if isAuthenticated() &&
+        resource.data.tenantId == getUserTenantId();
     }
 
     // ─── Quotations & Invoices (Confidential Pricing & Margins) ──────────
     match /quotations/{quotationId} {
-      allow read, write: if isAuthenticated() && (
-        (resource == null || resource.data.tenantId == getUserTenantId()) &&
-        (request.resource == null || request.resource.data.tenantId == getUserTenantId())
-      );
+      allow read: if isAuthenticated() &&
+        (resource == null || resource.data.tenantId == getUserTenantId());
+      allow create: if isAuthenticated() &&
+        request.resource.data.tenantId == getUserTenantId();
+      allow update: if isAuthenticated() &&
+        resource.data.tenantId == getUserTenantId() &&
+        request.resource.data.tenantId == getUserTenantId();
+      allow delete: if isAuthenticated() &&
+        resource.data.tenantId == getUserTenantId();
     }
 
     // ─── Products & Material Presets ─────────────────────────────────────
     match /products/{productId} {
-      allow read, write: if isAuthenticated() && (
-        (resource == null || resource.data.tenantId == getUserTenantId()) &&
-        (request.resource == null || request.resource.data.tenantId == getUserTenantId())
-      );
+      allow read: if isAuthenticated() &&
+        (resource == null || resource.data.tenantId == getUserTenantId());
+      allow create: if isAuthenticated() &&
+        request.resource.data.tenantId == getUserTenantId();
+      allow update: if isAuthenticated() &&
+        resource.data.tenantId == getUserTenantId() &&
+        request.resource.data.tenantId == getUserTenantId();
+      allow delete: if isAuthenticated() &&
+        resource.data.tenantId == getUserTenantId();
     }
   }
 }
