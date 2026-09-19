@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Plus, Trash2, ChevronDown, ChevronUp, Calculator, Eye, Home, ArrowRight, Building, Layers, FileCheck, Save, Copy, Pencil, RotateCcw, Check, Lock, Users, Phone, MapPin, Hash } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -561,16 +561,15 @@ export default function Builder() {
   }, [editId, reviseId, quotations, nextQuoteNo, calculateNextQuoteNo]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Auto-assign next quotation number for new quotations — fills once, never overrides user input
-  /* eslint-disable react-hooks/set-state-in-effect */
-  useEffect(() => {
-    if (!editId && !reviseId) {
-      const computed = calculateNextQuoteNo ? calculateNextQuoteNo(quotations, nextQuoteNo) : (nextQuoteNo || 1290);
-      setQuotationNo(prev => prev ? prev : String(computed));
-    }
-  }, [nextQuoteNo, quotations, editId, reviseId, calculateNextQuoteNo]);
-  /* eslint-enable react-hooks/set-state-in-effect */
-
+  // The invoice number for a NEW quote is assigned at save time inside
+  // addQuotation (single owner of numbering), so it can never go stale when a
+  // second customer is quoted without a page reload. The field below is
+  // display-only: it derives from current quotations on every render.
+  const displayQuoteNo = useMemo(() => {
+    if (editId || reviseId) return quotationNo; // edit/revise flows pin their own number
+    const computed = calculateNextQuoteNo ? calculateNextQuoteNo(quotations, nextQuoteNo) : (nextQuoteNo || 1290);
+    return String(computed);
+  }, [editId, reviseId, quotationNo, quotations, nextQuoteNo, calculateNextQuoteNo]);
   // Pre-fill client if passed in query param — one-shot init
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -693,9 +692,9 @@ export default function Builder() {
       const resolvedContact = clientContact.trim() || client?.contact || '';
       const resolvedAddress = clientAddress.trim() || client?.address || '';
       const fallbackNo = calculateNextQuoteNo ? calculateNextQuoteNo(quotations, nextQuoteNo) : (nextQuoteNo || 1290);
-      const resolvedQuoteNo = editId 
+      const resolvedQuoteNo = editId
         ? (existingQuote?.quotationNo || quotationNo || String(fallbackNo))
-        : (quotationNo.trim() || String(fallbackNo));
+        : quotationNo.trim(); // new saves: addQuotation assigns the real number
 
       let effectiveClientId = clientId === '__new__' ? '' : clientId;
 
@@ -1031,9 +1030,9 @@ export default function Builder() {
             </label>
             <input
               className="form-input"
-              value={quotationNo}
-              onChange={e => setQuotationNo(e.target.value)}
-              placeholder="e.g. 1294"
+              value={displayQuoteNo}
+              readOnly
+              style={{ background: 'var(--bg, #f8fafc)', color: 'var(--text-muted)' }}
             />
           </div>
 

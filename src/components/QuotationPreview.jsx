@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Printer, Layers, Pencil, Copy, Lock, MessageSquare, CreditCard, Download } from 'lucide-react';
+import { X, Printer, Layers, Pencil, Copy, Lock, MessageSquare, CreditCard, Download, MoreVertical } from 'lucide-react';
 import { generateQuotationPDF } from '../utils/pdfGenerator';
 import { buildPrintHTML } from '../utils/printRenderer';
 import QuotationDocument from './QuotationDocument';
@@ -37,6 +37,7 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
   );
   const [tempPaymentTerms, setTempPaymentTerms] = useState(currentPaymentTerms);
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+  const [showMoreSheet, setShowMoreSheet] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(quotation.status || 'DRAFT');
 
   const handleStatusChange = async (newStatus) => {
@@ -153,12 +154,9 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
         padding: 0, alignItems: 'stretch'
       }}
     >
-      <div style={{
-        background: '#0d1b4b', borderBottom: '1px solid rgba(255,255,255,0.1)',
-        padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0,
-        flexWrap: 'wrap'
-      }}>
-        <button onClick={onClose} style={{
+      <div className="preview-toolbar">
+        {/* Desktop header: labelled close button */}
+        <button className="desktop-only" onClick={onClose} style={{
           background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 6,
           padding: '8px 16px', color: '#fff', cursor: 'pointer',
           display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', fontWeight: 600,
@@ -168,7 +166,26 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
           <X size={16} /> Close Preview
         </button>
 
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, minWidth: 220, justifyContent: 'center' }}>
+        {/* Mobile compact header: Close + title + More. Everything else lives in the More sheet. */}
+        <button className="mobile-only" onClick={onClose} aria-label="Close preview" style={{
+          background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 6,
+          width: 36, height: 36, color: '#fff', cursor: 'pointer', flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <X size={18} />
+        </button>
+        <div className="mobile-only" style={{ flex: 1, minWidth: 0, color: '#fff', fontWeight: 700, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          {quotation.clientName} · #{quotation.quotationNo}
+        </div>
+        <button className="mobile-only" onClick={() => setShowMoreSheet(true)} aria-label="More options" style={{
+          background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 6,
+          width: 36, height: 36, color: '#fff', cursor: 'pointer', flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <MoreVertical size={18} />
+        </button>
+
+        <div className="desktop-only" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, minWidth: 220, justifyContent: 'center' }}>
           <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem', letterSpacing: '0.3px' }}>
             {quotation.clientName} (QT-{quotation.quotationNo})
           </span>
@@ -204,7 +221,7 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
         </div>
 
         {/* Action buttons on desktop */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="desktop-only" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {currentStatus !== 'APPROVED' ? (
             <button
               type="button"
@@ -251,6 +268,7 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
         {/* Customize Brands button */}
         <button
           type="button"
+          className="desktop-only"
           onClick={() => setShowBrandEditor(true)}
           style={{
             background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)',
@@ -268,6 +286,7 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
         {/* Customize Payment Terms button */}
         <button
           type="button"
+          className="desktop-only"
           onClick={() => {
             setTempPaymentTerms(currentPaymentTerms);
             setShowPaymentTermsModal(true);
@@ -286,7 +305,7 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
         </button>
 
         {/* Toggle Show/Hide Item Amounts */}
-        <label style={{
+        <label className="desktop-only" style={{
           display: 'flex', alignItems: 'center', gap: 8,
           background: showItemAmount ? 'rgba(26, 86, 255, 0.3)' : 'rgba(255, 255, 255, 0.12)',
           border: showItemAmount ? '1px solid #3b82f6' : '1px solid rgba(255, 255, 255, 0.2)',
@@ -308,7 +327,7 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
         </label>
 
         {/* Direct Download PDF Button (1-Click, No popup blocker) */}
-        <button onClick={handleDownloadPDF} style={{
+        <button className="desktop-only" onClick={handleDownloadPDF} style={{
           background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', border: 'none', borderRadius: 6,
           padding: '9px 18px', color: '#fff', fontWeight: 700, cursor: 'pointer',
           display: 'flex', alignItems: 'center', gap: 7, fontSize: '0.875rem',
@@ -320,7 +339,7 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
           <Download size={16} /> Download PDF
         </button>
 
-        <button onClick={handlePrint} style={{
+        <button className="desktop-only" onClick={handlePrint} style={{
           background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 6,
           padding: '9px 16px', color: '#fff', fontWeight: 600, cursor: 'pointer',
           display: 'flex', alignItems: 'center', gap: 7, fontSize: '0.875rem',
@@ -331,7 +350,7 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
           <Printer size={16} /> Browser Print
         </button>
 
-        <button onClick={() => setShowWhatsAppModal(true)} style={{
+        <button className="desktop-only" onClick={() => setShowWhatsAppModal(true)} style={{
           background: '#25D366', border: 'none', borderRadius: 6,
           padding: '9px 18px', color: '#fff', fontWeight: 700, cursor: 'pointer',
           display: 'flex', alignItems: 'center', gap: 7, fontSize: '0.875rem',
@@ -342,6 +361,24 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
            title="Send invoice to client on WhatsApp with customized file name">
           <MessageSquare size={16} /> Send on WhatsApp
         </button>
+
+        {/* Mobile quick actions: the two things users do most, always one tap away */}
+        <div className="mobile-only" style={{ display: 'flex', gap: 8, marginLeft: 'auto', flexShrink: 0 }}>
+          <button onClick={handleDownloadPDF} aria-label="Download PDF" style={{
+            background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', border: 'none', borderRadius: 6,
+            width: 36, height: 36, color: '#fff', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <Download size={17} />
+          </button>
+          <button onClick={() => setShowWhatsAppModal(true)} aria-label="Send on WhatsApp" style={{
+            background: '#25D366', border: 'none', borderRadius: 6,
+            width: 36, height: 36, color: '#fff', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <MessageSquare size={17} />
+          </button>
+        </div>
       </div>
 
       {/* Notice Banner for Draft Invoices */}
@@ -645,6 +682,110 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
             if (onInvoiceCreated) onInvoiceCreated();
           }}
         />
+      )}
+
+      {/* Mobile "More options" bottom sheet — everything not worth permanent toolbar space */}
+      {showMoreSheet && (
+        <Modal
+          onClose={() => setShowMoreSheet(false)}
+          zLevel={1100}
+          className="bottom-sheet"
+          maxWidth={480}
+          labelledBy="preview-more-title"
+          style={{ background: 'var(--surface, #ffffff)', borderRadius: '20px 20px 0 0', boxShadow: '0 -8px 30px rgba(0,0,0,0.25)' }}
+          overlayStyle={{ alignItems: 'flex-end', background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(3px)', padding: 0 }}
+        >
+          <div style={{ padding: '16px 18px 8px', borderBottom: '1px solid var(--border-light, #e2e8f0)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 id="preview-more-title" style={{ margin: 0, fontSize: '1.02rem', fontWeight: 700 }}>More options</h3>
+            <button type="button" className="btn-icon btn-ghost" onClick={() => setShowMoreSheet(false)} aria-label="Close menu" style={{ borderRadius: '50%', width: 34, height: 34 }}>
+              <X size={18} />
+            </button>
+          </div>
+          <div style={{ padding: '10px 12px 22px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {/* Status selector */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 8px' }}>
+              <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>Status</span>
+              <select
+                value={currentStatus}
+                onChange={(e) => handleStatusChange(e.target.value)}
+                style={{
+                  background: currentStatus === 'APPROVED' ? '#166534'
+                            : currentStatus === 'INVOICE CREATED' ? '#1d4ed8'
+                            : (currentStatus === 'REJECTED' || currentStatus === 'REJECT') ? '#991b1b'
+                            : currentStatus === 'PENDING' ? '#b45309'
+                            : '#374151',
+                  color: '#fff', border: 'none', borderRadius: 6,
+                  padding: '6px 10px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer'
+                }}
+                aria-label="Change invoice and project status"
+              >
+                <option value="DRAFT">DRAFT</option>
+                <option value="INVOICE CREATED">INVOICE CREATED</option>
+                <option value="APPROVED">APPROVED</option>
+                <option value="PENDING">PENDING</option>
+                <option value="REJECTED">REJECTED</option>
+              </select>
+            </div>
+
+            {[
+              ...(currentStatus !== 'APPROVED' ? [{
+                icon: <Pencil size={18} color="var(--primary)" />,
+                label: currentStatus === 'DRAFT' ? 'Edit Draft Invoice' : 'Edit Invoice',
+                onClick: () => { navigate(`/builder?edit=${quotation.id}`); onClose(); }
+              }] : []),
+              ...(quotation.id ? [{
+                icon: <Copy size={18} color="var(--primary)" />,
+                label: 'Create Revision',
+                onClick: () => { navigate(`/builder?revise=${quotation.id}`); onClose(); }
+              }] : []),
+              {
+                icon: <Layers size={18} color="var(--primary)" />,
+                label: 'Customize Brands',
+                onClick: () => { setShowMoreSheet(false); setShowBrandEditor(true); }
+              },
+              {
+                icon: <CreditCard size={18} color="var(--primary)" />,
+                label: 'Payment Terms',
+                onClick: () => { setTempPaymentTerms(currentPaymentTerms); setShowMoreSheet(false); setShowPaymentTermsModal(true); }
+              },
+              {
+                icon: <Printer size={18} color="var(--primary)" />,
+                label: 'Browser Print',
+                onClick: () => { setShowMoreSheet(false); handlePrint(); }
+              }
+            ].map((item, i) => (
+              <button key={i} type="button" onClick={item.onClick} style={{
+                display: 'flex', alignItems: 'center', gap: 12, width: '100%',
+                padding: '13px 10px', background: 'transparent', border: 'none',
+                borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary, #0f172a)'
+              }}>
+                {item.icon}
+                {item.label}
+              </button>
+            ))}
+
+            <label style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '13px 10px', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 600
+            }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 12, color: 'var(--text-primary, #0f172a)' }}>
+                <Download size={18} color="var(--primary)" />
+                Show Item Amounts
+              </span>
+              <input
+                type="checkbox"
+                checked={showItemAmount}
+                onChange={e => {
+                  const val = e.target.checked;
+                  setShowItemAmount(val);
+                  if (onUpdateShowItemAmount) onUpdateShowItemAmount(val);
+                }}
+                style={{ accentColor: '#1a56ff', cursor: 'pointer', width: 18, height: 18 }}
+              />
+            </label>
+          </div>
+        </Modal>
       )}
     </Modal>
   );

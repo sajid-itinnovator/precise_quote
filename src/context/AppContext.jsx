@@ -263,10 +263,11 @@ export function AppProvider({ children }) {
       }
     }
 
+    // The invoice number is assigned HERE, once, at save time — the single owner
+    // of numbering. Every new quotation (any customer, any entry point) therefore
+    // gets a fresh number; the Builder's field is display-only.
     const calculatedNext = calculateNextQuoteNo(quotations, nextQuoteNo);
-    const assignedNo = (quotation.quotationNo && quotation.quotationNo !== '1290' && quotation.quotationNo.trim() !== '')
-      ? quotation.quotationNo.trim()
-      : String(calculatedNext);
+    const assignedNo = String(calculatedNext);
 
     const nowIso = new Date().toISOString();
     const qWithDetails = {
