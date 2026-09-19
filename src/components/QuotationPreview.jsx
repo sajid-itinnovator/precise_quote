@@ -10,6 +10,7 @@ import { useApp } from '../context/AppContext';
 import { DEFAULT_PAYMENT_TERMS, PAYMENT_TERMS_PRESETS } from '../constants/defaults';
 import MaterialSpecEditor from './MaterialSpecEditor';
 import WhatsAppShareModal from './WhatsAppShareModal';
+import Modal from './Modal';
 
 /**
  * In-app preview modal + print/PDF/WhatsApp actions.
@@ -141,11 +142,17 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
   };
 
   return (
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 1000,
-      display: 'flex', flexDirection: 'column', background: 'rgba(5, 10, 25, 0.85)',
-      backdropFilter: 'blur(4px)'
-    }}>
+    <Modal
+      onClose={onClose}
+      zLevel={1000}
+      className="preview-workspace"
+      maxWidth="none"
+      ariaLabel="Invoice preview"
+      overlayStyle={{
+        display: 'flex', flexDirection: 'column', background: 'rgba(5, 10, 25, 0.85)',
+        padding: 0, alignItems: 'stretch'
+      }}
+    >
       <div style={{
         background: '#0d1b4b', borderBottom: '1px solid rgba(255,255,255,0.1)',
         padding: '12px 24px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0,
@@ -431,24 +438,20 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
 
       {/* Brand Customization Modal Overlay */}
       {showBrandEditor && (
-        <div
+        <Modal
+          onClose={() => setShowBrandEditor(false)}
+          zLevel={1100}
+          className="nested-modal-panel"
           style={{
-            position: 'fixed', inset: 0, zIndex: 1100,
-            background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(3px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius)',
+            width: '100%', maxWidth: 750, maxHeight: '85vh',
+            display: 'flex', flexDirection: 'column',
+            boxShadow: 'var(--shadow-xl)', overflow: 'hidden'
           }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowBrandEditor(false); }}
+          overlayStyle={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(3px)' }}
         >
-          <div
-            style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius)',
-              width: '100%', maxWidth: 750, maxHeight: '85vh',
-              display: 'flex', flexDirection: 'column',
-              boxShadow: 'var(--shadow-xl)', overflow: 'hidden'
-            }}
-          >
             <div style={{
               padding: '16px 20px', borderBottom: '1px solid var(--border)',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -488,30 +491,25 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
                 Done / Apply to Invoice
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* Payment Terms Customization Modal Overlay */}
       {showPaymentTermsModal && (
-        <div
+        <Modal
+          onClose={() => setShowPaymentTermsModal(false)}
+          zLevel={1100}
+          className="nested-modal-panel"
           style={{
-            position: 'fixed', inset: 0, zIndex: 1100,
-            background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(3px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: 12,
+            width: '100%', maxWidth: 640, maxHeight: '88vh',
+            display: 'flex', flexDirection: 'column',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.4)', overflow: 'hidden'
           }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowPaymentTermsModal(false); }}
+          overlayStyle={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(3px)' }}
         >
-          <div
-            style={{
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
-              borderRadius: 12,
-              width: '100%', maxWidth: 640, maxHeight: '88vh',
-              display: 'flex', flexDirection: 'column',
-              boxShadow: '0 20px 40px rgba(0,0,0,0.4)', overflow: 'hidden'
-            }}
-          >
             <div style={{
               padding: '16px 20px', borderBottom: '1px solid #e2e8f0',
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -634,8 +632,7 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
                 Apply &amp; Save to Invoice
               </button>
             </div>
-          </div>
-        </div>
+        </Modal>
       )}
 
       {/* WhatsApp Share Modal with File Name Customization */}
@@ -649,6 +646,6 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
           }}
         />
       )}
-    </div>
+    </Modal>
   );
 }

@@ -561,6 +561,28 @@ input, textarea, select { font-family: inherit; }
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
+/* Full-screen modal variant: the invoice preview workspace (toolbar + scrollable document). */
+.preview-workspace {
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: none;
+  animation: none;
+}
+
+/* Modal nested inside another modal (brand editor, payment terms): the caller
+   paints the panel chrome inline, so drop the default .modal padding. */
+.nested-modal-panel {
+  padding: 0;
+}
+
 .modal {
   background: var(--surface);
   border-radius: var(--radius-xl);
