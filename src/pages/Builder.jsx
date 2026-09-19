@@ -1087,19 +1087,14 @@ export default function Builder() {
         </button>
       </div>
 
-      {/* Desktop layout: 2 columns */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 350px', gap: 24 }} className="desktop-only">
+      {/* Responsive layout: ONE DOM — two columns on desktop, stacked on mobile (CSS-driven) */}
+      <div className="builder-layout">
         {activeTab === 'scope' ? (
           <BuilderLeft
             rooms={rooms} updateRoom={updateRoom} deleteRoom={deleteRoom} moveRoom={moveRoom}
             showRoomPicker={showRoomPicker} setShowRoomPicker={setShowRoomPicker}
             customRoom={customRoom} setCustomRoom={setCustomRoom} addRoom={addRoom}
             PRESET_ROOMS={PRESET_ROOMS}
-            materialCategoriesCount={quoteMaterialSpec.length}
-            onOpenMaterials={() => {
-              setActiveTab('materials');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
           />
         ) : (
           <div className="card" style={{ padding: 20 }}>
@@ -1154,90 +1149,8 @@ export default function Builder() {
             </div>
           </div>
         )}
-        <BuilderRight
-          subtotal={subtotal} gst={gst} total={total} totalItems={totalItems} totalSqft={totalSqft}
-          includeGST={includeGST} setIncludeGST={setIncludeGST}
-          showItemAmount={showItemAmount} setShowItemAmount={setShowItemAmount}
-          onSaveInvoice={() => handleSave('INVOICE CREATED')}
-          onSaveDraft={() => handleSave('DRAFT')}
-          onPreview={() => setShowPreview(true)}
-          saved={saved} savedMessage={savedMessage} clientId={clientId}
-          saving={saving}
-          isEditing={Boolean(editId)}
-          isRevising={Boolean(reviseId)}
-          existingQuote={existingQuote}
-        />
-      </div>
-
-      {/* Mobile layout: stacked */}
-      <div className="mobile-only">
-        {activeTab === 'scope' ? (
-          <BuilderLeft
-            rooms={rooms} updateRoom={updateRoom} deleteRoom={deleteRoom} moveRoom={moveRoom}
-            showRoomPicker={showRoomPicker} setShowRoomPicker={setShowRoomPicker}
-            customRoom={customRoom} setCustomRoom={setCustomRoom} addRoom={addRoom}
-            PRESET_ROOMS={PRESET_ROOMS}
-            onOpenMaterials={() => {
-              setActiveTab('materials');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-          />
-        ) : (
-          <div className="card" style={{ padding: 16, marginBottom: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-              <div>
-                <h2 style={{ margin: '0 0 4px', fontSize: '1.1rem', fontWeight: 700 }}>
-                  Material Specifications &amp; Brands
-                </h2>
-                <p style={{ margin: '0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                  Brands for Page 2 of this invoice.
-                </p>
-              </div>
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={() => {
-                  setActiveTab('scope');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                style={{ gap: 6, fontSize: '0.75rem' }}
-              >
-                <Building size={13} /> Back
-              </button>
-            </div>
-            <MaterialSpecEditor
-              spec={quoteMaterialSpec}
-              onChange={setQuoteMaterialSpec}
-              onReset={() => {
-                if (window.confirm('Reset all brands to company standard defaults?')) {
-                  setQuoteMaterialSpec(JSON.parse(JSON.stringify(materialSpec)));
-                }
-              }}
-              onSaveAsDefault={async () => {
-                if (window.confirm('Save these brands as company-wide default for all future quotes?')) {
-                  updateMaterialSpec(quoteMaterialSpec);
-                  toast.success('Saved as company default brands!');
-                }
-              }}
-            />
-            <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                className="btn btn-primary btn-sm w-full"
-                onClick={() => {
-                  setActiveTab('scope');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                style={{ gap: 8 }}
-              >
-                <Building size={15} /> Done / Back to Scope of Work
-              </button>
-            </div>
-          </div>
-        )}
-        {/* Mobile View: Floating button above the Summary section */}
         {activeTab === 'scope' && (
-          <div style={{ margin: '20px 0 14px' }}>
+          <div className="mobile-only" style={{ margin: '20px 0 14px' }}>
             <button
               type="button"
               className="btn w-full"
@@ -1340,7 +1253,7 @@ export default function Builder() {
 }
 
 // ─── Builder Left (Scope of Work) ─────────────────────────────────────────
-function BuilderLeft({ rooms, updateRoom, deleteRoom, moveRoom, showRoomPicker, setShowRoomPicker, customRoom, setCustomRoom, addRoom, PRESET_ROOMS, onOpenMaterials, materialCategoriesCount = 8 }) {
+function BuilderLeft({ rooms, updateRoom, deleteRoom, moveRoom, showRoomPicker, setShowRoomPicker, customRoom, setCustomRoom, addRoom, PRESET_ROOMS }) {
   const [activePickerIndex, setActivePickerIndex] = useState(null);
   const [inlineCustomRoom, setInlineCustomRoom] = useState('');
 
@@ -1517,46 +1430,6 @@ function BuilderLeft({ rooms, updateRoom, deleteRoom, moveRoom, showRoomPicker, 
         </React.Fragment>
       ))}
 
-      {/* Desktop View: Floating button at the bottom of the Builder */}
-      {onOpenMaterials && (
-        <div className="desktop-only" style={{
-          position: 'sticky',
-          bottom: 20,
-          zIndex: 20,
-          display: 'flex',
-          justifyContent: 'center',
-          marginTop: 28,
-          marginBottom: 10,
-          pointerEvents: 'none'
-        }}>
-          <button
-            type="button"
-            onClick={onOpenMaterials}
-            className="btn"
-            style={{
-              pointerEvents: 'auto',
-              background: 'var(--surface)',
-              border: '1.5px solid var(--secondary, #17365d)',
-              color: 'var(--secondary, #17365d)',
-              fontWeight: 700,
-              fontSize: '0.88rem',
-              padding: '11px 24px',
-              borderRadius: 30,
-              boxShadow: '0 8px 25px rgba(15, 23, 42, 0.18)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              cursor: 'pointer',
-              backdropFilter: 'blur(8px)'
-            }}
-            title="Open Material Brands & Specs"
-          >
-            <Layers size={17} style={{ color: 'var(--primary)' }} />
-            <span>Material Brands &amp; Specs ({materialCategoriesCount} Categories)</span>
-            <span style={{ fontSize: '1.1rem', color: 'var(--primary)' }}>→</span>
-          </button>
-        </div>
-      )}
     </div>
   );
 }

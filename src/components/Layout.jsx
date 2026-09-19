@@ -15,36 +15,26 @@ export function Layout({ children, title }) {
 
   return (
     <>
-      {/* Desktop */}
-      <div className="desktop-only" style={{ display: 'flex', minHeight: '100vh' }}>
-        <Sidebar 
-          onNewProject={() => setShowNewProject(true)} 
-          onOpenInstall={() => setShowInstallModal(true)}
-        />
-        <div style={{ marginLeft: 'var(--sidebar-width)', flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <TopBar 
-            title={title} 
-            onOpenInstall={() => setShowInstallModal(true)}
-          />
-          <main className="main-content">
-            {children}
-          </main>
-        </div>
-      </div>
-
-      {/* Mobile */}
-      <div className="mobile-only mobile-layout">
-        <MobileTopBar 
-          title={title} 
-          onOpenInstall={() => setShowInstallModal(true)}
-          onOpenAccount={() => setShowAccountDrawer(true)}
-        />
-        <main className="mobile-content">
-          {children}
-        </main>
-        <BottomNav />
-        <InstallAppBanner onOpenModal={() => setShowInstallModal(true)} />
-      </div>
+      {/* ONE shell for every width. Sidebar/TopBar and MobileTopBar/BottomNav
+          are display-toggled by CSS, so page content renders exactly once. */}
+      <Sidebar
+        onNewProject={() => setShowNewProject(true)}
+        onOpenInstall={() => setShowInstallModal(true)}
+      />
+      <TopBar
+        title={title}
+        onOpenInstall={() => setShowInstallModal(true)}
+      />
+      <MobileTopBar
+        title={title}
+        onOpenInstall={() => setShowInstallModal(true)}
+        onOpenAccount={() => setShowAccountDrawer(true)}
+      />
+      <main className="app-content">
+        {children}
+      </main>
+      <BottomNav />
+      <InstallAppBanner onOpenModal={() => setShowInstallModal(true)} />
 
       {showNewProject && <NewProjectModal onClose={() => setShowNewProject(false)} />}
       <InstallAppModal isOpen={showInstallModal} onClose={() => setShowInstallModal(false)} />

@@ -293,12 +293,13 @@ input, textarea, select { font-family: inherit; }
   box-shadow: var(--shadow-sm);
 }
 
-/* Main content area (desktop) */
-.main-content {
+/* App content: ONE region for all widths (replaces .main-content + .mobile-content,
+   which each existed because the old Layout rendered the page twice) */
+.app-content {
   margin-top: var(--topbar-height);
+  margin-left: var(--sidebar-width);
   padding: 24px;
   min-height: calc(100vh - var(--topbar-height));
-  flex: 1;
 }
 
 /* Mobile layout */
@@ -320,14 +321,22 @@ input, textarea, select { font-family: inherit; }
   z-index: 90;
 }
 
-.mobile-content {
-  flex: 1;
-  padding: 16px;
-  padding-bottom: calc(var(--bottomnav-height) + 16px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  max-width: 100%;
-  box-sizing: border-box;
+@media (max-width: 1024px) {
+  /* Desktop chrome off; single content region adapts */
+  .sidebar, .topbar { display: none !important; }
+  .app-content {
+    margin-top: 0;
+    margin-left: 0;
+    padding: 16px;
+    padding-bottom: calc(var(--bottomnav-height) + 16px);
+    overflow-x: hidden;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}
+@media (min-width: 1025px) {
+  /* Mobile chrome off on desktop */
+  .mobile-topbar, .bottom-nav { display: none !important; }
 }
 
 .bottom-nav {
@@ -620,6 +629,19 @@ input, textarea, select { font-family: inherit; }
 @media (max-width: 768px) {
   .btn {
     white-space: normal;
+  }
+}
+
+/* Builder Layout: ONE DOM for all widths — 2-col grid on desktop, stacked on mobile.
+   (Replaces the former desktop-only/mobile-only dual-mount that duplicated every control.) */
+.builder-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 350px;
+  gap: 24px;
+}
+@media (max-width: 1024px) {
+  .builder-layout {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
