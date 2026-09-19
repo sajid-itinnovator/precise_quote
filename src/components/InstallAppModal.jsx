@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { Download, Smartphone, Apple, Check, Share2, PlusSquare, Monitor, X, ExternalLink, ShieldCheck } from 'lucide-react';
+import Modal from './Modal';
 
 
 
@@ -30,27 +31,21 @@ export function InstallAppModal({ isOpen, onClose }) {
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      background: 'rgba(10, 22, 54, 0.72)',
-      backdropFilter: 'blur(6px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 99999,
-      padding: '16px'
-    }}>
-      <div style={{
+    <Modal
+      onClose={onClose}
+      zLevel={99999}
+      className=""
+      labelledBy="install-app-modal-title"
+      style={{
         background: '#ffffff',
         borderRadius: 20,
         width: '100%',
-        maxWidth: 520,
         boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.35)',
         overflow: 'hidden',
         border: '1px solid #e2e8f0',
         animation: 'fadeInUp 0.2s ease-out'
-      }}>
+      }}
+    >
         {/* Header with App Branding */}
         <div style={{
           background: 'linear-gradient(135deg, #0a1636 0%, #1e40af 100%)',
@@ -60,6 +55,7 @@ export function InstallAppModal({ isOpen, onClose }) {
         }}>
           <button
             onClick={onClose}
+            aria-label="Close install dialog"
             style={{
               position: 'absolute',
               top: 16,
@@ -92,7 +88,7 @@ export function InstallAppModal({ isOpen, onClose }) {
               }}
             />
             <div>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, letterSpacing: '-0.01em', color: '#fff' }}>
+              <h2 id="install-app-modal-title" style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, letterSpacing: '-0.01em', color: '#fff' }}>
                 Install Precise Quote App
               </h2>
               <p style={{ margin: '3px 0 0', fontSize: '0.8rem', color: '#bae6fd' }}>
@@ -418,8 +414,7 @@ export function InstallAppModal({ isOpen, onClose }) {
             Close
           </button>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }
 

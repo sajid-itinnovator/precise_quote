@@ -3,8 +3,11 @@ import { X, Send, Download, Phone, FileText, CheckCircle, MessageSquare } from '
 import { buildQuotationPDFDoc, generateQuotationPDF } from '../utils/pdfGenerator';
 import { formatIndianCurrency, formatDate, cleanCustomerProjectTitle } from '../utils/helpers';
 import { useApp } from '../context/AppContext';
+import Modal from './Modal';
+import { useToast } from './Toast';
 
 export default function WhatsAppShareModal({ quotation, onClose, onInvoiceSent }) {
+  const toast = useToast();
   const { updateQuotation, companyProfile, tenantLogo } = useApp();
 
   const compName = companyProfile?.companyName || quotation?.tenantName || "Interior Studio";
@@ -121,7 +124,7 @@ Warm regards,
     } catch (e) {
       console.error('Error generating PDF or sharing:', e);
       setIsSharing(false);
-      alert('Could not share. Please try again.');
+      toast.error('Could not share. Please try again.');
     }
   };
 
@@ -131,8 +134,7 @@ Warm regards,
   };
 
   return (
-    <div className="modal-overlay" style={{ zIndex: 1100 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal" style={{ maxWidth: 560, width: '92%' }}>
+    <Modal onClose={onClose} maxWidth={560} zLevel={1100} style={{ width: '92%' }}>
         {/* Header */}
         <div className="modal-header" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -275,7 +277,6 @@ Warm regards,
             </button>
           </div>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 }

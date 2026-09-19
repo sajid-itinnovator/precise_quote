@@ -3,21 +3,18 @@ import { X, User, Building } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
 import ClientPicker from './ClientPicker';
+import Modal from './Modal';
+import { useToast } from './Toast';
 
 function ModalOverlay({ children, onClose }) {
-  return (
-    <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal">
-        {children}
-      </div>
-    </div>
-  );
+  return <Modal onClose={onClose}>{children}</Modal>;
 }
 
 // ---- New Project Modal ----
 export function NewProjectModal({ onClose }) {
   const { addProject, addClient } = useApp();
   const navigate = useNavigate();
+  const toast = useToast();
   const [mode, setMode] = useState('existing'); // 'existing' | 'new'
   const [form, setForm] = useState({ name: '', clientId: '', status: 'DRAFT', tags: '' });
   const [newClient, setNewClient] = useState({ name: '', contact: '', email: '', address: '' });
@@ -33,14 +30,14 @@ export function NewProjectModal({ onClose }) {
       let finalClientId = form.clientId;
       if (mode === 'new') {
         if (!newClient.name.trim()) {
-          alert('Please enter a Client Name');
+          toast.error('Please enter a Client Name');
           setIsSubmitting(false);
           return;
         }
         finalClientId = await addClient(newClient);
       }
       if (!form.name.trim() || !finalClientId) {
-        alert('Please select or create a client, and enter a project name.');
+        toast.error('Please select or create a client, and enter a project name.');
         setIsSubmitting(false);
         return;
       }
@@ -59,7 +56,7 @@ export function NewProjectModal({ onClose }) {
       navigate(`/builder?clientId=${finalClientId}&projectTitle=${encodeURIComponent(form.name.trim())}&projectId=${projectId}`);
     } catch (err) {
       console.error('Failed to create project:', err);
-      alert('An error occurred while creating the project. Please try again.');
+      toast.error('An error occurred while creating the project. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

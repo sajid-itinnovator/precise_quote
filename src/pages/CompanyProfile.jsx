@@ -4,10 +4,12 @@ import { ArrowLeft, Check, AlertCircle, Trash2, LogOut, ShieldCheck, User } from
 import { useApp } from '../context/AppContext';
 import { DEFAULT_PAYMENT_TERMS, PAYMENT_TERMS_PRESETS, BRAND_COLOR_PRESETS } from '../constants/defaults';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 import { Palette } from 'lucide-react';
 
 export default function CompanyProfile() {
   const navigate = useNavigate();
+  const toast = useToast();
   const { companyProfile, updateCompanyProfile } = useApp();
   const { currentUser, userProfile, logout } = useAuth();
 
@@ -109,7 +111,7 @@ export default function CompanyProfile() {
   const handleFileUpload = (field, file) => {
     if (!file) return;
     if (file.size > 800 * 1024) {
-      alert("Image is too large. Please select an image smaller than 800KB.");
+      toast.error('Image is too large. Please select an image smaller than 800KB.');
       return;
     }
 

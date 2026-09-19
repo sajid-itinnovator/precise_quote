@@ -4,6 +4,7 @@ import { X, Printer, Layers, Pencil, Copy, Lock, MessageSquare, CreditCard, Down
 import { generateQuotationPDF } from '../utils/pdfGenerator';
 import { buildPrintHTML } from '../utils/printRenderer';
 import QuotationDocument from './QuotationDocument';
+import { useToast } from './Toast';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { DEFAULT_PAYMENT_TERMS, PAYMENT_TERMS_PRESETS } from '../constants/defaults';
@@ -16,6 +17,7 @@ import WhatsAppShareModal from './WhatsAppShareModal';
  * print, and PDF data paths); this component owns actions and toolbar UI.
  */
 export default function QuotationPreview({ quotation, onClose, onUpdateShowItemAmount, onUpdateMaterialSpec, onInvoiceCreated }) {
+  const toast = useToast();
   const navigate = useNavigate();
   const { userProfile } = useAuth();
   const { tenantLogo, companyProfile, updateQuotation, updateProject, projects } = useApp();
@@ -117,7 +119,7 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
     };
     const html = buildPrintHTML(qWithSpec, tenantName, tenantLogo, companyProfile, currentPaymentTerms);
     const win = window.open('', '_blank', 'width=900,height=1000,scrollbars=yes');
-    if (!win) { alert('Please allow popups for this site to print.'); return; }
+    if (!win) { toast.error('Please allow popups for this site to print.'); return; }
     win.document.open();
     win.document.write(html);
     win.document.close();

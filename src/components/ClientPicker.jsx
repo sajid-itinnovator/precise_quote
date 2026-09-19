@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Search, Trash2, Plus, X, User, ChevronDown, Check, Phone } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { useToast } from './Toast';
 
 export default function ClientPicker({
   value,
@@ -10,6 +11,7 @@ export default function ClientPicker({
   required = false
 }) {
   const { clients = [], deleteClient } = useApp();
+  const toast = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
 
@@ -76,7 +78,7 @@ export default function ClientPicker({
         }
       } catch (err) {
         console.error('Failed to delete client:', err);
-        alert('Failed to delete client. Please try again.');
+        toast.error('Failed to delete client. Please try again.');
       }
     }
   };

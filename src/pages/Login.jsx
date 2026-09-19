@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { auth, db } from '../firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
+import Modal from '../components/Modal';
 import { Eye, EyeOff, KeyRound, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 import { getDomainContext } from '../utils/domainRouting';
 
@@ -215,7 +216,8 @@ export default function Login() {
         </div>
 
         {error && (
-          <div style={{
+          <div role="alert"
+            style={{
             background: '#fef2f2',
             border: '1px solid #fecaca',
             color: '#b91c1c',
@@ -279,25 +281,29 @@ export default function Login() {
           {isRegister && (
             <>
               <div className="form-group" style={{ marginBottom: 14 }}>
-                <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155' }}>Company / Studio Name</label>
+                <label htmlFor="register-tenant-name" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155' }}>Company / Studio Name</label>
                 <input 
+                  id="register-tenant-name"
                   type="text" 
                   className="form-control" 
                   value={tenantName}
                   onChange={(e) => setTenantName(e.target.value)}
                   placeholder="e.g. Apex Living Studio"
+                  autoComplete="organization"
                   required={isRegister}
                   style={{ borderRadius: 8, padding: '10px 14px' }}
                 />
               </div>
               <div className="form-group" style={{ marginBottom: 14 }}>
-                <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155' }}>Your Full Name</label>
+                <label htmlFor="register-name" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155' }}>Your Full Name</label>
                 <input 
+                  id="register-name"
                   type="text" 
                   className="form-control" 
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Rahul Sharma"
+                  autoComplete="name"
                   required={isRegister}
                   style={{ borderRadius: 8, padding: '10px 14px' }}
                 />
@@ -306,13 +312,15 @@ export default function Login() {
           )}
 
           <div className="form-group" style={{ marginBottom: 14 }}>
-            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155' }}>Email Address</label>
+            <label htmlFor="auth-email" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155' }}>Email Address</label>
             <input 
+              id="auth-email"
               type="email" 
               className="form-control" 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@company.com"
+              autoComplete="email"
               required
               style={{ borderRadius: 8, padding: '10px 14px' }}
             />
@@ -320,7 +328,7 @@ export default function Login() {
           
           <div className="form-group" style={{ marginBottom: 18 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-              <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155', margin: 0 }}>Password</label>
+              <label htmlFor="auth-password" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600, color: '#334155', margin: 0 }}>Password</label>
               {!isRegister && (
                 <button
                   type="button"
@@ -345,11 +353,13 @@ export default function Login() {
 
             <div style={{ position: 'relative' }}>
               <input 
+                id="auth-password"
                 type={showPassword ? 'text' : 'password'} 
                 className="form-control" 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
+                autoComplete={isRegister ? 'new-password' : 'current-password'}
                 required
                 style={{ borderRadius: 8, padding: '10px 42px 10px 14px' }}
               />
@@ -456,32 +466,26 @@ export default function Login() {
 
       {/* Forgot Password Modal */}
       {showForgotPassword && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(15, 23, 42, 0.7)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 9999,
-          padding: 16
-        }}>
-          <div style={{
+        <Modal
+          onClose={() => { setShowForgotPassword(false); setResetError(''); setResetSuccess(''); }}
+          zLevel={9999}
+          maxWidth={400}
+          labelledBy="forgot-password-title"
+          style={{
             background: '#ffffff',
             borderRadius: 16,
-            maxWidth: 400,
             width: '100%',
             padding: 28,
             boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
             animation: 'fadeIn 0.2s ease-out'
-          }}>
+          }}
+        >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               <div style={{ width: 40, height: 40, borderRadius: 10, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
                 <KeyRound size={20} />
               </div>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>Reset Password</h3>
+                <h3 id="forgot-password-title" style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>Reset Password</h3>
                 <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b' }}>We will send a reset link to your email</p>
               </div>
             </div>
@@ -510,13 +514,15 @@ export default function Login() {
                   </div>
                 )}
                 <div className="form-group" style={{ marginBottom: 16 }}>
-                  <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>Your Registered Email</label>
+                  <label htmlFor="reset-email" className="form-label" style={{ fontSize: '0.82rem', fontWeight: 600 }}>Your Registered Email</label>
                   <input
+                    id="reset-email"
                     type="email"
                     className="form-control"
                     value={resetEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
                     placeholder="you@company.com"
+                    autoComplete="email"
                     required
                     style={{ borderRadius: 8 }}
                   />
@@ -567,8 +573,7 @@ export default function Login() {
                 Done
               </button>
             )}
-          </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

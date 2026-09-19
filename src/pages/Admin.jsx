@@ -4,6 +4,7 @@ import { collection, getDocs, doc, setDoc, deleteDoc, query, where } from 'fireb
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { db, secondaryAuth } from '../firebase';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 import { useApp } from '../context/AppContext';
 import { formatIndianCurrency, formatDateTime } from '../utils/helpers';
 import QuotationPreview from '../components/QuotationPreview';
@@ -11,6 +12,7 @@ import { Eye, FileText, Calendar, Search, Pencil, Copy, Building2 } from 'lucide
 
 export default function Admin() {
   const navigate = useNavigate();
+  const toast = useToast();
   const { currentUser, userProfile } = useAuth();
   const { tenantLogo, setTenantLogo, subscription, quotations } = useApp();
   const [usersList, setUsersList] = useState([]);
@@ -94,7 +96,7 @@ export default function Admin() {
 
   const handleDeleteUser = async (uid) => {
     if (uid === currentUser.uid) {
-      alert("You cannot delete your own account.");
+      toast.info('You cannot delete your own account.');
       return;
     }
     
@@ -104,7 +106,7 @@ export default function Admin() {
         fetchUsers();
       } catch (err) {
         console.error(err);
-        alert("Failed to delete user profile.");
+        toast.error('Failed to delete user profile.');
       }
     }
   };
@@ -114,14 +116,14 @@ export default function Admin() {
     if (!file) return;
     
     if (file.size > 500 * 1024) {
-      alert("Logo image is too large. Please upload an image smaller than 500KB.");
+      toast.error('Logo image is too large. Please upload an image smaller than 500KB.');
       return;
     }
 
     const reader = new FileReader();
     reader.onloadend = () => {
       setTenantLogo(reader.result);
-      alert("Logo updated successfully! Changes will appear across the app.");
+      toast.success('Logo updated! Changes will appear across the app.');
     };
     reader.readAsDataURL(file);
   };
@@ -252,7 +254,7 @@ export default function Admin() {
                 </div>
                 
                 {subscription.plan !== 'enterprise' && subscription.plan !== 'pro' && (
-                  <button className="btn btn-outline-primary w-100" onClick={() => alert("Redirecting to Stripe Billing... (Mock)")}>
+                  <button className="btn btn-outline-primary w-100" onClick={() => toast.info('Redirecting to Stripe Billing… (Mock)')}>
                     Upgrade to Pro (₹699/mo)
                   </button>
                 )}
