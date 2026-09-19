@@ -1,6 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- context modules export the useApp hook alongside the provider by convention */
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { collection, getDocs, doc, setDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, doc, setDoc, query, where, increment } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from './AuthContext';
 import { getDomainContext } from '../utils/domainRouting';
@@ -285,19 +285,26 @@ export function AppProvider({ children }) {
     const newNextNo = Math.max(calculatedNext, (isNaN(assignedVal) ? calculatedNext : assignedVal)) + 1;
     await setDoc(doc(db, 'config', `${userProfile.tenantId}_nextQuoteNo`), { value: newNextNo, tenantId: userProfile.tenantId });
 
-    // Update credit consumption
+    // Update credit consumption. The server write is an atomic increment so
+    // rapid successive saves can never deduct from a stale base; the local
+    // state update recomputes balance via deriveSubscription.
     try {
       const currentSpent = subscription.spentCredits !== undefined ? subscription.spentCredits : quotations.length;
       const currentTotal = subscription.totalCredits !== undefined ? subscription.totalCredits : 50;
-      const newSpent = currentSpent + 1;
       const updatedSub = deriveSubscription({
         ...subscription,
-        spentCredits: newSpent,
+        spentCredits: currentSpent + 1,
         totalCredits: currentTotal,
       });
       setSubscription(updatedSub);
+      // Firestore rejects undefined fields (deriveSubscription leaves quoteLimit/
+      // activeUntil undefined on trial plans), so persist only the defined subset.
+      const subDoc = Object.fromEntries(
+        Object.entries(updatedSub).filter(([, v]) => v !== undefined)
+      );
       await setDoc(doc(db, 'config', `${userProfile.tenantId}_subscription`), {
-        ...updatedSub,
+        ...subDoc,
+        spentCredits: increment(1),
         tenantId: userProfile.tenantId,
         updatedAt: new Date().toISOString()
       }, { merge: true });

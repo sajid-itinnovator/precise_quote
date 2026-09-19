@@ -4,6 +4,7 @@ import { Plus, Trash2, ChevronDown, ChevronUp, Calculator, Eye, Home, ArrowRight
 import { useApp } from '../context/AppContext';
 import { formatIndianCurrency, numberToWords, getNextRevisionTitle } from '../utils/helpers';
 import { parseItemQuantity, calculateItemSqft, detectUnit } from '../utils/dimensions';
+import { useToast } from '../components/Toast';
 import QuotationPreview from '../components/QuotationPreview';
 import MaterialSpecEditor from '../components/MaterialSpecEditor';
 import ClientPicker from '../components/ClientPicker';
@@ -484,6 +485,7 @@ export default function Builder() {
   const { clients, projects, updateProject, updateClient, addClient, quotations, addQuotation, updateQuotation, materialSpec, updateMaterialSpec, ROOMS_DEFAULT, nextQuoteNo, calculateNextQuoteNo } = useApp();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const editId = searchParams.get('edit');
   const reviseId = searchParams.get('revise');
@@ -505,6 +507,8 @@ export default function Builder() {
   const [saved, setSaved] = useState(false);
   const [savedMessage, setSavedMessage] = useState('');
   const [showPreview, setShowPreview] = useState(false);
+  const [saving, setSaving] = useState(false); // drives button disabled state
+  const savingRef = useRef(false); // duplicate-save guard: ref reads synchronously, immune to stale closures
 
   // Material & Brand customization state for this quotation
   const [quoteMaterialSpec, setQuoteMaterialSpec] = useState(() =>
@@ -675,9 +679,12 @@ export default function Builder() {
   const isApproved = existingQuote?.status === 'APPROVED';
 
   const handleSave = async (saveStatus = 'DRAFT') => {
+    if (savingRef.current) return; // in-flight: swallow double submits
+    savingRef.current = true;
+    setSaving(true);
     try {
       if (editId && isApproved) {
-        alert("This quotation is APPROVED and locked against direct edits. Please use 'Create Revision' to make changes.");
+        toast.info("This quotation is APPROVED and locked against direct edits. Please use 'Create Revision' to make changes.");
         return;
       }
 
@@ -771,11 +778,16 @@ export default function Builder() {
       }
     } catch (err) {
       if (err.message === 'SUBSCRIPTION_LIMIT_REACHED') {
-        alert("Subscription Limit Reached! You have reached the maximum number of quotes allowed on your current plan. Please upgrade your plan to generate more.");
+        toast.error('Subscription limit reached — upgrade to keep quoting.', {
+          action: { label: 'Upgrade', onClick: () => navigate('/admin') }
+        });
       } else {
         console.error(err);
-        alert("An error occurred while saving the quotation.");
+        toast.error('An error occurred while saving the quotation.');
       }
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   };
 
@@ -1123,7 +1135,7 @@ export default function Builder() {
               onSaveAsDefault={async () => {
                 if (window.confirm('Save these brands as company-wide default for all future quotes?')) {
                   updateMaterialSpec(quoteMaterialSpec);
-                  alert('Saved as company default brands!');
+                  toast.success('Saved as company default brands!');
                 }
               }}
             />
@@ -1150,6 +1162,7 @@ export default function Builder() {
           onSaveDraft={() => handleSave('DRAFT')}
           onPreview={() => setShowPreview(true)}
           saved={saved} savedMessage={savedMessage} clientId={clientId}
+          saving={saving}
           isEditing={Boolean(editId)}
           isRevising={Boolean(reviseId)}
           existingQuote={existingQuote}
@@ -1203,7 +1216,7 @@ export default function Builder() {
               onSaveAsDefault={async () => {
                 if (window.confirm('Save these brands as company-wide default for all future quotes?')) {
                   updateMaterialSpec(quoteMaterialSpec);
-                  alert('Saved as company default brands!');
+                  toast.success('Saved as company default brands!');
                 }
               }}
             />
@@ -1262,6 +1275,7 @@ export default function Builder() {
           onSaveDraft={() => handleSave('DRAFT')}
           onPreview={() => setShowPreview(true)}
           saved={saved} savedMessage={savedMessage} clientId={clientId}
+          saving={saving}
           isEditing={Boolean(editId)}
           isRevising={Boolean(reviseId)}
           existingQuote={existingQuote}
@@ -1304,10 +1318,10 @@ export default function Builder() {
             type="button"
             className="btn btn-primary btn-sm"
             onClick={() => handleSave('INVOICE CREATED')}
-            disabled={!clientId}
+            disabled={!clientId || saving}
             style={{ padding: '6px 12px', fontSize: '0.78rem', gap: 4 }}
           >
-            <FileCheck size={13} /> Finalize
+            <FileCheck size={13} /> {saving ? 'Saving…' : 'Finalize'}
           </button>
         </div>
       </div>
@@ -1552,7 +1566,7 @@ function BuilderRight({
   subtotal, gst, total, totalItems, totalSqft = 0,
   includeGST, setIncludeGST, showItemAmount, setShowItemAmount,
   onSaveInvoice, onSaveDraft, onPreview,
-  saved, savedMessage, clientId, isEditing, isRevising, existingQuote
+  saved, savedMessage, clientId, isEditing, isRevising, existingQuote, saving
 }) {
   return (
     <div>
@@ -1683,7 +1697,7 @@ function BuilderRight({
                 type="button"
                 className="btn btn-primary w-full"
                 onClick={onSaveInvoice}
-                disabled={!clientId}
+                disabled={!clientId || saving}
                 style={{
                   padding: '11px 16px',
                   fontWeight: 700,
@@ -1731,7 +1745,7 @@ function BuilderRight({
                 type="button"
                 className="btn btn-ghost w-full"
                 onClick={onSaveDraft}
-                disabled={!clientId}
+                disabled={!clientId || saving}
                 style={{
                   display: 'flex',
                   justifyContent: 'center',

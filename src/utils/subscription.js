@@ -34,7 +34,9 @@ export function deriveSubscription(raw, { docSpent = 0 } = {}) {
     trialEndsAt: raw?.trialEndsAt,
     totalCredits,
     spentCredits,
-    balanceCredits: raw?.balanceCredits !== undefined ? Number(raw.balanceCredits) : Math.max(0, totalCredits - spentCredits),
+    // Always derived: balance can never drift from spent/total, no matter what
+    // a stale document or old write carries.
+    balanceCredits: Math.max(0, totalCredits - spentCredits),
     activeUntil: raw?.activeUntil,
   };
 }

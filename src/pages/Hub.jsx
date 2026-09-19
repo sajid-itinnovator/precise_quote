@@ -344,6 +344,9 @@ export default function Hub() {
   const PIE_COLORS = { 'DRAFT': '#94a3b8', 'PENDING': '#eab308', 'APPROVED': '#22c55e', 'REJECTED': '#ef4444', 'COMMERCIAL': '#8b5cf6' };
 
   // 2. Monthly Revenue & Growth (Area & Bar Charts)
+  // Revenue counts real billed value: APPROVED (closed won), COMMERCIAL, and
+  // INVOICE CREATED (issued). Pending/draft/lost carry no recognized revenue.
+  const REVENUE_STATUSES = ['APPROVED', 'COMMERCIAL', 'INVOICE CREATED'];
   const monthlyDataMap = {};
   quotations.forEach(q => {
     if (!q.date) return;
@@ -352,7 +355,7 @@ export default function Hub() {
       monthlyDataMap[month] = { name: month, revenue: 0, quotes: 0 };
     }
     monthlyDataMap[month].quotes += 1;
-    if (q.status === 'APPROVED' || q.status === 'COMMERCIAL') {
+    if (REVENUE_STATUSES.includes(q.status)) {
       monthlyDataMap[month].revenue += (Number(q.total) || 0);
     }
   });
