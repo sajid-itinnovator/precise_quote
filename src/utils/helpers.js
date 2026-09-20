@@ -42,10 +42,6 @@ export function formatIndianCurrency(amount) {
   return n.toLocaleString('en-IN');
 }
 
-export function generateId() {
-  return Math.random().toString(36).substr(2, 9);
-}
-
 export function formatDate(dateStr) {
   if (!dateStr) return '';
   const d = new Date(dateStr);

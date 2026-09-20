@@ -14,7 +14,7 @@ export function detectUnit(sizeStr) {
 }
 
 /** Parse 2D ("L X W") or 3D ("L X W X H") size strings → dimensions object or null. */
-export function parseDimensions(sizeStr) {
+function parseDimensions(sizeStr) {
   if (!sizeStr) return null;
   const cleaned = String(sizeStr).replace(/['"“”]/g, '').replace(/\b(?:ft|feet)\b/gi, '').trim();
 

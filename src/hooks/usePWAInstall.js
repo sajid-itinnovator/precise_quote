@@ -14,7 +14,6 @@ if (typeof window !== 'undefined') {
   window.addEventListener('appinstalled', () => {
     globalDeferredPrompt = null;
     installListeners.forEach((listener) => listener(null));
-    console.log('[PreciseQuote] App installed successfully');
   });
 }
 

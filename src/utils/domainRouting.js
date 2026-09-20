@@ -59,37 +59,3 @@ export function getDomainContext() {
     cleanTenantSlug: tenantSubdomain ? tenantSubdomain.replace(/[^a-z0-9]/g, '') : null
   };
 }
-
-/**
- * Format the full public URL for a tenant
- * Returns custom subdomain or web.app site
- */
-export function buildTenantUrl(tenantSlug) {
-  const clean = (tenantSlug || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
-  if (!clean) return window.location.origin;
-
-  const currentHost = window.location.hostname.toLowerCase();
-  
-  // If running on a custom domain (e.g. precisequote.com)
-  if (currentHost.includes('precisequote.com') || currentHost.includes('precisequote.in')) {
-    const baseDomain = currentHost.split('.').slice(-2).join('.');
-    return `https://${clean}.${baseDomain}`;
-  }
-
-  // If on Firebase Hosting (*.web.app)
-  // Standard format: https://<tenant>.web.app or https://<tenant>.precisequote.web.app
-  return `https://${clean}.precisequote.web.app`;
-}
-
-/**
- * Format the Super Admin console URL
- */
-export function buildSuperAdminUrl() {
-  const currentHost = window.location.hostname.toLowerCase();
-  if (currentHost.includes('precisequote.com') || currentHost.includes('precisequote.in')) {
-    const baseDomain = currentHost.split('.').slice(-2).join('.');
-    return `https://super-admin.${baseDomain}`;
-  }
-  // Firebase Hosting dedicated site
-  return `https://precisequote-superadmin.web.app`;
-}
