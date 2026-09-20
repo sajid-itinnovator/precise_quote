@@ -1,0 +1,53 @@
+/*
+ * DESIGN TOKENS + ANIMATION KEYFRAMES — the ground layer of the design system.
+ * Extracted verbatim from git history after a dead-CSS purge script destroyed
+ * them. PROTECTED: this file is asserted by scripts/check-tokens.mjs on every
+ * dev/build. Change values deliberately here, never by bulk CSS scripts.
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  --primary: #1a56ff;
+  --primary-dark: #1240cc;
+  --primary-light: #e8eeff;
+  --secondary: #0d1b4b;
+  --accent: #00c4b4;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --success: #10b981;
+
+  --bg: #f0f4ff;
+  --bg-secondary: #e8edf8;
+  --surface: #ffffff;
+  --surface-2: #f7f9ff;
+  --border: #dde3f0;
+  --border-light: #eef1f8;
+
+  --text-primary: #0d1b4b;
+  --text-secondary: #5a6a85;
+  --text-muted: #8fa0b8;
+
+  --shadow-sm: 0 1px 4px rgba(26,86,255,0.06);
+  --shadow-md: 0 4px 16px rgba(26,86,255,0.10);
+  --shadow-lg: 0 8px 32px rgba(26,86,255,0.14);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  --sidebar-width: 240px;
+  --topbar-height: 64px;
+  --bottomnav-height: 64px;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+@keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+@keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+@keyframes toastOut { to { opacity: 0; transform: translateX(-50%) translateY(10px); } }
+
+@keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }

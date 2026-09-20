@@ -4,8 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "node scripts/check-tokens.mjs && vite",
+    "build": "node scripts/check-tokens.mjs && vite build && node scripts/check-tokens.mjs --dist",
     "lint": "eslint .",
     "preview": "vite preview",
     "set:superadmin": "node scripts/set-superadmin-claim.js",
