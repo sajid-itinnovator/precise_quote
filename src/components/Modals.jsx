@@ -6,10 +6,6 @@ import ClientPicker from './ClientPicker';
 import Modal from './Modal';
 import { useToast } from './Toast';
 
-function ModalOverlay({ children, onClose }) {
-  return <Modal onClose={onClose}>{children}</Modal>;
-}
-
 // ---- New Project Modal ----
 export function NewProjectModal({ onClose }) {
   const { addProject, addClient } = useApp();
@@ -63,7 +59,7 @@ export function NewProjectModal({ onClose }) {
   };
 
   return (
-    <ModalOverlay onClose={onClose}>
+    <Modal onClose={onClose}>
       <div className="modal-header">
         <h2 className="modal-title">New Project</h2>
         <button className="btn-icon btn-ghost" onClick={onClose}><X size={18} /></button>
@@ -122,7 +118,7 @@ export function NewProjectModal({ onClose }) {
           <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>Create & Open Builder →</button>
         </div>
       </form>
-    </ModalOverlay>
+    </Modal>
   );
 }
 
@@ -139,7 +135,7 @@ export function ClientModal({ client, onClose }) {
   };
 
   return (
-    <ModalOverlay onClose={onClose}>
+    <Modal onClose={onClose}>
       <div className="modal-header">
         <h2 className="modal-title">{client ? 'Edit Client' : 'New Client'}</h2>
         <button className="btn-icon btn-ghost" onClick={onClose}><X size={18} /></button>
@@ -154,7 +150,7 @@ export function ClientModal({ client, onClose }) {
           <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>{client ? 'Save Changes' : 'Add Client'}</button>
         </div>
       </form>
-    </ModalOverlay>
+    </Modal>
   );
 }
 
@@ -171,7 +167,7 @@ export function ProductModal({ product, onClose }) {
   };
 
   return (
-    <ModalOverlay onClose={onClose}>
+    <Modal onClose={onClose}>
       <div className="modal-header">
         <h2 className="modal-title">{product ? 'Edit Product' : 'New Product'}</h2>
         <button className="btn-icon btn-ghost" onClick={onClose}><X size={18} /></button>
@@ -198,14 +194,14 @@ export function ProductModal({ product, onClose }) {
           <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>{product ? 'Save Changes' : 'Add Product'}</button>
         </div>
       </form>
-    </ModalOverlay>
+    </Modal>
   );
 }
 
 // ---- Confirm Delete Modal ----
 export function ConfirmModal({ message, onConfirm, onClose }) {
   return (
-    <ModalOverlay onClose={onClose}>
+    <Modal onClose={onClose}>
       <div className="modal-header">
         <h2 className="modal-title">Confirm Delete</h2>
         <button className="btn-icon btn-ghost" onClick={onClose}><X size={18} /></button>
@@ -215,6 +211,6 @@ export function ConfirmModal({ message, onConfirm, onClose }) {
         <button className="btn btn-secondary" style={{ flex: 1 }} onClick={onClose}>Cancel</button>
         <button className="btn btn-danger" style={{ flex: 1 }} onClick={() => { onConfirm(); onClose(); }}>Delete</button>
       </div>
-    </ModalOverlay>
+    </Modal>
   );
 }

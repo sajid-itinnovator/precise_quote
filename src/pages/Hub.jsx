@@ -1,8 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, TrendingUp, FileText, Eye, Pencil, Plus, Calendar, Trash2, CheckCircle, Clock, FileCheck, FileEdit, XCircle, ArrowRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
+
+/** Hide-while-scrolling-down for the dashboard FAB so it never covers content. */
+function useFabVisible() {
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    let lastY = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      setVisible(y < lastY || y < 80);
+      lastY = y;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+  return visible;
+}
 import { formatIndianCurrency, formatDate } from '../utils/helpers';
+import { PROJECT_STATUS_OPTIONS, STATUS_LABELS, statusTextColor } from '../constants/invoiceStatus';
 import { NewProjectModal } from '../components/Modals';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -77,20 +94,7 @@ function ProjectCard({ project, client, latestQuote, index, onViewQuote, onDelet
                 onDeleteProject(project.id);
               }
             }}
-            style={{
-              position: 'absolute', top: 10, left: 10,
-              background: 'rgba(0,0,0,0.35)',
-              border: 'none',
-              borderRadius: '50%',
-              width: 28, height: 28,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff',
-              cursor: 'pointer',
-              transition: 'background 0.2s',
-              zIndex: 2,
-            }}
-            onMouseOver={e => e.currentTarget.style.background = 'rgba(220, 38, 38, 0.9)'}
-            onMouseOut={e => e.currentTarget.style.background = 'rgba(0,0,0,0.35)'}
+            className="project-delete-btn"
             title="Delete Project"
           >
             <Trash2 size={13} />
@@ -122,12 +126,7 @@ function ProjectCard({ project, client, latestQuote, index, onViewQuote, onDelet
           style={{
             position: 'absolute', top: 10, right: 10,
             background: 'rgba(255,255,255,0.95)',
-            color: (displayStatus === 'APPROVED' || displayStatus === 'IN PROGRESS' || displayStatus === 'COMPLETED') ? '#166534'
-                 : displayStatus === 'INVOICE CREATED' ? '#1d4ed8'
-                 : (displayStatus === 'REJECTED' || displayStatus === 'REJECT') ? '#b91c1c'
-                 : displayStatus === 'PENDING' ? '#b45309'
-                 : displayStatus === 'COMMERCIAL' ? '#5b21b6'
-                 : '#374151',
+            color: statusTextColor(displayStatus),
             fontWeight: 700,
             fontSize: '0.72rem',
             padding: '3px 7px',
@@ -140,13 +139,7 @@ function ProjectCard({ project, client, latestQuote, index, onViewQuote, onDelet
           }}
           title="Project Status: Click to change to Approved, Reject, Pending, etc."
         >
-          <option value="DRAFT">DRAFT</option>
-          <option value="INVOICE CREATED">INVOICE CREATED</option>
-          <option value="PENDING">PENDING</option>
-          <option value="APPROVED">APPROVED</option>
-          <option value="REJECTED">REJECT</option>
-          <option value="IN PROGRESS">IN PROGRESS</option>
-          <option value="COMPLETED">COMPLETED</option>
+          {PROJECT_STATUS_OPTIONS.map(s => <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>)}
         </select>
       </div>
       <div className="project-card-body">
@@ -190,6 +183,7 @@ function ProjectCard({ project, client, latestQuote, index, onViewQuote, onDelet
 }
 
 export default function Hub() {
+  const fabVisible = useFabVisible();
   const { clients, projects, quotations, deleteProject, updateProject, updateQuotation } = useApp();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
@@ -419,29 +413,18 @@ export default function Hub() {
               <div
                 key={stage.id}
                 onClick={() => navigate(`/history?status=${encodeURIComponent(stage.status)}`)}
-                className="stat-card"
+                className="stat-card stat-card--lift"
                 style={{
                   cursor: 'pointer',
                   border: `1px solid ${stage.borderColor}`,
-                  background: 'var(--surface)',
                   padding: '16px 14px',
                   borderRadius: 12,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                  transition: 'transform 0.16s, box-shadow 0.16s, border-color 0.16s',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
                   minHeight: 120,
                   position: 'relative',
                   overflow: 'hidden'
-                }}
-                onMouseOver={e => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.08)';
-                }}
-                onMouseOut={e => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
                 }}
                 title={`Click to filter quotes in ${stage.status} stage`}
               >
@@ -608,8 +591,8 @@ export default function Hub() {
         </>
       )}
 
-      {/* FAB on mobile */}
-      <button className="fab mobile-only" onClick={() => setShowNewProject(true)}>
+      {/* FAB on mobile — slides away on scroll-down so it never covers cards */}
+      <button className="fab mobile-only" data-hidden={!fabVisible} onClick={() => setShowNewProject(true)}>
         <Plus size={22} />
       </button>
 

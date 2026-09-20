@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { Sidebar, TopBar, BottomNav } from './Navigation';
 import { NewProjectModal } from './Modals';
 import { InstallAppModal, InstallAppBanner } from './InstallAppModal';
@@ -32,6 +33,7 @@ export function Layout({ children, title }) {
         onOpenAccount={() => setShowAccountDrawer(true)}
       />
       <main className="app-content">
+        <LoadErrorBanner />
         {children}
       </main>
       <BottomNav />
@@ -45,6 +47,60 @@ export function Layout({ children, title }) {
         onOpenInstall={() => { setShowAccountDrawer(false); setShowInstallModal(true); }}
       />
     </>
+  );
+}
+
+/**
+ * Honest failure surface: when any tenant-data section fails to load, the
+ * user sees what happened and can retry — instead of a silently empty
+ * dashboard behind a console error only developers can see.
+ */
+function LoadErrorBanner() {
+  const { loadError, retryLoad } = useApp();
+  if (!loadError) return null;
+  return (
+    <div
+      role="alert"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        flexWrap: 'wrap',
+        background: '#fef2f2',
+        border: '1px solid #fecaca',
+        borderRadius: 10,
+        padding: '10px 14px',
+        marginBottom: 16,
+        color: '#991b1b',
+        fontSize: '0.85rem',
+        fontWeight: 500,
+      }}
+    >
+      <AlertTriangle size={16} style={{ flexShrink: 0 }} />
+      <span style={{ flex: 1, minWidth: 200 }}>
+        Some data couldn't be loaded{loadError.sections?.length ? ` (${loadError.sections.join(', ')})` : ''}
+        {loadError.code === 'permission-denied' ? ' — permission denied by server.' : '.'}
+      </span>
+      <button
+        type="button"
+        onClick={retryLoad}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+          background: '#991b1b',
+          color: '#fff',
+          border: 'none',
+          borderRadius: 8,
+          padding: '6px 12px',
+          fontSize: '0.8rem',
+          fontWeight: 600,
+          cursor: 'pointer',
+        }}
+      >
+        <RefreshCw size={13} /> Retry
+      </button>
+    </div>
   );
 }
 

@@ -11,6 +11,7 @@ import { DEFAULT_PAYMENT_TERMS, PAYMENT_TERMS_PRESETS } from '../constants/defau
 import MaterialSpecEditor from './MaterialSpecEditor';
 import WhatsAppShareModal from './WhatsAppShareModal';
 import Modal from './Modal';
+import StatusSelect from './StatusSelect';
 
 /**
  * In-app preview modal + print/PDF/WhatsApp actions.
@@ -156,67 +157,33 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
     >
       <div className="preview-toolbar">
         {/* Desktop header: labelled close button */}
-        <button className="desktop-only" onClick={onClose} style={{
-          background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 6,
-          padding: '8px 16px', color: '#fff', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', fontWeight: 600,
-          transition: 'background 0.2s'
-        }} onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
-           onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}>
+        <button className="desktop-only pv-btn" onClick={onClose}>
           <X size={16} /> Close Preview
         </button>
 
         {/* Mobile compact header: Close + title + More. Everything else lives in the More sheet. */}
-        <button className="mobile-only" onClick={onClose} aria-label="Close preview" style={{
-          background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 6,
-          width: 36, height: 36, color: '#fff', cursor: 'pointer', flexShrink: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>
+        <button className="mobile-only pv-icon-btn" onClick={onClose} aria-label="Close preview">
           <X size={18} />
         </button>
-        <div className="mobile-only" style={{ flex: 1, minWidth: 0, color: '#fff', fontWeight: 700, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <div className="mobile-only pv-title">
           {quotation.clientName} · #{quotation.quotationNo}
         </div>
-        <button className="mobile-only" onClick={() => setShowMoreSheet(true)} aria-label="More options" style={{
-          background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: 6,
-          width: 36, height: 36, color: '#fff', cursor: 'pointer', flexShrink: 0,
-          display: 'flex', alignItems: 'center', justifyContent: 'center'
-        }}>
+        <button className="mobile-only pv-icon-btn" onClick={() => setShowMoreSheet(true)} aria-label="More options">
           <MoreVertical size={18} />
         </button>
 
-        <div className="desktop-only" style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, minWidth: 220, justifyContent: 'center' }}>
+        <div className="desktop-only pv-center">
           <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem', letterSpacing: '0.3px' }}>
             {quotation.clientName} (QT-{quotation.quotationNo})
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.75rem', fontWeight: 600 }}>Status:</span>
-            <select
+            <StatusSelect
               value={currentStatus}
-              onChange={(e) => handleStatusChange(e.target.value)}
-              style={{
-                background: currentStatus === 'APPROVED' ? '#166534'
-                          : currentStatus === 'INVOICE CREATED' ? '#1d4ed8'
-                          : (currentStatus === 'REJECTED' || currentStatus === 'REJECT') ? '#991b1b'
-                          : currentStatus === 'PENDING' ? '#b45309'
-                          : '#374151',
-                color: '#fff',
-                border: '1px solid rgba(255,255,255,0.35)',
-                borderRadius: 4,
-                padding: '3px 8px',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                outline: 'none',
-              }}
-              title="Change invoice and project status"
-            >
-              <option value="DRAFT">DRAFT</option>
-              <option value="INVOICE CREATED">INVOICE CREATED</option>
-              <option value="APPROVED">APPROVED</option>
-              <option value="PENDING">PENDING</option>
-              <option value="REJECTED">REJECTED</option>
-            </select>
+              onChange={handleStatusChange}
+              className="pv-status-select"
+              ariaLabel="Change invoice and project status"
+            />
           </div>
         </div>
 
@@ -225,23 +192,17 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
           {currentStatus !== 'APPROVED' ? (
             <button
               type="button"
+              className={currentStatus === 'DRAFT' ? 'pv-btn pv-btn-draft' : 'pv-btn'}
               onClick={() => {
                 navigate(`/builder?edit=${quotation.id}`);
                 onClose();
-              }}
-              style={{
-                background: currentStatus === 'DRAFT' ? '#2563eb' : 'rgba(255,255,255,0.15)',
-                border: currentStatus === 'DRAFT' ? '1px solid #60a5fa' : '1px solid rgba(255,255,255,0.25)',
-                borderRadius: 6, padding: '7px 14px', color: '#fff', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', fontWeight: 700,
-                boxShadow: currentStatus === 'DRAFT' ? '0 2px 8px rgba(37,99,235,0.4)' : undefined,
               }}
               title={currentStatus === 'DRAFT' ? "Edit this draft quotation in Builder" : "Edit this invoice in Builder"}
             >
               <Pencil size={14} /> {currentStatus === 'DRAFT' ? 'Edit Draft Invoice' : 'Edit Invoice'}
             </button>
           ) : (
-            <span style={{ fontSize: '0.78rem', color: '#93c5fd', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', padding: '6px 12px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 5, fontWeight: 600 }}>
+            <span className="pv-locked-pill">
               <Lock size={13} /> Approved (Locked)
             </span>
           )}
@@ -249,14 +210,10 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
           {quotation.id && (
             <button
               type="button"
+              className="pv-btn"
               onClick={() => {
                 navigate(`/builder?revise=${quotation.id}`);
                 onClose();
-              }}
-              style={{
-                background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)',
-                borderRadius: 6, padding: '7px 12px', color: '#fff', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', fontWeight: 600,
               }}
               title="Create a new revised version of this invoice"
             >
@@ -268,16 +225,8 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
         {/* Customize Brands button */}
         <button
           type="button"
-          className="desktop-only"
+          className="desktop-only pv-btn"
           onClick={() => setShowBrandEditor(true)}
-          style={{
-            background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)',
-            borderRadius: 6, padding: '7px 14px', color: '#fff', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600,
-            transition: 'background 0.2s'
-          }}
-          onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
-          onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
           title="Customize materials & brands for Page 2 of this invoice"
         >
           <Layers size={15} /> Customize Brands
@@ -286,19 +235,11 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
         {/* Customize Payment Terms button */}
         <button
           type="button"
-          className="desktop-only"
+          className="desktop-only pv-btn"
           onClick={() => {
             setTempPaymentTerms(currentPaymentTerms);
             setShowPaymentTermsModal(true);
           }}
-          style={{
-            background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)',
-            borderRadius: 6, padding: '7px 14px', color: '#fff', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', fontWeight: 600,
-            transition: 'background 0.2s'
-          }}
-          onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
-          onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
           title="Customize milestone payment terms for this invoice"
         >
           <CreditCard size={15} /> Payment Terms
@@ -327,55 +268,24 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
         </label>
 
         {/* Direct Download PDF Button (1-Click, No popup blocker) */}
-        <button className="desktop-only" onClick={handleDownloadPDF} style={{
-          background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', border: 'none', borderRadius: 6,
-          padding: '9px 18px', color: '#fff', fontWeight: 700, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: 7, fontSize: '0.875rem',
-          boxShadow: '0 4px 12px rgba(37,99,235,0.4)',
-          transition: 'transform 0.15s, background 0.2s'
-        }} onMouseOver={e => e.currentTarget.style.background = '#1e40af'}
-           onMouseOut={e => e.currentTarget.style.background = 'linear-gradient(135deg, #2563eb, #1d4ed8)'}
-           title="Download PDF directly to your device (No popup blocker required)">
+        <button className="desktop-only pv-btn pv-btn-pdf" onClick={handleDownloadPDF} title="Download PDF directly to your device (No popup blocker required)">
           <Download size={16} /> Download PDF
         </button>
 
-        <button className="desktop-only" onClick={handlePrint} style={{
-          background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', borderRadius: 6,
-          padding: '9px 16px', color: '#fff', fontWeight: 600, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: 7, fontSize: '0.875rem',
-          transition: 'transform 0.15s, background 0.2s'
-        }} onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
-           onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.15)'}
-           title="Open browser print preview dialog">
+        <button className="desktop-only pv-btn" onClick={handlePrint} title="Open browser print preview dialog">
           <Printer size={16} /> Browser Print
         </button>
 
-        <button className="desktop-only" onClick={() => setShowWhatsAppModal(true)} style={{
-          background: '#25D366', border: 'none', borderRadius: 6,
-          padding: '9px 18px', color: '#fff', fontWeight: 700, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', gap: 7, fontSize: '0.875rem',
-          boxShadow: '0 4px 12px rgba(37,211,102,0.35)',
-          transition: 'transform 0.15s, background 0.2s'
-        }} onMouseOver={e => e.currentTarget.style.background = '#1ebd59'}
-           onMouseOut={e => e.currentTarget.style.background = '#25D366'}
-           title="Send invoice to client on WhatsApp with customized file name">
+        <button className="desktop-only pv-btn pv-btn-whatsapp" onClick={() => setShowWhatsAppModal(true)} title="Send invoice to client on WhatsApp with customized file name">
           <MessageSquare size={16} /> Send on WhatsApp
         </button>
 
         {/* Mobile quick actions: the two things users do most, always one tap away */}
-        <div className="mobile-only" style={{ display: 'flex', gap: 8, marginLeft: 'auto', flexShrink: 0 }}>
-          <button onClick={handleDownloadPDF} aria-label="Download PDF" style={{
-            background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', border: 'none', borderRadius: 6,
-            width: 36, height: 36, color: '#fff', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
+        <div className="mobile-only pv-quick-actions">
+          <button className="pv-icon-btn pv-btn-pdf" onClick={handleDownloadPDF} aria-label="Download PDF">
             <Download size={17} />
           </button>
-          <button onClick={() => setShowWhatsAppModal(true)} aria-label="Send on WhatsApp" style={{
-            background: '#25D366', border: 'none', borderRadius: 6,
-            width: 36, height: 36, color: '#fff', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
+          <button className="pv-icon-btn pv-btn-whatsapp" onClick={() => setShowWhatsAppModal(true)} aria-label="Send on WhatsApp">
             <MessageSquare size={17} />
           </button>
         </div>
@@ -705,26 +615,12 @@ export default function QuotationPreview({ quotation, onClose, onUpdateShowItemA
             {/* Status selector */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 8px' }}>
               <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>Status</span>
-              <select
+              <StatusSelect
                 value={currentStatus}
-                onChange={(e) => handleStatusChange(e.target.value)}
-                style={{
-                  background: currentStatus === 'APPROVED' ? '#166534'
-                            : currentStatus === 'INVOICE CREATED' ? '#1d4ed8'
-                            : (currentStatus === 'REJECTED' || currentStatus === 'REJECT') ? '#991b1b'
-                            : currentStatus === 'PENDING' ? '#b45309'
-                            : '#374151',
-                  color: '#fff', border: 'none', borderRadius: 6,
-                  padding: '6px 10px', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer'
-                }}
-                aria-label="Change invoice and project status"
-              >
-                <option value="DRAFT">DRAFT</option>
-                <option value="INVOICE CREATED">INVOICE CREATED</option>
-                <option value="APPROVED">APPROVED</option>
-                <option value="PENDING">PENDING</option>
-                <option value="REJECTED">REJECTED</option>
-              </select>
+                onChange={handleStatusChange}
+                style={{ border: 'none', borderRadius: 6, padding: '6px 10px', fontSize: '0.8rem', fontWeight: 700 }}
+                ariaLabel="Change invoice and project status"
+              />
             </div>
 
             {[

@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components -- context modules export the useApp hook alongside the provider by convention */
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { collection, getDocs, doc, setDoc, query, where, increment } from 'firebase/firestore';
-import { db } from '../firebase';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { collection, getDocs, doc, setDoc, query, where, increment, runTransaction } from 'firebase/firestore';
+import { db, auth } from '../firebase';
 import { useAuth } from './AuthContext';
 import { getDomainContext } from '../utils/domainRouting';
 import { createTenantCrud } from '../utils/tenantCrud';
@@ -48,6 +48,11 @@ export function AppProvider({ children }) {
   const [companyProfile, setCompanyProfile] = useState(DEFAULT_COMPANY_PROFILE);
   const [subscription, setSubscription] = useState(defaultTrialSubscription());
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  // Ref tracks the true attempt count — retryLoad bumps it synchronously so
+  // an in-flight load from the previous attempt always sees itself as stale.
+  const loadAttemptRef = useRef(0);
 
   // One CRUD triple per entity, all delegating to the shared factory.
   const getActor = () => ({ uid: currentUser?.uid, tenantId: userProfile?.tenantId });
@@ -67,10 +72,28 @@ export function AppProvider({ children }) {
     }
 
     const loadData = async () => {
-      try {
-        const isPrivate = userProfile.dataAccess === 'private';
-        const tenantId = userProfile.tenantId;
+      // Staleness guard: this async load must only apply state for the
+      // identity it started under — a mid-flight sign-out/sign-in switch
+      // (the intermittent 'Missing or insufficient permissions' source)
+      // would otherwise write another session's data into this one.
+      const uidAtStart = currentUser.uid;
+      const attempt = loadAttemptRef.current;
+      const isStale = () => auth.currentUser?.uid !== uidAtStart || attempt !== loadAttemptRef.current;
 
+      // Per-section loading: one denied/failing query must not blank the
+      // whole dashboard. Collect failures, render what loaded, surface the
+      // rest honestly with a retry.
+      const results = {};
+      const failures = [];
+      const loadSection = async (name, fn) => {
+        try { results[name] = await fn(); }
+        catch (err) { failures.push({ name, code: err.code || 'unknown', message: err.message }); }
+      };
+
+      const isPrivate = userProfile.dataAccess === 'private';
+      const tenantId = userProfile.tenantId;
+
+      try {
         if (!tenantId) {
           console.error("User profile has no tenantId! Cannot load data.");
           setLoading(false);
@@ -86,98 +109,123 @@ export function AppProvider({ children }) {
           companyName: userProfile.tenantName || userProfile.companyName || '',
         };
 
-        const clientsQ = query(collection(db, 'clients'), where('tenantId', '==', tenantId));
-        const clientsSnap = await getDocs(clientsQ);
-        let loadedClients = clientsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const fetchTenantCollection = async (name) => {
+          const snap = await getDocs(query(collection(db, name), where('tenantId', '==', tenantId)));
+          return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        };
 
-        if (isPrivate) loadedClients = loadedClients.filter(c => c.createdBy === currentUser.uid);
+        // ── Clients first — their emptiness decides whether to seed ──
+        let loadedClients = null;
+        await loadSection('clients', async () => {
+          loadedClients = (await getDocs(query(collection(db, 'clients'), where('tenantId', '==', tenantId)))).docs.map(d => ({ id: d.id, ...d.data() }));
+          if (isPrivate) loadedClients = loadedClients.filter(c => c.createdBy === uidAtStart);
+        });
 
-        // If DB is completely empty for this tenant, seed it with initial data
-        if (loadedClients.length === 0 && !isPrivate) {
-          console.log("Seeding database with initial data for new tenant...");
+        // Seed ONLY on a verified-empty read. A denied read (null) must never
+        // trigger seeding, or a later successful read would duplicate data.
+        const needsSeed = loadedClients !== null && loadedClients.length === 0 && !isPrivate;
 
-          await setDoc(doc(db, 'config', `${tenantId}_materialSpec`), { data: MATERIAL_SPEC_DEFAULT, tenantId });
-          await setDoc(doc(db, 'config', `${tenantId}_nextQuoteNo`), { value: 1290, tenantId });
-          await setDoc(doc(db, 'config', `${tenantId}_tenantLogo`), { data: null, tenantId });
-          await setDoc(doc(db, 'config', `${tenantId}_companyProfile`), { data: initialBaseProfile, tenantId });
-          setCompanyProfile(initialBaseProfile);
+        if (needsSeed) {
+          await loadSection('seed', async () => {
+            await setDoc(doc(db, 'config', `${tenantId}_materialSpec`), { data: MATERIAL_SPEC_DEFAULT, tenantId });
+            await setDoc(doc(db, 'config', `${tenantId}_nextQuoteNo`), { value: 1290, tenantId });
+            await setDoc(doc(db, 'config', `${tenantId}_tenantLogo`), { data: null, tenantId });
+            await setDoc(doc(db, 'config', `${tenantId}_companyProfile`), { data: initialBaseProfile, tenantId });
+            setCompanyProfile(initialBaseProfile);
 
-          const initialSpent = isVistara ? SAMPLE_QUOTATIONS.length : 0;
-          const trialSub = defaultTrialSubscription(initialSpent);
-          await setDoc(doc(db, 'config', `${tenantId}_subscription`), { ...trialSub, tenantId });
-          setSubscription(trialSub);
+            const initialSpent = isVistara ? SAMPLE_QUOTATIONS.length : 0;
+            const trialSub = defaultTrialSubscription(initialSpent);
+            await setDoc(doc(db, 'config', `${tenantId}_subscription`), { ...trialSub, tenantId });
+            setSubscription(trialSub);
 
-          for (const pr of SAMPLE_PRODUCTS) await setDoc(doc(db, 'products', `${tenantId}_${pr.id}`), { ...pr, tenantId });
-          setProducts(SAMPLE_PRODUCTS.map(pr => ({ ...pr, id: `${tenantId}_${pr.id}`, tenantId })));
+            for (const pr of SAMPLE_PRODUCTS) await setDoc(doc(db, 'products', `${tenantId}_${pr.id}`), { ...pr, tenantId });
+            setProducts(SAMPLE_PRODUCTS.map(pr => ({ ...pr, id: `${tenantId}_${pr.id}`, tenantId })));
 
-          // Only seed Vistara demo clients/projects for Vistara accounts
-          if (isVistara) {
-            for (const c of SAMPLE_CLIENTS) await setDoc(doc(db, 'clients', `${tenantId}_${c.id}`), { ...c, tenantId, createdBy: currentUser.uid });
-            for (const p of SAMPLE_PROJECTS) await setDoc(doc(db, 'projects', `${tenantId}_${p.id}`), { ...p, clientId: `${tenantId}_${p.clientId}`, tenantId, createdBy: currentUser.uid });
-            for (const q of SAMPLE_QUOTATIONS) await setDoc(doc(db, 'quotations', `${tenantId}_${q.id}`), { ...q, clientId: `${tenantId}_${q.clientId}`, tenantId, createdBy: currentUser.uid });
+            // Only seed Vistara demo clients/projects for Vistara accounts
+            if (isVistara) {
+              for (const c of SAMPLE_CLIENTS) await setDoc(doc(db, 'clients', `${tenantId}_${c.id}`), { ...c, tenantId, createdBy: uidAtStart });
+              for (const p of SAMPLE_PROJECTS) await setDoc(doc(db, 'projects', `${tenantId}_${p.id}`), { ...p, clientId: `${tenantId}_${p.clientId}`, tenantId, createdBy: uidAtStart });
+              for (const q of SAMPLE_QUOTATIONS) await setDoc(doc(db, 'quotations', `${tenantId}_${q.id}`), { ...q, clientId: `${tenantId}_${q.clientId}`, tenantId, createdBy: uidAtStart });
 
-            setClients(SAMPLE_CLIENTS.map(c => ({ ...c, id: `${tenantId}_${c.id}`, tenantId })));
-            setProjects(SAMPLE_PROJECTS.map(p => ({ ...p, id: `${tenantId}_${p.id}`, clientId: `${tenantId}_${p.clientId}`, tenantId })));
-            setQuotations(SAMPLE_QUOTATIONS.map(q => ({ ...q, id: `${tenantId}_${q.id}`, clientId: `${tenantId}_${q.clientId}`, tenantId })));
-          } else {
-            setClients([]);
-            setProjects([]);
-            setQuotations([]);
-          }
-        } else {
-          setClients(loadedClients);
-
-          const fetchTenantCollection = async (name) => {
-            const snap = await getDocs(query(collection(db, name), where('tenantId', '==', tenantId)));
-            return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          };
-
-          let loadedProjects = await fetchTenantCollection('projects');
-          if (isPrivate) loadedProjects = loadedProjects.filter(p => p.createdBy === currentUser.uid);
-          setProjects(loadedProjects);
-
-          let loadedQuotes = await fetchTenantCollection('quotations');
-          if (isPrivate) loadedQuotes = loadedQuotes.filter(q => q.createdBy === currentUser.uid);
-          setQuotations(loadedQuotes);
-
-          setProducts(await fetchTenantCollection('products'));
-
-          let savedNextNo = null;
-          let savedProfile = null;
-          const specSnap = await getDocs(query(collection(db, 'config'), where('tenantId', '==', tenantId)));
-          specSnap.docs.forEach(doc => {
-            if (doc.id.includes('materialSpec')) setMaterialSpec(doc.data().data);
-            if (doc.id.includes('nextQuoteNo')) savedNextNo = doc.data().value;
-            if (doc.id.includes('tenantLogo')) {
-              setTenantLogo(doc.data().data);
-            }
-            if (doc.id.includes('companyProfile')) {
-              savedProfile = doc.data().data;
-            }
-            if (doc.id.includes('subscription')) {
-              setSubscription(deriveSubscription(doc.data(), { docSpent: loadedQuotes.length }));
+              setClients(SAMPLE_CLIENTS.map(c => ({ ...c, id: `${tenantId}_${c.id}`, tenantId })));
+              setProjects(SAMPLE_PROJECTS.map(p => ({ ...p, id: `${tenantId}_${p.id}`, clientId: `${tenantId}_${p.clientId}`, tenantId })));
+              setQuotations(SAMPLE_QUOTATIONS.map(q => ({ ...q, id: `${tenantId}_${q.id}`, clientId: `${tenantId}_${q.clientId}`, tenantId })));
+            } else {
+              setClients([]);
+              setProjects([]);
+              setQuotations([]);
             }
           });
+        } else if (loadedClients !== null) {
+          if (!isStale()) setClients(loadedClients);
 
-          const resolvedProfile = savedProfile
-            ? { ...initialBaseProfile, ...savedProfile }
-            : initialBaseProfile;
-          setCompanyProfile(resolvedProfile);
-          if (resolvedProfile.logo) {
-            setTenantLogo(resolvedProfile.logo);
-          }
+          await loadSection('projects', async () => {
+            let loadedProjects = await fetchTenantCollection('projects');
+            if (isPrivate) loadedProjects = loadedProjects.filter(p => p.createdBy === uidAtStart);
+            if (!isStale()) setProjects(loadedProjects);
+          });
 
-          const effectiveNextNo = calculateNextQuoteNo(loadedQuotes, savedNextNo || 1290);
-          setNextQuoteNo(effectiveNextNo);
+          let loadedQuotes = null;
+          await loadSection('quotations', async () => {
+            loadedQuotes = await fetchTenantCollection('quotations');
+            if (isPrivate) loadedQuotes = loadedQuotes.filter(q => q.createdBy === uidAtStart);
+            if (!isStale()) setQuotations(loadedQuotes);
+          });
+
+          await loadSection('products', async () => {
+            const loadedProducts = await fetchTenantCollection('products');
+            if (!isStale()) setProducts(loadedProducts);
+          });
+
+          await loadSection('config', async () => {
+            let savedNextNo = null;
+            let savedProfile = null;
+            const specSnap = await getDocs(query(collection(db, 'config'), where('tenantId', '==', tenantId)));
+            specSnap.docs.forEach(d => {
+              if (d.id.includes('materialSpec')) setMaterialSpec(d.data().data);
+              if (d.id.includes('nextQuoteNo')) savedNextNo = d.data().value;
+              if (d.id.includes('tenantLogo')) {
+                setTenantLogo(d.data().data);
+              }
+              if (d.id.includes('companyProfile')) {
+                savedProfile = d.data().data;
+              }
+              if (d.id.includes('subscription')) {
+                setSubscription(deriveSubscription(d.data(), { docSpent: (loadedQuotes || []).length }));
+              }
+            });
+
+            const resolvedProfile = savedProfile
+              ? { ...initialBaseProfile, ...savedProfile }
+              : initialBaseProfile;
+            if (!isStale()) {
+              setCompanyProfile(resolvedProfile);
+              if (resolvedProfile.logo) {
+                setTenantLogo(resolvedProfile.logo);
+              }
+              setNextQuoteNo(calculateNextQuoteNo(loadedQuotes || [], savedNextNo || 1290));
+            }
+          });
         }
-      } catch (error) {
-        console.error("Failed to load Firebase data", error);
+
+        if (isStale()) return; // a dead session owns neither state nor flags
+
+        if (failures.length) {
+          console.error('Tenant data load: some sections failed:', failures);
+          setLoadError({
+            sections: failures.map(f => f.name),
+            code: failures[0].code,
+            message: failures[0].message,
+          });
+        } else {
+          setLoadError(null);
+        }
       } finally {
-        setLoading(false);
+        if (!isStale()) setLoading(false);
       }
     };
     loadData();
-  }, [currentUser, userProfile, authLoading]);
+  }, [currentUser, userProfile, authLoading, loadAttempt]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // Sync materialSpec and nextQuoteNo to Firebase when they change
@@ -190,14 +238,9 @@ export function AppProvider({ children }) {
     saveSpec();
   }, [materialSpec, loading, userProfile]);
 
-  useEffect(() => {
-    if (loading || !userProfile?.tenantId) return;
-    const saveNextNo = async () => {
-      try { await setDoc(doc(db, 'config', `${userProfile.tenantId}_nextQuoteNo`), { value: nextQuoteNo, tenantId: userProfile.tenantId }); }
-      catch (e) { console.error("Error saving next quote no", e); }
-    };
-    saveNextNo();
-  }, [nextQuoteNo, loading, userProfile]);
+  // NOTE: the nextQuoteNo counter doc is owned exclusively by the
+  // transaction in addQuotation — never mirror it back from local state,
+  // or one device could regress another device's advance.
 
   // Dynamic White Label Theme Injection
   useEffect(() => {
@@ -263,11 +306,21 @@ export function AppProvider({ children }) {
       }
     }
 
-    // The invoice number is assigned HERE, once, at save time — the single owner
-    // of numbering. Every new quotation (any customer, any entry point) therefore
-    // gets a fresh number; the Builder's field is display-only.
-    const calculatedNext = calculateNextQuoteNo(quotations, nextQuoteNo);
-    const assignedNo = String(calculatedNext);
+    // The invoice number is assigned HERE, once, at save time. The tenant's
+    // counter doc is mutated inside a Firestore transaction, so concurrent
+    // saves (two tabs, two staff members) can never mint the same number.
+    // historyFloor protects hand-seeded invoices (e.g. a manual #1240 below
+    // the counter) and self-heals a missing counter doc; the transaction is
+    // the authority when both exist.
+    const counterRef = doc(db, 'config', `${userProfile.tenantId}_nextQuoteNo`);
+    const historyFloor = calculateNextQuoteNo(quotations, nextQuoteNo);
+    const assignedNo = await runTransaction(db, async (tx) => {
+      const counterSnap = await tx.get(counterRef);
+      const savedVal = counterSnap.exists() ? parseInt(counterSnap.data().value, 10) : NaN;
+      const next = Math.max(historyFloor, isNaN(savedVal) ? 0 : savedVal);
+      tx.set(counterRef, { value: next + 1, tenantId: userProfile.tenantId });
+      return String(next);
+    });
 
     const nowIso = new Date().toISOString();
     const qWithDetails = {
@@ -280,11 +333,6 @@ export function AppProvider({ children }) {
     };
     // Stamp ownership + tenant through the shared factory path.
     const docId = await quotationsCrud.add(qWithDetails);
-
-    const assignedDigits = assignedNo.match(/\d+/g);
-    const assignedVal = assignedDigits ? parseInt(assignedDigits[assignedDigits.length - 1], 10) : calculatedNext;
-    const newNextNo = Math.max(calculatedNext, (isNaN(assignedVal) ? calculatedNext : assignedVal)) + 1;
-    await setDoc(doc(db, 'config', `${userProfile.tenantId}_nextQuoteNo`), { value: newNextNo, tenantId: userProfile.tenantId });
 
     // Update credit consumption. The server write is an atomic increment so
     // rapid successive saves can never deduct from a stale base; the local
@@ -313,7 +361,7 @@ export function AppProvider({ children }) {
       console.warn("Could not sync credit deduction:", credErr);
     }
 
-    setNextQuoteNo(newNextNo);
+    setNextQuoteNo(parseInt(assignedNo, 10) + 1);
     return docId;
   };
 
@@ -342,7 +390,7 @@ export function AppProvider({ children }) {
   const value = {
     clients, projects, quotations, products, materialSpec, nextQuoteNo, tenantLogo, setTenantLogo,
     companyProfile, updateCompanyProfile,
-    subscription, loading,
+    subscription, loading, loadError, retryLoad: () => { loadAttemptRef.current += 1; setLoadAttempt(a => a + 1); },
     addClient, updateClient, deleteClient,
     addProject, updateProject, deleteProject,
     addQuotation, updateQuotation, deleteQuotation,
