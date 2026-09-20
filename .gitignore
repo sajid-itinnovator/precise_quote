@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
+.firebase
 
 # Environment files — copy .env.example to .env locally (never commit)
 .env
