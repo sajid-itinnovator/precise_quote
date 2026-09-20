@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, AlertCircle, Trash2, LogOut, ShieldCheck, User } from 'lucide-react';
+import { ArrowLeft, Check, AlertCircle, LogOut, ShieldCheck, User } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import MediaUploadField from '../components/MediaUploadField';
 import { DEFAULT_PAYMENT_TERMS, PAYMENT_TERMS_PRESETS, BRAND_COLOR_PRESETS } from '../constants/defaults';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
@@ -48,13 +49,6 @@ export default function CompanyProfile() {
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-
-  // Hidden file inputs
-  const logoInputRef = useRef(null);
-  const signatureInputRef = useRef(null);
-  const stampInputRef = useRef(null);
-  const bottomLogoInputRef = useRef(null);
-  const qrInputRef = useRef(null);
 
   // Sync if companyProfile changes in context — form mirrors context; user edits go the other way on save
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -489,117 +483,42 @@ export default function CompanyProfile() {
           {/* ─── Media & Brand Assets ─── */}
           {/* Logo */}
           <div style={{ marginTop: 4 }}>
-            <div style={{ fontSize: '0.95rem', color: '#1d1b20', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span>Logo: {formData.logo ? <strong style={{ color: '#10b981' }}>Set</strong> : <span style={{ color: '#64748b' }}>not set</span>}</span>
-              {formData.logo && (
-                <button
-                  type="button"
-                  onClick={() => handleRemoveMedia('logo')}
-                  style={removeMediaBtnStyle}
-                  title="Remove logo"
-                >
-                  <Trash2 size={13} /> Remove
-                </button>
-              )}
-            </div>
-
-            {formData.logo && (
-              <div style={mediaPreviewBoxStyle}>
-                <img src={formData.logo} alt="Company Logo" style={{ maxHeight: 60, maxWidth: '100%', objectFit: 'contain' }} />
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={() => logoInputRef.current?.click()}
-              style={pillBtnStyle}
-            >
-              Choose Logo
-            </button>
-            <input
-              ref={logoInputRef}
-              type="file"
-              accept="image/png, image/jpeg, image/webp"
-              style={{ display: 'none' }}
-              onChange={e => handleFileUpload('logo', e.target.files[0])}
+            <MediaUploadField
+              field="logo"
+              src={formData.logo}
+              label="Logo"
+              alt="Company Logo"
+              chooseLabel="Choose Logo"
+              status={formData.logo ? <strong style={{ color: '#10b981' }}>Set</strong> : <span style={{ color: '#64748b' }}>not set</span>}
+              onUpload={handleFileUpload}
+              onRemove={handleRemoveMedia}
             />
           </div>
 
           {/* Signature */}
-          <div style={{ marginTop: 6 }}>
-            <div style={{ fontSize: '0.95rem', color: '#1d1b20', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span>Signature: {formData.signature ? <strong style={{ color: '#10b981' }}>Set</strong> : <span style={{ color: '#64748b' }}>not set</span>}</span>
-              {formData.signature && (
-                <button
-                  type="button"
-                  onClick={() => handleRemoveMedia('signature')}
-                  style={removeMediaBtnStyle}
-                  title="Remove signature"
-                >
-                  <Trash2 size={13} /> Remove
-                </button>
-              )}
-            </div>
-
-            {formData.signature && (
-              <div style={mediaPreviewBoxStyle}>
-                <img src={formData.signature} alt="Signature" style={{ maxHeight: 50, maxWidth: '100%', objectFit: 'contain' }} />
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={() => signatureInputRef.current?.click()}
-              style={pillBtnStyle}
-            >
-              Choose Signature
-            </button>
-            <input
-              ref={signatureInputRef}
-              type="file"
-              accept="image/png, image/jpeg, image/webp"
-              style={{ display: 'none' }}
-              onChange={e => handleFileUpload('signature', e.target.files[0])}
-            />
-          </div>
+          <MediaUploadField
+            field="signature"
+            src={formData.signature}
+            label="Signature"
+            alt="Signature"
+            chooseLabel="Choose Signature"
+            status={formData.signature ? <strong style={{ color: '#10b981' }}>Set</strong> : <span style={{ color: '#64748b' }}>not set</span>}
+            previewMaxHeight={50}
+            onUpload={handleFileUpload}
+            onRemove={handleRemoveMedia}
+          />
 
           {/* Stamp */}
-          <div style={{ marginTop: 6 }}>
-            <div style={{ fontSize: '0.95rem', color: '#1d1b20', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span>Stamp: {formData.stamp ? <strong style={{ color: '#10b981' }}>Set</strong> : <span style={{ color: '#64748b' }}>not set</span>}</span>
-              {formData.stamp && (
-                <button
-                  type="button"
-                  onClick={() => handleRemoveMedia('stamp')}
-                  style={removeMediaBtnStyle}
-                  title="Remove stamp"
-                >
-                  <Trash2 size={13} /> Remove
-                </button>
-              )}
-            </div>
-
-            {formData.stamp && (
-              <div style={mediaPreviewBoxStyle}>
-                <img src={formData.stamp} alt="Stamp" style={{ maxHeight: 60, maxWidth: '100%', objectFit: 'contain' }} />
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={() => stampInputRef.current?.click()}
-              style={pillBtnStyle}
-            >
-              Choose Stamp
-            </button>
-            <input
-              ref={stampInputRef}
-              type="file"
-              accept="image/png, image/jpeg, image/webp"
-              style={{ display: 'none' }}
-              onChange={e => handleFileUpload('stamp', e.target.files[0])}
-            />
-          </div>
+          <MediaUploadField
+            field="stamp"
+            src={formData.stamp}
+            label="Stamp"
+            alt="Stamp"
+            chooseLabel="Choose Stamp"
+            status={formData.stamp ? <strong style={{ color: '#10b981' }}>Set</strong> : <span style={{ color: '#64748b' }}>not set</span>}
+            onUpload={handleFileUpload}
+            onRemove={handleRemoveMedia}
+          />
 
           {/* ─── Bottom Logo (Thank You Note & Signature) Option ─── */}
           <div style={{
@@ -630,39 +549,21 @@ export default function CompanyProfile() {
 
             {formData.showBottomLogo !== false && (
               <div style={{ marginLeft: 28 }}>
-                <div style={{ fontSize: '0.88rem', color: '#1d1b20', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>Bottom Logo Source: {formData.bottomLogo ? <strong style={{ color: '#10b981' }}>Custom Footer Logo</strong> : (formData.logo ? <strong style={{ color: '#5c479e' }}>Using Company Logo</strong> : <span style={{ color: '#dc2626' }}>No logo set yet</span>)}</span>
-                  {formData.bottomLogo && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveMedia('bottomLogo')}
-                      style={removeMediaBtnStyle}
-                      title="Reset to main logo"
-                    >
-                      <Trash2 size={13} /> Reset to Main Logo
-                    </button>
-                  )}
-                </div>
-
-                {(formData.bottomLogo || formData.logo) && (
-                  <div style={{ ...mediaPreviewBoxStyle, maxHeight: 75, marginBottom: 8, background: '#fff' }}>
-                    <img src={formData.bottomLogo || formData.logo} alt="Bottom Logo Preview" style={{ maxHeight: 50, maxWidth: '100%', objectFit: 'contain' }} />
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => bottomLogoInputRef.current?.click()}
-                  style={{ ...pillBtnStyle, padding: '7px 18px', fontSize: '0.82rem' }}
-                >
-                  {formData.bottomLogo ? 'Change Custom Bottom Logo' : 'Choose Custom Bottom Logo (Optional)'}
-                </button>
-                <input
-                  ref={bottomLogoInputRef}
-                  type="file"
-                  accept="image/png, image/jpeg, image/webp"
-                  style={{ display: 'none' }}
-                  onChange={e => handleFileUpload('bottomLogo', e.target.files[0])}
+                <MediaUploadField
+                  field="bottomLogo"
+                  src={formData.bottomLogo}
+                  label="Bottom Logo Source"
+                  alt="Bottom Logo Preview"
+                  removeLabel="Reset to Main Logo"
+                  title="Reset to main logo"
+                  chooseLabel="Choose Custom Bottom Logo (Optional)"
+                  replaceLabel="Change Custom Bottom Logo"
+                  status={formData.bottomLogo ? <strong style={{ color: '#10b981' }}>Custom Footer Logo</strong> : (formData.logo ? <strong style={{ color: '#5c479e' }}>Using Company Logo</strong> : <span style={{ color: '#dc2626' }}>No logo set yet</span>)}
+                  previewMaxHeight={50}
+                  previewStyle={{ maxHeight: 75, marginBottom: 8, background: '#fff' }}
+                  buttonStyle={{ padding: '7px 18px', fontSize: '0.82rem' }}
+                  onUpload={handleFileUpload}
+                  onRemove={handleRemoveMedia}
                 />
               </div>
             )}
@@ -769,52 +670,19 @@ export default function CompanyProfile() {
             <hr style={{ border: 'none', borderTop: '1px solid #ece6f2', margin: '4px 0' }} />
 
             {/* QR Code section */}
-            <div style={{
-              fontSize: '0.92rem',
-              fontWeight: 600,
-              color: '#654b9d',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}>
-              <span>QR Code</span>
-              {formData.qrCode && (
-                <button
-                  type="button"
-                  onClick={() => handleRemoveMedia('qrCode')}
-                  style={removeMediaBtnStyle}
-                  title="Remove QR code"
-                >
-                  <Trash2 size={13} /> Remove
-                </button>
-              )}
-            </div>
-
-            {formData.qrCode && (
-              <div style={{ ...mediaPreviewBoxStyle, textAlign: 'center' }}>
-                <img src={formData.qrCode} alt="Payment QR Code" style={{ maxHeight: 120, maxWidth: '100%', objectFit: 'contain' }} />
-              </div>
-            )}
-
-            <button
-              type="button"
-              onClick={() => qrInputRef.current?.click()}
-              style={{
-                ...pillBtnStyle,
-                width: '100%',
-                padding: '12px 20px',
-                textAlign: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              {formData.qrCode ? 'Replace QR Code' : 'Upload QR Code'}
-            </button>
-            <input
-              ref={qrInputRef}
-              type="file"
-              accept="image/png, image/jpeg, image/webp"
-              style={{ display: 'none' }}
-              onChange={e => handleFileUpload('qrCode', e.target.files[0])}
+            <MediaUploadField
+              field="qrCode"
+              src={formData.qrCode}
+              label="QR Code"
+              alt="Payment QR Code"
+              chooseLabel="Upload QR Code"
+              replaceLabel="Replace QR Code"
+              status={null}
+              previewMaxHeight={120}
+              previewStyle={{ textAlign: 'center' }}
+              buttonStyle={{ width: '100%', padding: '12px 20px', textAlign: 'center', justifyContent: 'center' }}
+              onUpload={handleFileUpload}
+              onRemove={handleRemoveMedia}
             />
 
             <hr style={{ border: 'none', borderTop: '1px solid #ece6f2', margin: '6px 0' }} />
@@ -1035,42 +903,3 @@ const inputStyle = {
   transition: 'border-color 0.2s, box-shadow 0.2s',
 };
 
-const pillBtnStyle = {
-  background: '#5c479e',
-  color: '#ffffff',
-  border: 'none',
-  borderRadius: 9999,
-  padding: '10px 22px',
-  fontSize: '0.9rem',
-  fontWeight: 600,
-  cursor: 'pointer',
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 6,
-  boxShadow: '0 1px 4px rgba(92, 71, 158, 0.25)',
-  transition: 'background 0.2s, transform 0.1s',
-};
-
-const removeMediaBtnStyle = {
-  background: 'none',
-  border: 'none',
-  color: '#dc2626',
-  cursor: 'pointer',
-  fontSize: '0.78rem',
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 4,
-  padding: '2px 6px',
-  borderRadius: 4,
-};
-
-const mediaPreviewBoxStyle = {
-  background: '#f8fafc',
-  border: '1px dashed #cbd5e1',
-  borderRadius: 8,
-  padding: 10,
-  marginBottom: 10,
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-};
