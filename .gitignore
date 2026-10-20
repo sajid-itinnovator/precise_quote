@@ -36,3 +36,5 @@ new-password.txt
 *.njsproj
 *.sln
 *.sw?
+
+doc-test.html

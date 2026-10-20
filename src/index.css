@@ -1,5 +1,25 @@
 
 
+/* ─── Document fonts (quotation PDF) ───
+   The Vistara reference document is set in Cambria / Cambria-Bold (Microsoft).
+   Caladea is Google's metric-compatible twin of Cambria: on Windows the real
+   Cambria is picked up first from the user's system fonts; everywhere else the
+   bundled Caladea renders with identical widths, so the A4 layout never shifts. */
+@font-face {
+  font-family: 'Caladea';
+  src: url('/fonts/caladea-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'Caladea';
+  src: url('/fonts/caladea-700.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: block;
+}
+
 /* Design tokens, font import, and keyframes live in tokens.css (imported
    first by main.jsx) — this file is component styles only. */
 

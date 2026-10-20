@@ -74,9 +74,21 @@ export function buildPrintHTML(quotation, tenantName, tenantLogo, companyProfile
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: Cambria, Georgia, "Times New Roman", serif;
+      /* Cambria = the reference PDF's exact font (Windows); bundled
+         metric-twin Caladea keeps identical letter widths elsewhere. */
+      font-family: Cambria, Caladea, Georgia, "Times New Roman", serif;
       font-size: 10pt; color: #000; background: #fff;
       line-height: 1.4;
+    }
+    @font-face {
+      font-family: 'Caladea';
+      src: url('/fonts/caladea-400.woff2') format('woff2');
+      font-weight: 400; font-style: normal; font-display: block;
+    }
+    @font-face {
+      font-family: 'Caladea';
+      src: url('/fonts/caladea-700.woff2') format('woff2');
+      font-weight: 700; font-style: normal; font-display: block;
     }
     .pq-doc {
       width: 210mm; min-height: 277mm; padding: 12mm;

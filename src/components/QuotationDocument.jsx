@@ -60,7 +60,9 @@ export default function QuotationDocument({ quotation, tenantName, tenantLogo, c
     <div className="pq-doc" style={{
       width: DOCUMENT_WIDTH, minHeight: PAGE_HEIGHT, background: '#fff', padding: '12mm',
       border: '1px solid #ccc', margin: '0 auto', boxSizing: 'border-box',
-      fontFamily: 'Cambria, Georgia, "Times New Roman", serif', fontSize: '10pt', color: '#000', lineHeight: 1.4,
+      // Cambria first (the reference PDF's exact font, present on Windows where
+      // PDFs are produced), metric-twin Caladea as the bundled fallback.
+      fontFamily: 'Cambria, Caladea, Georgia, "Times New Roman", serif', fontSize: '10pt', color: '#000', lineHeight: 1.4,
       display: 'flex', flexDirection: 'column', gap: '20px'
     }}>
       {/* ─── Letterhead: logo left, wordmark right of it, tagline under the wordmark ─── */}
@@ -75,7 +77,7 @@ export default function QuotationDocument({ quotation, tenantName, tenantLogo, c
           <div style={{ flex: 1 }}>
             <div style={{
               color: NAVY, fontWeight: 'bold', fontSize: 36, lineHeight: 1.15,
-              fontFamily: 'Cambria, Georgia, serif', whiteSpace: 'nowrap'
+              fontFamily: 'Cambria, Caladea, Georgia, serif', whiteSpace: 'nowrap'
             }}>
               {brand.name.replace(/^team\s+/i, '').toUpperCase()}
             </div>
@@ -121,7 +123,7 @@ export default function QuotationDocument({ quotation, tenantName, tenantLogo, c
       }}>
         <span style={{
           color: NAVY, fontWeight: 'bold', fontSize: 18, textDecoration: 'underline',
-          letterSpacing: 0.5, fontFamily: 'Cambria, Georgia, serif'
+          letterSpacing: 0.5, fontFamily: 'Cambria, Caladea, Georgia, serif'
         }}>
           {name}
         </span>
