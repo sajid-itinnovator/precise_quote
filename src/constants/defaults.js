@@ -6,34 +6,20 @@
 export const ROOMS_DEFAULT = ['ENTRANCE', 'LIVING ROOM', 'DINING AREA', 'KITCHEN', 'MASTER BEDROOM', 'KIDS BEDROOM', 'BATHROOM', 'CIVIL', 'OTHER WORK'];
 
 export const MATERIAL_SPEC_DEFAULT = [
-  { category: 'PLYWOOD', items: [
+  { category: 'PLAYWOOD', items: [
     { material: 'Furniture: Gurjan Plywood', brand: 'BWR ISI710 GRADE (18mm & 12mm)' },
     { material: 'Kitchen: Gurjan Plywood', brand: 'BWP ISI710 GRADE (18mm & 12mm)' },
-    { material: 'Safety door: Gurjan', brand: 'BLOCK BOARD (35mm)' },
+    { material: 'Main door: Gurjan', brand: 'BLOCK BOARD (35mm)' },
   ]},
   { category: 'HARDWARE', items: [
     { material: 'Hardware: Premium Quality', brand: 'ONYX' },
   ]},
   { category: 'LAMINATE', items: [
-    { material: 'Laminate', brand: 'ADVANCE / REAL TOUCH' },
-  ]},
-  { category: 'FALSE CEILING', items: [
-    { material: 'False Ceiling:', brand: 'GYPROC GYPSUM SHEET' },
-    { material: 'Pvc Ceiling', brand: 'PVC BOARD' },
+    { material: 'Laminate', brand: 'ADVANCE / ZARA / BLINCO' },
   ]},
   { category: 'WALL DESIGNING', items: [
-    { material: 'Molding', brand: 'PDF / PVC' },
+    { material: 'Molding', brand: 'POP / PVC' },
     { material: 'Wall Paper', brand: 'WASHABLE PREMIUM' },
-  ]},
-  { category: 'ELECTRICAL', items: [
-    { material: 'Wire', brand: 'POLYCAB WIRES' },
-    { material: 'Switches', brand: 'LEGRAND SWITCHES (Electrical point As Per Design)' },
-  ]},
-  { category: 'LIGHTS', items: [
-    { material: 'Lights', brand: 'CROMPTON OR ORIENT\nPanel Light + Cob lights + Profile Light' },
-  ]},
-  { category: 'PAINTS', items: [
-    { material: 'Paints:', brand: 'ASIAN\n(Luster with Wall Putty, Primer +2 Coat)' },
   ]},
 ];
 
@@ -98,21 +84,30 @@ export const BRAND_COLOR_PRESETS = [
   { name: 'Modern Charcoal', hex: '#334155', dark: '#1e293b', light: '#f1f5f9' },
   { name: 'Crimson Rose', hex: '#e11d48', dark: '#be123c', light: '#ffe4e6' },
   { name: 'Bronze Copper', hex: '#c2410c', dark: '#9a3412', light: '#ffedd5' },
-];
+];export const VISTARA_BRAND = {
+  /** Word-brand navy used by the letterhead, title underline and THANK YOU line. */
+  navy: '#17365D',
+  /** Scope-table header fill sampled from the reference document. */
+  tableHeader: '#0E233D',
+  /** Section/room band grey sampled from the reference document. */
+  band: '#BFBFBF',
+  /** Logo shipped with the app ('/vistara-logo.png'); any tenant can override it in Company Profile. */
+  logoUrl: '/vistara-logo.png',
+};
 
 export const VISTARA_SAMPLE_PROFILE = {
   companyName: "VISTARA INTERIOR'S",
-  tagline: 'Designing Dreams Creating Reality......',
+  tagline: 'Designing Dreams Creating Reality.......',
   officeAddress: 'Office No.01, Ambekar Hotel Chowk, Undri Pisoli, Pune-411060',
-  phone: '+91 7720097476 / 8482946451',
+  phone: '+91 7720097476/8482946451',
   email: 'teamvistarainteriors@gmail.com',
   website: '',
   gstNumber: '',
-  logo: null,
+  logo: VISTARA_BRAND.logoUrl,
   signature: null,
   stamp: null,
-  brandColor: '#1a56ff',
-  brandColorDark: '#1240cc',
+  brandColor: '#17365D',
+  brandColorDark: '#0E233D',
   brandColorLight: '#e8eeff',
   workspaceSubtitle: 'Interior Studio',
   hidePlatformAttribution: true,

@@ -6,11 +6,10 @@ import { DEFAULT_PAYMENT_TERMS } from '../constants/defaults';
  */
 
 export const SCOPE_OF_WORK_ITEMS = [
-  '2D & 3D Designing & Visualization',
   'Material Selection Assistance',
   'On-site Supervision',
   'Installation & Finishing Work',
-  'Project Timeline: 60–65 Days',
+  'Project Timeline: 45–60 Days',
 ];
 
 export const WHY_CHOOSE_ITEMS = [
@@ -19,7 +18,6 @@ export const WHY_CHOOSE_ITEMS = [
   'Personalized Design with 3D Views',
   '10-Year Warranty on Workmanship',
   'Professional Team with End-to-End Support',
-  'Deep Cleaning will be provided by us',
   'All Furniture Edge Work Will Be Done In Laminate Matching PVC Edge Binds to Ensure Smooth Edges and Seamless Finishing',
 ];
 
